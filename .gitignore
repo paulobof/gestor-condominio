@@ -1,0 +1,43 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.log
+.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.eslintcache
+.pnp.*
+
+# Env
+.env
+.env.*.local
+!.env.example
+
+# Docker / volumes locais
+volumes/
+data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

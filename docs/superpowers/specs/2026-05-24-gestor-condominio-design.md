@@ -128,12 +128,20 @@ Browser → Nginx (SPA) → /api/* → Backend Spring Boot
                                     └── WhatsApp bot webhook (outbound, async)
 ```
 
-### 2.3 Padrões transversais
+### 2.3 Padrões transversais (obrigatórios, replicados no `CLAUDE.md`)
 
-- **Transações**: `@Transactional` apenas em service.
-- **Auditoria automática**: `@EntityListeners(AuditingEntityListener.class)` + `AuditorAware<UUID>`.
+- **Transações**: `@Transactional` apenas em service. Upload MinIO **fora** do bloco transacional.
+- **Auditoria automática**: `@EntityListeners(AuditingEntityListener.class)` + `AuditorAware<UUID>` que retorna `Optional.empty()` em contextos públicos (cadastro do master); evita NPE em `@CreatedBy`.
 - **Optimistic locking**: `@Version Long version` em todas entidades mutáveis.
-- **Eventos de domínio**: `ApplicationEvent` síncronos no approve/reject/role-change.
+- **Soft delete (Hibernate 6 / Spring Boot 3.x)**: usar `@SQLDelete` + `@SQLRestriction` (substitui `@Where` deprecado). Limitações documentadas no `CLAUDE.md`:
+  - `@SQLRestriction` **não** filtra queries nativas (`@Query(nativeQuery=true)`) nem `JdbcTemplate` — incluir `WHERE deleted_at IS NULL` manualmente.
+  - **Nunca** usar `CascadeType.REMOVE` — bypass-a `@SQLDelete` e executa DELETE real. Soft delete em cascata é manual no service.
+- **Eventos de domínio**: `@TransactionalEventListener(phase=AFTER_COMMIT)` + `@Async` para side effects que devem rodar após sucesso do commit. Listener publicado por método de domínio retornando lista de eventos coletada pelo service.
+- **Lombok em entidades JPA** (regra obrigatória):
+  - **Proibido `@Data`** — gera `@EqualsAndHashCode` com todos campos, causando `LazyInitializationException` e loops em relações bidirecionais.
+  - Usar `@Getter @Setter(AccessLevel.PROTECTED)` + `@EqualsAndHashCode(of="id")` + `@ToString(onlyExplicitlyIncluded=true)`.
+  - Setters protegidos: mutação só via métodos de domínio.
+- **Spring Security**: `JwtAuthenticationConverter` customizado lê claim `authorities` (array de strings) e mapeia para `SimpleGrantedAuthority` — sem hit no DB por request.
 - **Observabilidade** (ver seção 13).
 
 ---
@@ -239,15 +247,46 @@ Constraints: `UNIQUE (tower, floor, position) WHERE deleted_at IS NULL`, `UNIQUE
 - RESIDENT → nenhuma (acesso a recursos próprios não exige permission).
 - DOORMAN → `USER_VIEW`.
 
-**user_permission_grant** — concessão individual extra a um usuário. M:N `(user_id, permission_id)` + `granted_by_user_id` + `granted_at`. Útil para customizar STAFF.
+**user_permission_grant** — concessão individual extra a um usuário. M:N `(user_id, permission_id)` + `granted_by_user_id` + `granted_at` + `revoked_at`. Útil para customizar STAFF.
+
+**Regras de segurança da concessão (anti-escalada):**
+- **Ceiling check**: grantor só pode conceder permissions que ele próprio possui (`grantedPermissions ⊆ grantor.effectivePermissions`). Verificado no `PermissionGrantService`.
+- **Sem auto-concessão**: `grantor.id != target.id`.
+- **Sem self-grant da meta-permission**: ninguém pode conceder a si mesmo `PERMISSION_GRANT` ou `ROLE_ASSIGN`.
+- Auditoria via tabela `user_permission_grant_log` (hard delete + log) — `(action, target_user_id, permission_id, actor_id, timestamp, request_id)`.
+
+**user_permission_grant_log** (auditoria, sem soft delete):
+
+| Coluna             | Tipo         |
+| ------------------ | ------------ |
+| id                 | uuid PK      |
+| action             | varchar(20)  | `GRANT` ou `REVOKE`                          |
+| target_user_id     | uuid FK      |                                              |
+| permission_id      | smallint FK  |                                              |
+| actor_user_id      | uuid FK      |                                              |
+| acted_at           | timestamptz  |                                              |
+| request_id         | varchar(40)  | do MDC, para correlacionar com log           |
 
 **Authorities efetivas no JWT** (cálculo no login):
 ```
-authorities = (∪ role.permissions for role in user.roles)  ∪  user.individual_grants
-            + ROLE_<NAME> tokens para cada role (compatibilidade)
+authorities = (∪ role.permissions for role in user.roles)
+            ∪ (user.individual_grants WHERE revoked_at IS NULL)
+            + ROLE_<NAME> tokens para cada role (compatibilidade descritiva)
 ```
 
-`@PreAuthorize("hasAuthority('REGISTRATION_APPROVE')")` em endpoints. `hasRole('MANAGER')` apenas para "tudo MANAGER" (raro).
+O JWT carrega claim `authorities: ["REGISTRATION_APPROVE", "USER_VIEW", ...]`. Um `JwtAuthenticationConverter` customizado registrado em `HttpSecurity.oauth2ResourceServer(...)` lê o claim e gera `SimpleGrantedAuthority` por item — **zero hit no DB por request**.
+
+`@PreAuthorize("hasAuthority('REGISTRATION_APPROVE')")` em endpoints.
+
+**Proibido**: `@PreAuthorize("hasRole('STAFF')")` ou similar — STAFF não tem permissions por default; usar role como proxy de acesso vaza para usuários recém-criados sem grants. **Sempre** usar `hasAuthority` com a permission específica.
+
+**Enforce `role.max_holders` com lock pessimista**: no `UserService.assignRole`, dentro da transação:
+```sql
+SELECT COUNT(*) FROM user_role ur
+  JOIN role r ON r.id = ur.role_id
+ WHERE r.id = ? FOR UPDATE;
+```
+Mais defesa em profundidade: trigger Postgres que rejeita INSERT se `count >= max_holders` para roles com limite (MANAGER=1, COUNCIL=3, STAFF=5).
 
 #### refresh_token
 
@@ -319,21 +358,22 @@ Indexes: `UNIQUE(token_hash)`, `(user_id, used_at)`, `(expires_at)`.
 | notes        | text          |
 | is_24h       | boolean       | atalho para "24/7"; quando true, dispensa opening_hours |
 
-#### opening_hours (compartilhado entre contact, link, recommendation)
+#### opening_hours (3 tabelas — FK real por owner; sem polimorfismo)
 
-Tabela genérica polimórfica via discriminator:
+Após review do database-reviewer (FK virtual = orphans silenciosos), abrimos em 3 tabelas separadas — DDL idêntica trocando o owner. **Sem `@Inheritance` no JPA**, carregadas explicitamente pelo service (`OpeningHoursRepository.findByContactId(...)` etc.).
+
+`contact_opening_hours`, `link_opening_hours`, `recommendation_opening_hours`:
 
 | Coluna        | Tipo          | Notas                                                 |
 | ------------- | ------------- | ----------------------------------------------------- |
 | id            | uuid PK       |                                                       |
-| owner_type    | varchar(20)   | CHECK ('CONTACT','LINK','RECOMMENDATION')             |
-| owner_id      | uuid          | FK virtual                                            |
+| owner_id      | uuid FK       | FK real `ON DELETE CASCADE` para a tabela owner       |
 | day_of_week   | smallint      | CHECK 0..6 (0=domingo)                                |
-| opens_at      | time          | null = fechado naquele dia                            |
-| closes_at     | time          | null = fechado naquele dia                            |
-| notes         | varchar(120)  | "almoço 12-13h" etc.                                  |
+| opens_at      | time          | null = fechado                                        |
+| closes_at     | time          | null = fechado                                        |
+| notes         | varchar(120)  |                                                       |
 
-Index: `(owner_type, owner_id, day_of_week)`. Sem soft delete (registros técnicos).
+Index `(owner_id, day_of_week)`. Sem soft delete (CASCADE).
 
 #### link
 
@@ -359,6 +399,8 @@ Index: `(owner_type, owner_id, day_of_week)`. Sem soft delete (registros técnic
 | rating                    | smallint        | CHECK 1..5                                                                  |
 | comment                   | text            |                                                                             |
 | recommended_by_user_id    | uuid FK user    | autor da indicação                                                          |
+| **status**                | varchar(30)     | CHECK ('ACTIVE','PENDING_RESIDENT_CONSENT','HIDDEN'); default ACTIVE — para indicação não-morador, ou PENDING_RESIDENT_CONSENT quando `is_resident=true` aguardando aprovação do residente |
+| resident_consent_at       | timestamptz     | preenchido quando residente aprovou                                          |
 
 Constraint: `is_resident=true` exige `resident_user_id IS NOT NULL`.
 
@@ -379,7 +421,7 @@ Limite **5 fotos**, **1MB cada** (validado em service e comprimido no frontend a
 
 | Coluna   | Tipo         | Notas                                       |
 | -------- | ------------ | ------------------------------------------- |
-| slug     | varchar(60)  | UNIQUE — ex. "encanador", "limpeza"         |
+| slug     | citext       | UNIQUE — case-insensitive nativo (`CREATE EXTENSION citext` em V1); ex. "encanador" |
 | label    | varchar(80)  | exibição                                    |
 | color    | varchar(20)  | classe Tailwind ou hex para badge           |
 
@@ -403,6 +445,40 @@ PK composta, sem soft delete (CASCADE).
 | published    | boolean       | rascunho não aparece para morador           |
 
 Index `(category, ordering) WHERE deleted_at IS NULL AND published = true`.
+
+#### whatsapp_outbox
+
+| Coluna          | Tipo          | Notas                                                  |
+| --------------- | ------------- | ------------------------------------------------------ |
+| id              | uuid PK       |                                                        |
+| to_phone        | varchar(20)   | E.164                                                  |
+| template        | varchar(60)   | `password_reset`, `password_changed`, ...              |
+| payload         | jsonb         | body completo enviado                                  |
+| status          | varchar(20)   | CHECK ('PENDING','SENT','FAILED')                      |
+| attempts        | smallint      | default 0                                              |
+| last_attempt_at | timestamptz   |                                                        |
+| error_message   | text          |                                                        |
+| sent_at         | timestamptz   |                                                        |
+| created_at      | timestamptz   |                                                        |
+
+Index `(status, created_at) WHERE status IN ('PENDING','FAILED')` — indispensável para o job de reprocessamento.
+
+#### sensitive_access_log
+
+Audita acessos a dados pessoais de outros titulares (não-self) por COUNCIL/STAFF/MANAGER. Disparado por interceptor após endpoints com permission `USER_VIEW`, `REGISTRATION_VIEW`, `RESIDENCE_PROOF_VIEW`, export.
+
+| Coluna          | Tipo          |
+| --------------- | ------------- |
+| id              | uuid PK       |
+| actor_user_id   | uuid FK       |
+| target_user_id  | uuid FK       |
+| action          | varchar(40)   | `USER_VIEW`, `REGISTRATION_VIEW`, `PROOF_VIEW`, `EXPORT_REQUESTED`... |
+| acted_at        | timestamptz   |
+| client_ip       | inet          |
+| user_agent      | varchar(255)  |
+| request_id      | varchar(40)   |
+
+Sem soft delete (auditoria legal). Retenção 24 meses então purge.
 
 #### consent_document, proof_access_log — inalterados (seção LGPD)
 
@@ -441,12 +517,14 @@ UPDATE "user" SET password_hash = ?, password_pepper_version = ?
 
 - **Access**: JWT HS256, TTL 15 min, claims `iss`, `aud`, `sub`, `roles`, `unitId`, `isUnitMaster`, `exp`, `iat`, `jti`. Header `kid` para rotação de secret.
 - **Refresh**: opaque random 32 bytes em **cookie `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`**, TTL 7 dias. Hash SHA-256 no DB. Rotação atômica + detecção de replay revoga toda `token_family`.
-- **Senha**: `bcrypt(HMAC-SHA256(senha, pepper), salt)` cost 12. Pepper rotacionável.
+- **Senha**: `bcrypt(HMAC-SHA256(senha, pepper), salt)` cost 12. Pepper rotacionável; histórico re-hasheado no mesmo job.
 - **Política de senha** (validador Bean Validation `@StrongPassword`, custom usando Passay):
   - Mínimo 8 caracteres.
   - Pelo menos 1 letra **maiúscula**, 1 letra **minúscula**, 1 **número**, 1 **caractere especial** (`!@#$%^&*()_+-=[]{};':",./<>?`).
   - **Não pode ser igual às últimas 5 senhas do usuário** (compara via bcrypt+pepper contra hashes em `password_history`).
   - Não pode conter `full_name`, `greeting_name`, ou parte local do e-mail do usuário (≥4 chars contíguos, case-insensitive).
+  - **Verificação de histórico timing-safe**: o validator itera todos os 5 hashes em `password_history` sem short-circuit. Se a primeira comparação bcrypt der match, ainda compara os demais antes de retornar `PASSWORD_REUSED`. Evita oráculo de tempo.
+  - **Rotação de pepper**: o job de rotação atualiza `user.password_hash` E re-hasheia toda `password_history` daquele usuário com o novo pepper, mantendo `password_pepper_version` consistente. Sem isso, hashes históricos com pepper antigo ficam não-verificáveis e a regra de reuso silenciosamente falha.
   - Erros validados retornam 400 com `fields[].code` específico (`PASSWORD_TOO_SHORT`, `PASSWORD_MISSING_UPPER`, `PASSWORD_REUSED`, etc.) para o frontend mostrar mensagens granulares em pt-BR.
 
 ### 4.2 Endpoints públicos
@@ -532,10 +610,12 @@ GET    /api/recommendations/{id}                              any logado
 POST   /api/recommendations                                   any (autor=self)
                                           body inclui isResident, residentUserId (se true),
                                           addressLine, priceRange, tagSlugs[]
-PUT    /api/recommendations/{id}                              author | CLASSIFIED_MODERATE
-DELETE /api/recommendations/{id}                              author | CLASSIFIED_MODERATE
-POST   /api/recommendations/{id}/photos  (≤5, 1MB cada)       author | CLASSIFIED_MODERATE
-DELETE /api/recommendations/{id}/photos/{photoId}             author | CLASSIFIED_MODERATE
+PUT    /api/recommendations/{id}                              author | RECOMMENDATION_MODERATE
+DELETE /api/recommendations/{id}                              author | RECOMMENDATION_MODERATE
+POST   /api/recommendations/{id}/photos  (≤5, 1MB cada)       author | RECOMMENDATION_MODERATE
+DELETE /api/recommendations/{id}/photos/{photoId}             author | RECOMMENDATION_MODERATE
+POST   /api/recommendations/{id}/resident-consent             residente indicado (self) | RECOMMENDATION_MODERATE
+POST   /api/recommendations/{id}/hide                         RECOMMENDATION_MODERATE
 GET    /api/recommendations/{id}/photos/{photoId}/url         any logado
 
 GET    /api/tags                          listar para autocomplete  any logado
@@ -567,12 +647,41 @@ Fluxo:
 7. Backend dispara `PasswordResetCompletedEvent` → WhatsApp informativo "Sua senha foi alterada."
 
 **WhatsAppNotificationClient:**
+
 - HTTP client (Spring WebClient) para webhook do bot.
-- URL configurável `APP_WHATSAPP_WEBHOOK_URL`, segredo HMAC `APP_WHATSAPP_HMAC_SECRET`.
-- Body: `{ to: "+55...", text: "...", template: "password_reset" }`. Signature HMAC-SHA256 do body em header `X-Signature`.
-- Resilience4j: timeout 5s, retry exponencial 3x, circuit breaker.
-- Falha de envio: log WARN com requestId; **não falha** o request original do usuário (já respondeu 202).
-- Tabela `whatsapp_outbox` (simples) registra envios para reprocessamento manual.
+- Endpoint configurável `APP_WHATSAPP_WEBHOOK_URL`.
+- **Segredo HMAC rotacionável** — `APP_WHATSAPP_HMAC_KEYS=v1:base64-32-bytes,v2:...`, `APP_WHATSAPP_HMAC_ACTIVE_KID=v1`. Header `X-Hmac-Kid` para o bot saber qual chave usar.
+- **Payload com anti-replay**: corpo inclui `timestamp` (ISO-8601), `jti` (UUID único), `to`, `template`, `data`. Bot rejeita `|now - timestamp| > 5s` e armazena `jti` por 5min para detectar replay.
+- Signature: HMAC-SHA256 do corpo serializado em header `X-Signature: sha256=<hex>`.
+- Resilience4j (config completo em `application.yml`):
+  ```yaml
+  resilience4j:
+    timelimiter.instances.whatsapp.timeoutDuration: 5s
+    retry.instances.whatsapp:
+      maxAttempts: 3
+      waitDuration: 1s
+      enableExponentialBackoff: true
+      exponentialBackoffMultiplier: 2
+    circuitbreaker.instances.whatsapp:
+      slidingWindowSize: 10
+      failureRateThreshold: 50
+      waitDurationInOpenState: 30s
+  ```
+- Fallback (`@CircuitBreaker(fallbackMethod="fallback")`): log WARN, marca outbox `FAILED`, **nunca propaga exceção** ao chamador HTTP.
+- `whatsapp_outbox` armazena cada tentativa; job `@Scheduled` reprocessa `status IN (PENDING, FAILED) AND attempts < 5`.
+
+**Listener async correto**:
+```java
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+@Async("whatsappTaskExecutor")
+public void on(PasswordResetRequestedEvent e) {
+    if (passwordResetTokenRepo.findById(e.tokenId())
+            .filter(t -> t.getDeliveredAt() == null)
+            .isEmpty()) return;       // idempotência
+    whatsAppClient.sendPasswordReset(...);
+}
+```
+`AFTER_COMMIT` evita disparo se a transação fizer rollback. `delivered_at` em `password_reset_token` evita duplo envio em caso de retry de mensageria interna.
 
 ### 4.5 Domínio rico
 
@@ -582,7 +691,7 @@ Métodos por agregado:
 - `User.rehashPassword(newHash, newPepperVersion)` — rotação transparente.
 - `Unit.assignMaster(user)`.
 - `Classified.markSold(actor)`, `Classified.archive(actor)`, `Classified.addPhoto(key, contentType, ordering)` (enforce ≤5).
-- `Recommendation.changeRating(actor, value)`, `Recommendation.addPhoto(...)` (≤5), `Recommendation.markAsResident(residentUser)` (transição com validação).
+- `Recommendation.changeRating(actor, value)`, `Recommendation.addPhoto(...)` (≤5), `Recommendation.markAsResident(residentUser)` (transição com validação), `Recommendation.consent(residentActor)` (aprovação do residente indicado), `Recommendation.hide(actor)`.
 - `RefreshToken.rotate(newHash)`, `RefreshToken.revoke(reason)`.
 - `PasswordResetToken.consume()` (idempotência).
 - `Faq.publish()`, `Faq.unpublish()`, `Faq.reorder(newOrdering)`.
@@ -664,7 +773,14 @@ Brand color strip (decorativa, no header/footer e em estados festivos): faixas t
 
 ### 5.5 Componentes shadcn essenciais
 
-Instalar via CLI: `button`, `input`, `label`, `form`, `card`, `dialog`, `sheet`, `dropdown-menu`, `select`, `checkbox`, `radio-group`, `tabs`, `table`, `badge`, `avatar`, `alert`, `alert-dialog`, `toast`, `tooltip`, `accordion` (FAQ), `command` (search), `popover`, `calendar` (date-picker), `separator`, `skeleton`, `progress`, `breadcrumb`, `pagination`.
+Instalar via CLI: `button`, `input`, `label`, `form`, `card`, `dialog`, `sheet`, `dropdown-menu`, `select`, `checkbox`, `radio-group`, `switch`, `tabs`, `table`, `badge`, `avatar`, `alert`, `alert-dialog`, `tooltip`, `accordion` (FAQ), `command` + `popover` (combobox pattern para TagPicker), `calendar` (date-picker), `separator`, `skeleton`, `progress`, `breadcrumb`, `pagination`, `sonner` (toasts modernos integráveis com TanStack Query).
+
+**Patterns/Compostos (não componentes diretos):**
+- **DataTable**: `@tanstack/react-table` + shadcn `Table` para `UsersPage`, `PendingRegistrationsPage`, `TagsPage`, `FaqAdminPage`.
+- **Combobox/TagPicker**: `Command` + `Popover`.
+- **PhotoUploader**: `@dnd-kit/core` + `@dnd-kit/sortable` para reordenar; `browser-image-compression` (`{ maxSizeMB: 0.9, maxWidthOrHeight: 2000, useWebWorker: true }`) antes do upload.
+- **UnitSelector simplificado**: `Input` com máscara via `react-imask` (`702C` validado client-side) + debounce de `/api/units/lookup`. Os 3-selects encadeados só ficam no painel admin (`UnitsPage`).
+- **OpeningHoursDisplay/Editor**: usa `date-fns-tz` com fuso fixo `America/Sao_Paulo` para calcular "Aberto agora" — evita divergência se o browser estiver em outro fuso.
 
 ### 5.6 Padrões de layout responsivo
 
@@ -694,6 +810,20 @@ WCAG AA mínimo (AAA quando viável):
 - `prefers-reduced-motion` respeitado.
 - Inputs com `<label>` associado; erros com `role="alert"`/`aria-live="polite"`.
 - Tab order natural; skip link "Pular para conteúdo".
+
+**Ferramentas de validação (dev + CI):**
+- **`@axe-core/react`** em modo dev — loga violações no console durante uso.
+- **`eslint-plugin-jsx-a11y`** no lint-staged.
+- **`@lhci/cli`** (Lighthouse CI) no GitHub Actions com budgets para `accessibility ≥ 95`, `performance ≥ 80`, `best-practices ≥ 90`.
+
+### 5.9 Loading states e Skeletons
+
+Cada página com fetch via TanStack Query define um componente skeleton dedicado, evitando CLS:
+- `PendingRegistrationsPage` → `SkeletonTable` (5 linhas).
+- `RecommendationsList`, `ClassifiedsList` → `SkeletonCard` (4 cards com placeholder de foto).
+- `FaqPage` → `SkeletonAccordion` (3 itens).
+- `ContactsList` → `SkeletonContactCard`.
+- Renderiza enquanto `isLoading === true`.
 
 ---
 
@@ -727,6 +857,14 @@ frontend/src/
     └── admin/           PendingRegistrationsPage, UsersPage, UnitsPage,
                          TagsPage, FaqAdminPage
 ```
+
+### 6.0 AuthProvider — estado de loading
+
+`AuthProvider` inicia com `status: "loading"` e dispara `POST /api/auth/refresh` (cookie HttpOnly enviado automaticamente). Enquanto `status === "loading"`, exibe `<FullPageSpinner>` (evita flash de tela de login antes do refresh resolver). `ProtectedRoute` aguarda `status !== "loading"`. Após F5, a transição loading → authenticated|unauthenticated é transparente.
+
+### 6.0.1 i18n
+
+Strings pt-BR em `src/constants/messages.<feature>.ts` por feature, importadas onde forem usadas. Sem `react-i18next` no MVP — migração futura é direta sem refator de chaves.
 
 ### 6.1 Fluxo Master register (wizard)
 
@@ -836,7 +974,24 @@ Frontend: Vitest configurado, sem testes no MVP. `vitest run --passWithNoTests`.
 | **HML**  | `hml.app.helbor...` / `hml.api...`| `main`    | **auto** no push | Postgres+MinIO dedicados |
 | **Prod** | `app.helbor...` / `api.helbor...` | tag git `vX.Y.Z` ou release manual | **manual** via Dokploy "Promote" | Postgres+MinIO de produção |
 
-HML é réplica funcional de prod com dados de teste; usado para validação humana antes de promover. Sem PII real.
+HML é réplica funcional de prod com dados de teste; usado para validação humana antes de promover. **Sem PII real, enforced**:
+
+- **Proibido por política** (no `CLAUDE.md`) restaurar dump de prod em HML.
+- HML inicializa com `APP_SEED_FAKE_DATA=true` que aciona um conjunto de Flyway repeatable migrations (`R__seed_hml_fake_users.sql` etc.) com 5-10 usuários sintéticos + classificados/recomendações exemplo.
+- O env var `APP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/testdata` adiciona as migrations só em HML.
+- Banco HML não exposto publicamente; acesso só via tunel SSH com chave dedicada.
+- WhatsApp em HML aponta para `MockWhatsAppClient` (log, sem disparo real) ou bot sandbox separado.
+
+### 9.2.1 SLOs e DR
+
+- **Disponibilidade**: 99,5% mensal (≈ 3,6h downtime/mês).
+- **Latência p95** em endpoints autenticados: < 500ms.
+- **Latência upload** (1MB): < 3s p95.
+- **RPO**: 24h (último backup diário). **RTO**: 4h (provisionar Dokploy + restore + smoke).
+- **Backup**:
+  - Postgres: `pg_dump | gzip` diário via cron no servidor → upload para bucket MinIO `backups` (separado) e idealmente para S3 externo. Retenção 7 dias rolantes + 1 mensal.
+  - MinIO: `mc mirror minio/<bucket> backups/<bucket>` diário; SSE-S3 ativado em `residence-proofs` e `recommendations`.
+- **Restore drill**: documentado em `docs/runbooks/restore-postgres.md` e `docs/runbooks/restore-minio.md`. Executado antes do go-live e a cada 6 meses.
 
 ### 9.3 Pipeline CI/CD (GitHub Actions)
 
@@ -848,39 +1003,49 @@ HML é réplica funcional de prod com dados de teste; usado para validação hum
   - Required checks no GitHub: ambos verde para merge.
 
 - **Em push para `main`** (após merge):
-  - `deploy-hml`: build + push image opcional + chama webhook Dokploy do environment **HML**.
-  - Sanity smoke: `curl /actuator/health` no HML.
+  - `deploy-hml`: chama webhook Dokploy do environment **HML**.
+  - **Smoke real com wait-for-healthy**: poll `until curl -sf https://hml.api.../actuator/health/readiness; do sleep 10; done` com timeout 3 min. Falha o workflow se não ficar UP no prazo.
+  - Registra `github.sha` + timestamp em arquivo `deployments-hml.log` (artifact) para o soak time da promoção.
 
 - **Promoção para prod** (manual):
-  - Workflow `promote-to-prod.yml` com `workflow_dispatch` + input `version`.
-  - Requires `manual approval` (GitHub Environments com proteção).
+  - Workflow `promote-to-prod.yml` com `workflow_dispatch` + input `version` (sha ou tag).
+  - **Soak time**: step verifica via `gh api` que o `version` foi deployado em HML há **≥30 min**; falha caso contrário (configurável via env `APP_PROMOTE_MIN_SOAK_MINUTES`).
+  - Requires `manual approval` (GitHub Environments "production" protegido).
   - Chama webhook Dokploy do environment **Prod**.
+  - Smoke real prod (mesmo poll de health).
   - Cria tag `vX.Y.Z` no commit promovido.
 
 ### 9.4 Feature flags
 
-KISS — flags via env vars boolean lidas por `@ConditionalOnProperty` ou `@Value`:
+KISS — flags via env vars boolean lidas com `@Value("${app.feature.<nome>.enabled:false}")` (e não `@ConditionalOnProperty`, que congela no startup). Mudança de flag exige redeploy mas o código toma decisão por request, sem cache.
 
 - Naming: `APP_FEATURE_<NOME>_ENABLED=true|false`.
 - Default em HML: `true` (testar comportamento real).
 - Default em Prod: `false` até o release oficial.
-- Frontend recebe flags via `GET /api/config/features` (autenticado), guarda em React Context.
-- Convenção: cada flag tem dono + data prevista de remoção (anotada no `CLAUDE.md`/Issue). Flags são temporárias — remover dentro de 30 dias após ativar permanentemente.
+- Frontend recebe flags via `GET /api/config/features` (autenticado, exige permission `AUDIT_VIEW` para enxergar flags **inativas**; usuários comuns só vêem `true`). React Query com `refetchInterval: 5 * 60 * 1000` (5 min) reflete mudanças sem F5.
+- **Auditoria de mudança**: spec exige que mudanças em prod sejam registradas em uma issue do GitHub no projeto com `actor`, `flag`, `from`, `to`, `motivo`. Sem ferramenta — convenção humana documentada no `CLAUDE.md`.
+- Convenção: cada flag tem dono + data prevista de remoção. Flags são temporárias — remover dentro de 30 dias após ativar permanentemente.
 
-### 9.5 Dokploy — dois environments
+### 9.5 Dokploy — dois environments + observabilidade
 
 No painel `panel.paulobof.com.br`, replicar o environment atual:
 - **`prod`** — environment já existente (gestor-condominio).
 - **`hml`** — novo environment, com 4 serviços espelhados (backend-hml, frontend-hml, postgres-hml, minio-hml). Mesmo repo, mesma branch `main`, mas:
   - Domínios distintos (`hml.api.helbor...`, `hml.app.helbor...`).
-  - Env vars próprias (banco HML, MinIO HML, JWT secret HML, WhatsApp **mock** ou bot de teste, `APP_FEATURE_*_ENABLED=true`).
+  - Env vars próprias (banco HML, MinIO HML, JWT secret HML, WhatsApp **mock** ou bot sandbox, `APP_FEATURE_*_ENABLED=true`).
   - Webhook do GitHub Actions aciona deploy automático.
 - Promoção prod: webhook separado disparado pelo workflow `promote-to-prod`.
 
-### 9.6 Rollback
+**Stack de observabilidade (declarada explicitamente):**
+- **Prometheus** como compose service no Dokploy (em **prod**), config em `deploy/dokploy-prometheus-compose.yml`. Scrape de `backend:8080/actuator/prometheus` a cada 15s. Storage local 14 dias.
+- **Grafana** como compose service no Dokploy, dashboards versionados em `deploy/grafana/dashboards/*.json` (provisionados via auto-provisioning).
+- **Alertmanager** integrado ao Prometheus, com receivers webhook **Slack** (canal `#alerts-gestor`) e/ou e-mail do Paulo (`APP_ALERT_EMAIL`). Rotas com severidade (critical → imediato, warning → batch 15min).
+- Alternativa low-touch: usar **Grafana Cloud free tier** (10k series, 14 dias) — basta apontar `remote_write` do Prometheus. Decisão final na implementação (ambas viáveis).
 
-- Dokploy mantém imagens anteriores; rollback via UI em 1-click.
-- Para schema, manter migrations sempre additive permite voltar app sem voltar banco (estado intermediário válido).
+### 9.6 Rollback (movido)
+
+(idem antes — Dokploy 1-click + expand/contract).
+
 
 ---
 
@@ -962,9 +1127,18 @@ APP_LOG_FORMAT=json
 ## 12. LGPD (Lei 13.709/2018)
 
 - **Controlador**: `APP_CONTROLLER_NAME` / `APP_CONTROLLER_CNPJ`.
-- **Base legal** documentada por tratamento (cadastro=contrato; comprovante=contrato; logs=legítimo interesse; classificados/recomendações=consentimento específico; WhatsApp outbound = consentimento de comunicação).
+- **Operadores** (Art. 39) — listados em `docs/lgpd/operators.md` com finalidade e contrato:
+  - Dokploy (hosting da aplicação).
+  - PostgreSQL (banco de dados, no servidor Dokploy).
+  - MinIO (storage de arquivos, no servidor Dokploy).
+  - Bot WhatsApp do Paulo (envio de mensagens operacionais).
+  - GitHub (repositório de código — sem dado pessoal de morador).
+- **ROPA** (Record of Processing Activities, Art. 37) materializado em `docs/lgpd/ropa.md` listando: autenticação, comprovante, classificados, recomendações, WhatsApp outbound, logs, backups — com finalidade, base legal, retenção, operadores envolvidos.
+- **Base legal** documentada por tratamento (cadastro=execução de contrato; comprovante=execução de contrato; logs=legítimo interesse com LIA; classificados/recomendações=consentimento; WhatsApp comunicação operacional=execução de contrato; WhatsApp marketing futuro=consentimento específico).
 - **Termo de privacidade** versionado em `consent_document`; aceite registrado no cadastro com IP+timestamp; reaceite obrigatório em nova versão (`409 CONSENT_REQUIRED`).
-- **Telefone para WhatsApp** é dado pessoal — termo de privacidade descreve o uso (autenticação, recuperação de senha, comunicações operacionais).
+- **Telefone para WhatsApp**: dado pessoal coletado com base legal "execução de contrato" para autenticação e reset. **Checkbox separado obrigatório** no wizard: "Aceito receber comunicações operacionais via WhatsApp" — gera `whatsapp_opt_in` + `whatsapp_opt_in_at` na tabela `user` (revogável em `PUT /users/me`). Sem opt-in, ainda recebe reset de senha (contrato) mas nenhum aviso/notificação.
+- **Consentimento do residente indicado** em recommendation com `is_resident=true`: recomendação fica `status=PENDING_RESIDENT_CONSENT` (campo novo) até o residente aprovar; sem aprovação, oculta na listagem pública. Endpoint `POST /api/recommendations/{id}/resident-consent` (autenticado pelo residente) muda para `ACTIVE`. Evita exposição de profissional residente sem permissão.
+- **DPIA** (Art. 38) para tratamento de comprovante de residência: documento `docs/lgpd/dpia-residence-proof.md` avalia risco (re-identificação, vazamento de PII), medidas (bucket isolado, TTL, retenção 180d, audit log) e residual.
 - **Retenção**:
   - Comprovante: purgado do MinIO `APP_PROOF_RETENTION_DAYS` (180) dias após `approved_at`. Job `@Scheduled` diário.
   - Refresh tokens revogados/vencidos: 90 dias.
@@ -975,7 +1149,8 @@ APP_LOG_FORMAT=json
   - `GET /api/privacy/me/export`.
   - `POST /api/privacy/me/anonymize` (double-opt + senha). Anonimiza usuário, purga comprovante do MinIO, preserva entidades históricas com autor "Usuário Removido".
 - **DPO**: `APP_DPO_EMAIL` exibido em `/privacidade`. Canal de requisições com SLA 15 dias.
-- **Auditoria**: `proof_access_log` + logs JSON com requestId/userId.
+- **Auditoria**: `proof_access_log` (comprovantes) + `sensitive_access_log` (acessos por COUNCIL/STAFF/MANAGER a dados de outros titulares) + `user_permission_grant_log` (concessões de permissão) + logs JSON com requestId/userId.
+- **Endpoint `GET /api/privacy/me/processing-activities`** lista todas as finalidades + bases legais + operadores que tocam dados do titular logado (Art. 9º — direito à informação).
 - **Incidente**: alertas Prometheus + procedimento em `docs/security/incident-response.md`.
 
 ---
@@ -1070,11 +1245,18 @@ Após aprovação deste documento, invocar `superpowers:writing-plans` para gera
 
 - SOLID/KISS/STRIDE/POO obrigatórios.
 - npm no frontend.
-- Soft delete sempre (exceto `user_role`, `opening_hours`, M:N puros).
-- `@SQLDelete`+`@Where` **não filtram** queries nativas; **nunca** `CascadeType.REMOVE` — fazer soft delete manual no service.
-- Idioma código EN, UI pt-BR.
+- Soft delete sempre, exceto: `user_role`, `user_permission_grant_log`, `role_permission`, `*_opening_hours`, `recommendation_tag`, `sensitive_access_log`, `proof_access_log` (M:N puros e logs imutáveis).
+- `@SQLDelete`+`@SQLRestriction` (Hibernate 6) **não filtram** queries nativas; **nunca** `CascadeType.REMOVE`.
+- Lombok: nunca `@Data` em entidade JPA; `@EqualsAndHashCode(of="id")` + setters protegidos.
+- `AuditorAware` retorna `Optional.empty()` em contexto público (sem auth no SecurityContext).
+- Idioma: código EN, UI pt-BR.
 - Package-by-feature.
-- `@Transactional` só em service.
-- Logs nunca expõem PII.
-- Comunicação outbound só via WhatsApp; jamais e-mail.
-- Compressão de imagem **sempre** no client antes do upload (≤1MB foto, ≤5MB comprovante).
+- `@Transactional` apenas em service; upload S3 **fora** da transação.
+- Eventos com `@TransactionalEventListener(AFTER_COMMIT) + @Async`.
+- Spring Security: `hasAuthority('<PERMISSION>')` — proibido `hasRole('STAFF')`.
+- Logs nunca expõem PII (`LogSanitizer`).
+- Comunicação outbound apenas WhatsApp; jamais e-mail.
+- Compressão de imagem sempre no client (≤1MB foto, ≤5MB comprovante).
+- Trunk-based: PR ≤400 linhas, branch ≤2 dias, feature flag para WIP, migrations expand/contract.
+- Mudança de feature flag em prod registrada em issue GitHub.
+- Proibido restaurar dump de prod em HML — HML usa seed sintético.

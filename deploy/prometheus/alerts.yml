@@ -1,0 +1,28 @@
+groups:
+  - name: gestor-condominio
+    interval: 1m
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend gestor-condominio fora do ar"
+
+      - alert: HighLoginFailureRate
+        expr: increase(auth_login_failure_total[5m]) > 50
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mais de 50 falhas de login em 5 min"
+
+      - alert: WhatsAppDeliveryDegraded
+        expr: |
+          (increase(whatsapp_send_success_total[1h]) /
+           clamp_min(increase(whatsapp_send_attempt_total[1h]), 1)) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de sucesso do WhatsApp < 80% em 1h"

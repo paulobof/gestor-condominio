@@ -1,0 +1,19 @@
+# Build artifacts
+dist/
+dist-ssr/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Config files compiled by tsc -b (vite.config, vitest.config)
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
+
+# Dependencies
+node_modules/
+
+# Misc
+*.local
+.eslintcache

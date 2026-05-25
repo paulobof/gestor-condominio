@@ -1,0 +1,69 @@
+name: promote-to-prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'SHA ou tag a promover para produção'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://app.helbor.exemplo
+    env:
+      MIN_SOAK_MINUTES: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Verify soak time in HML
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_json=$(gh api -X GET \
+            repos/${{ github.repository }}/actions/workflows/ci.yml/runs \
+            -f branch=main -f event=push -f status=success --jq \
+            '.workflow_runs | map(select(.head_sha == "${{ inputs.version }}")) | .[0]')
+          if [ -z "$run_json" ] || [ "$run_json" = "null" ]; then
+            echo "Versao ${{ inputs.version }} nao foi deployada em HML via CI."
+            exit 1
+          fi
+          deployed_at=$(echo "$run_json" | jq -r '.updated_at')
+          deployed_epoch=$(date -d "$deployed_at" +%s)
+          now_epoch=$(date +%s)
+          elapsed=$(( (now_epoch - deployed_epoch) / 60 ))
+          echo "Versao em HML ha ${elapsed} min."
+          if [ "$elapsed" -lt "$MIN_SOAK_MINUTES" ]; then
+            echo "Soak insuficiente (min ${MIN_SOAK_MINUTES} min)."
+            exit 1
+          fi
+
+      - name: Trigger Dokploy Prod deploy
+        run: |
+          curl -sf -X POST "${{ secrets.DOKPLOY_PROD_WEBHOOK }}" \
+            -H "Authorization: Bearer ${{ secrets.DOKPLOY_PROD_TOKEN }}"
+
+      - name: Wait for Prod readiness
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fs https://api.helbor.exemplo/actuator/health/readiness; then
+              echo "Prod UP."
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Tag release
+        run: |
+          tag="v$(date -u +%Y.%m.%d-%H%M)"
+          git tag "$tag" "${{ inputs.version }}"
+          git push origin "$tag"

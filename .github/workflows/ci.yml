@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Spotless check
+        run: cd backend && ./mvnw -B -q spotless:check
+      - name: Tests
+        run: cd backend && ./mvnw -B verify
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: cd frontend && npm ci
+      - name: Lint
+        run: cd frontend && npm run lint
+      - name: Typecheck
+        run: cd frontend && npm run typecheck
+      - name: Tests
+        run: cd frontend && npm test -- --run --passWithNoTests
+      - name: Build
+        run: cd frontend && npm run build
+
+  deploy-hml:
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: hml
+      url: https://hml.app.helbor.exemplo
+    steps:
+      - name: Trigger Dokploy HML deploy
+        run: |
+          curl -sf -X POST "${{ secrets.DOKPLOY_HML_WEBHOOK }}" \
+            -H "Authorization: Bearer ${{ secrets.DOKPLOY_HML_TOKEN }}"
+      - name: Wait for HML readiness
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fs https://hml.api.helbor.exemplo/actuator/health/readiness; then
+              echo "HML está UP após ${i} tentativas."
+              exit 0
+            fi
+            echo "Tentativa $i — aguardando 10s"
+            sleep 10
+          done
+          echo "HML não ficou UP em 3 minutos."
+          exit 1
+      - name: Record deployment timestamp
+        run: |
+          mkdir -p deployments
+          echo "${{ github.sha }} $(date -u +%FT%TZ)" >> deployments/hml.log
+          echo "deployment_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"

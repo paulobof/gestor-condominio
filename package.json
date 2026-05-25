@@ -1,0 +1,20 @@
+{
+  "name": "gestor-condominio",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Sistema de gestão do Condomínio HELBOR TRILOGY HOME",
+  "scripts": {
+    "prepare": "husky",
+    "test:backend": "cd backend && ./mvnw test -q",
+    "test:frontend": "cd frontend && npm test -- --run --passWithNoTests",
+    "lint:backend": "cd backend && ./mvnw -q spotless:check",
+    "lint:frontend": "cd frontend && npm run lint",
+    "format:backend": "cd backend && ./mvnw -q spotless:apply"
+  },
+  "devDependencies": {
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0"
+  }
+}

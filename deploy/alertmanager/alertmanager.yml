@@ -1,0 +1,24 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'email-admin'
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: 'email-admin'
+      repeat_interval: 1h
+
+receivers:
+  - name: 'email-admin'
+    email_configs:
+      - to: 'paulobof@gmail.com'
+        from: 'alerts@helbor.exemplo'
+        smarthost: 'smtp.exemplo:587'
+        auth_username: 'alerts@helbor.exemplo'
+        auth_password: 'CHANGEME'
+        require_tls: true

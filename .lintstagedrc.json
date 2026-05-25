@@ -1,10 +1,10 @@
 {
   "frontend/**/*.{ts,tsx,js,jsx}": [
-    "bash -c 'cd frontend && npx eslint --fix'",
-    "bash -c 'cd frontend && npx prettier --write'"
+    "bash -c 'cd frontend && npx eslint --fix \"$@\"' --",
+    "bash -c 'cd frontend && npx prettier --write \"$@\"' --"
   ],
   "frontend/**/*.{json,md,css,html}": [
-    "bash -c 'cd frontend && npx prettier --write'"
+    "bash -c 'cd frontend && npx prettier --write \"$@\"' --"
   ],
   "backend/**/*.java": [
     "bash -c 'cd backend && ./mvnw -q spotless:apply'"

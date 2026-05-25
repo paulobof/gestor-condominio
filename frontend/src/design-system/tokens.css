@@ -1,0 +1,76 @@
+@import '@fontsource/outfit/300.css';
+@import '@fontsource/outfit/400.css';
+@import '@fontsource/outfit/500.css';
+@import '@fontsource/outfit/600.css';
+@import '@fontsource/outfit/700.css';
+@import '@fontsource/work-sans/300.css';
+@import '@fontsource/work-sans/400.css';
+@import '@fontsource/work-sans/500.css';
+@import '@fontsource/work-sans/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 210 20% 98%;
+    --card-foreground: 222 47% 11%;
+    --primary: 210 78% 47%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 42 90% 54%;
+    --accent-foreground: 222 47% 11%;
+    --info: 188 75% 45%;
+    --success: 82 56% 49%;
+    --warning: 42 90% 54%;
+    --destructive: 354 75% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 215 16% 47%;
+    --border: 214 32% 91%;
+    --ring: 210 78% 47%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 0 0% 6%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
+    --primary: 210 78% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 42 90% 54%;
+    --accent-foreground: 222 47% 11%;
+    --info: 188 75% 45%;
+    --success: 82 56% 49%;
+    --warning: 42 90% 54%;
+    --destructive: 354 75% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 65%;
+    --border: 0 0% 18%;
+    --ring: 210 78% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}

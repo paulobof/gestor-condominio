@@ -101,7 +101,20 @@ Comunicação entre serviços Dokploy via DNS interno (nomes dos serviços do *e
 
 ### 3.1 Entidades
 
-Todas as tabelas têm auditoria: `id` (UUID PK), `created_at`, `updated_at` (timestamptz). Tabelas mutáveis adicionam `created_by_user_id` e `updated_by_user_id`.
+Todas as tabelas têm auditoria: `id` (UUID PK), `created_at`, `updated_at` (timestamptz), `created_by_user_id`, `updated_by_user_id`.
+
+**Soft delete obrigatório em todas as tabelas** (regra global do projeto, NUNCA hard delete):
+
+- `deleted_at` (timestamptz, null = ativo).
+- `deleted_by_user_id` (uuid FK user, null = nunca deletado).
+
+Implementação Hibernate: cada entidade usa `@SQLDelete(sql = "UPDATE <tabela> SET deleted_at = now(), deleted_by_user_id = ? WHERE id = ?")` e `@Where(clause = "deleted_at IS NULL")`. Repositórios automaticamente filtram registros ativos. Endpoints `DELETE` retornam 204 mas executam apenas o UPDATE.
+
+**Uniqueness com soft delete:** índices únicos parciais. Ex. para `user.email`:
+```sql
+CREATE UNIQUE INDEX ux_user_email_active ON "user"(email) WHERE deleted_at IS NULL;
+```
+Permite reusar o mesmo e-mail após soft delete sem violar a constraint.
 
 **user** — usuário do sistema (todos os papéis).
 
@@ -177,8 +190,8 @@ Todas as tabelas têm auditoria: `id` (UUID PK), `created_at`, `updated_at` (tim
 ### 3.2 Mapeamento STRIDE no modelo
 
 - **Spoofing** — `password_hash` com bcrypt(HMAC-SHA256(senha, pepper)); JWT assinado HS256; aprovação humana valida identidade real do morador.
-- **Tampering** — `updated_by_user_id` em mutações; FKs `ON DELETE RESTRICT` para preservar histórico; `approved_by_user_id` registra autoria da aprovação.
-- **Repudiation** — colunas de auditoria; log estruturado em INFO de login, approve, reject, role change.
+- **Tampering** — `updated_by_user_id` em mutações; FKs `ON DELETE RESTRICT` para preservar histórico; `approved_by_user_id` registra autoria da aprovação; soft delete preserva todos os registros (nada é fisicamente removido).
+- **Repudiation** — colunas de auditoria; `deleted_by_user_id` + `deleted_at` rastreiam autor e momento de qualquer exclusão; log estruturado em INFO de login, approve, reject, role change e soft delete.
 - **Information disclosure** — `password_hash` nunca em response (`@JsonIgnore`); comprovantes em bucket isolado com acesso só por ADMIN; URLs pré-assinadas TTL curto; object key é UUID (sem nome original na URL).
 - **DoS** — limites de tamanho em todos os campos texto; upload máx 5MB; Bucket4j em `/api/auth/login` (5/min/IP) e `/api/auth/register` (3/h/IP).
 - **Elevation of privilege** — auto-registro sempre cria com role `RESIDENT`; promoção a ADMIN/DOORMAN só via endpoint de admin existente; `@PreAuthorize` em endpoints sensíveis.
@@ -187,7 +200,7 @@ Todas as tabelas têm auditoria: `id` (UUID PK), `created_at`, `updated_at` (tim
 
 `backend/src/main/resources/db/migration/`:
 
-- `V1__create_user_and_role.sql` — tabelas `user`, `role`, `user_role`, `refresh_token` (com todas as colunas de status/aprovação/comprovante).
+- `V1__create_user_and_role.sql` — tabelas `user`, `role`, `user_role`, `refresh_token` (com todas as colunas de status/aprovação/comprovante e soft delete). Inclui `CREATE UNIQUE INDEX ux_user_email_active ON "user"(email) WHERE deleted_at IS NULL;` para permitir reuso de e-mail após soft delete.
 - `V2__create_classified.sql` — `classified` e `classified_photo`.
 - `V3__create_contact_and_link.sql`.
 - `V4__create_recommendation.sql`.
@@ -232,7 +245,7 @@ POST   /api/users                          criar interno (doorman)  ADMIN
 GET    /api/users                                                   ADMIN
 GET    /api/users/{id}                                              ADMIN | self
 PUT    /api/users/{id}                                              ADMIN
-DELETE /api/users/{id}                     desativa (soft)          ADMIN
+DELETE /api/users/{id}                     soft delete              ADMIN
 PUT    /api/users/{id}/roles               { roles: [...] }         ADMIN
 
 # Moderação de cadastros
@@ -592,6 +605,7 @@ Não entram no MVP, ficam para release futura:
 | Senha admin inicial vaza (em logs/env)                | `must_change_password=true` força troca no primeiro login; senha inicial nunca persiste.       |
 | Deploy quebra produção                                | Healthcheck Spring Actuator; rollback automático Dokploy se healthcheck falha; CI antes do PR. |
 | Testes ignorados por bypass                           | CI roda testes obrigatoriamente; pre-push é segunda linha.                                     |
+| Perda acidental de dados                              | Soft delete obrigatório em toda tabela; `deleted_at` e `deleted_by_user_id` registram quem/quando; nada é fisicamente removido. |
 
 ---
 

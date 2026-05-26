@@ -14,7 +14,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
-@Table(name = "user")
+@Table(name = "\"user\"")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter(AccessLevel.PROTECTED)

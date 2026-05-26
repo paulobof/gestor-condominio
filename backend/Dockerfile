@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1.7
 
 FROM eclipse-temurin:21-jdk-alpine AS builder
+ARG BUILD_TIMESTAMP=unknown
 WORKDIR /workspace
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 COPY src ./src
-RUN ./mvnw -q -B package -DskipTests
+RUN echo "Building at $BUILD_TIMESTAMP" && ./mvnw -B clean package -DskipTests && ls -la target/ && unzip -l target/gestor-condominio.jar | grep -c "Controller.class" | xargs echo "Controllers:"
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app

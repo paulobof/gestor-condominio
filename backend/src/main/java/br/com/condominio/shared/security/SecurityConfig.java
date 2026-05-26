@@ -41,7 +41,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/privacy/document/current")
+                    .requestMatchers(
+                        HttpMethod.GET, "/api/units/lookup", "/api/privacy/document/current")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

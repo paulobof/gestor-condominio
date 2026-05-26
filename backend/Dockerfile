@@ -10,9 +10,13 @@ COPY src ./src
 RUN echo "Building at $BUILD_TIMESTAMP" && ./mvnw -B clean package -DskipTests && ls -la target/ && unzip -l target/gestor-condominio.jar | grep -c "Controller.class" | xargs echo "Controllers:"
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
+ARG BUILD_TIMESTAMP=unknown
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=builder /workspace/target/gestor-condominio.jar app.jar
+RUN echo "Runtime built at $BUILD_TIMESTAMP" && \
+    sha256sum app.jar && \
+    unzip -p app.jar BOOT-INF/classes/br/com/condominio/feature/consent/ConsentController.class > /dev/null && echo "ConsentController PRESENT" || echo "ConsentController MISSING"
 USER app
 EXPOSE 8080
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom"

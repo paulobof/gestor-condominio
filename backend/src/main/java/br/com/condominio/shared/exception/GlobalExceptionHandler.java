@@ -1,5 +1,6 @@
 package br.com.condominio.shared.exception;
 
+import br.com.condominio.feature.registration.RegistrationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+  @ExceptionHandler(RegistrationException.class)
+  public ResponseEntity<ApiError> handleRegistration(RegistrationException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiError.of(400, "Bad Request", ex.getCode(), ex.getMessage(), requestId()));
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {

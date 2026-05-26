@@ -1,6 +1,7 @@
 package br.com.condominio.feature.registration;
 
 import br.com.condominio.feature.consent.ConsentDocument;
+import br.com.condominio.feature.registration.dto.PendingRegistrationView;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
 import br.com.condominio.feature.registration.dto.RegistrationStatusResponse;
 import br.com.condominio.feature.role.*;
@@ -13,8 +14,11 @@ import br.com.condominio.storage.MinioProperties;
 import jakarta.transaction.Transactional;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -176,5 +180,82 @@ public class RegistrationService {
       }
     }
     throw new NoSuchFieldException(name);
+  }
+
+  @Transactional
+  public Page<PendingRegistrationView> listPending(Pageable pageable) {
+    return userRepo.findPendingMasters(pageable).map(this::toPendingView);
+  }
+
+  @Transactional
+  public void approve(UUID userId, UUID approverId) {
+    User user =
+        userRepo
+            .findById(userId)
+            .orElseThrow(
+                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
+    user.approveAsMaster(approverId);
+
+    Unit unit = unitRepo.findById(user.getUnitId()).orElseThrow();
+    unit.assignMaster(user.getId());
+    log.info("Master approved userId={} by approverId={}", userId, approverId);
+  }
+
+  @Transactional
+  public void reject(UUID userId, UUID approverId, String reason) {
+    User user =
+        userRepo
+            .findById(userId)
+            .orElseThrow(
+                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
+    user.reject(approverId, reason);
+    if (user.getResidenceProofObjectKey() != null) {
+      try {
+        storage.delete(props.getBucketProofs(), user.getResidenceProofObjectKey());
+      } catch (Exception e) {
+        log.warn("Failed to delete proof for rejected user {}: {}", userId, e.getMessage());
+      }
+    }
+    log.info("Master rejected userId={} by approverId={} reason='{}'", userId, approverId, reason);
+  }
+
+  @Transactional
+  public String getProofPresignedUrl(UUID userId) {
+    User user =
+        userRepo
+            .findById(userId)
+            .orElseThrow(
+                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
+    if (user.getResidenceProofObjectKey() == null) {
+      throw new RegistrationException("NO_PROOF", "Usuário não tem comprovante.");
+    }
+    return storage.presignedGetUrl(
+        props.getBucketProofs(),
+        user.getResidenceProofObjectKey(),
+        java.time.Duration.ofSeconds(props.getPresignedTtlProofsSeconds()));
+  }
+
+  private PendingRegistrationView toPendingView(User u) {
+    String email =
+        emailRepo.findByUserId(u.getId()).stream()
+            .filter(UserEmail::isPrimary)
+            .findFirst()
+            .map(UserEmail::getEmail)
+            .orElse(null);
+    String unitCode =
+        u.getUnitId() == null
+            ? null
+            : unitRepo.findById(u.getUnitId()).map(Unit::getCode).orElse(null);
+    return new PendingRegistrationView(
+        u.getId(),
+        u.getFullName(),
+        email,
+        u.getPhone(),
+        unitCode,
+        u.getGender() == null ? null : u.getGender().name(),
+        u.getBirthDate(),
+        u.getResidenceProofFilename(),
+        u.getResidenceProofUploadedAt(),
+        u.getCreatedAt());
   }
 }

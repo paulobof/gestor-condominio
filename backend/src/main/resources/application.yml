@@ -11,6 +11,12 @@ spring:
       maximum-pool-size: 10
       connection-timeout: 2000
       leak-detection-threshold: 60000
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
+      file-size-threshold: 1MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -84,3 +90,13 @@ app:
     email: ${APP_ADMIN_EMAIL:paulobof@gmail.com}
     name: ${APP_ADMIN_NAME:Paulo}
     initial-password: ${APP_ADMIN_INITIAL_PASSWORD:trocar-no-primeiro-login}
+  storage:
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:condominio}
+      secret-key: ${MINIO_SECRET_KEY:condominio_dev}
+      bucket-proofs: ${MINIO_BUCKET_PROOFS:residence-proofs}
+      bucket-classifieds: ${MINIO_BUCKET_CLASSIFIEDS:classifieds}
+      bucket-recommendations: ${MINIO_BUCKET_RECOMMENDATIONS:recommendations}
+      presigned-ttl-proofs-seconds: ${MINIO_PRESIGNED_TTL_PROOFS_SECONDS:300}
+      presigned-ttl-photos-seconds: ${MINIO_PRESIGNED_TTL_PHOTOS_SECONDS:600}

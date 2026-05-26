@@ -6,9 +6,13 @@ import java.util.UUID;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "refresh_token")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter(AccessLevel.PROTECTED)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -43,10 +47,12 @@ public class RefreshToken {
   private String revokedReason;
 
   @Column(name = "created_at", updatable = false)
-  private Instant createdAt = Instant.now();
+  @CreatedDate
+  private Instant createdAt;
 
   @Column(name = "updated_at")
-  private Instant updatedAt = Instant.now();
+  @LastModifiedDate
+  private Instant updatedAt;
 
   @Column(name = "deleted_at")
   private Instant deletedAt;

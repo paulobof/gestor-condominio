@@ -67,24 +67,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGeneric(Exception ex) {
     log.error("Unhandled exception", ex);
-    // TEMPORARIO PARA DIAGNOSTICO: revela detalhes da exception no body.
-    // REVERTER apos resolver o bug do login.
-    StringBuilder sb = new StringBuilder();
-    sb.append(ex.getClass().getName()).append(": ").append(ex.getMessage());
-    Throwable cause = ex.getCause();
-    int depth = 0;
-    while (cause != null && depth < 5) {
-      sb.append(" | caused by ")
-          .append(cause.getClass().getName())
-          .append(": ")
-          .append(cause.getMessage());
-      cause = cause.getCause();
-      depth++;
-    }
     return ResponseEntity.internalServerError()
         .body(
             ApiError.of(
-                500, "Internal Server Error", "INTERNAL_ERROR", sb.toString(), requestId()));
+                500,
+                "Internal Server Error",
+                "INTERNAL_ERROR",
+                "Erro interno do servidor.",
+                requestId()));
   }
 
   private String requestId() {

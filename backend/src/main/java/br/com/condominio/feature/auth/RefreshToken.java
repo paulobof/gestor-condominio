@@ -44,18 +44,11 @@ public class RefreshToken {
   @Column(name = "revoked_reason", length = 80)
   private String revokedReason;
 
-  @Column(name = "created_at", updatable = false)
+  @Column(name = "created_at", updatable = false, insertable = false)
   private Instant createdAt;
 
-  @Column(name = "updated_at")
+  @Column(name = "updated_at", insertable = false)
   private Instant updatedAt;
-
-  @PrePersist
-  void onCreate() {
-    Instant now = Instant.now();
-    if (createdAt == null) createdAt = now;
-    if (updatedAt == null) updatedAt = now;
-  }
 
   @PreUpdate
   void onUpdate() {

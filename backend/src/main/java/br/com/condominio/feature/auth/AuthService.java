@@ -33,31 +33,56 @@ public class AuthService {
 
   @Transactional
   public LoginResult login(String email, String password) {
-    UserEmail userEmail = emailRepo.findActiveByEmailIgnoreCase(email).orElse(null);
-    if (userEmail == null) {
-      log.info("Login failure for email={} (not found)", email);
-      throw new BadCredentialsException("Invalid credentials");
+    try {
+      log.info("[diag] login.start email={}", email);
+      UserEmail userEmail = emailRepo.findActiveByEmailIgnoreCase(email).orElse(null);
+      log.info("[diag] login.email-lookup found={}", userEmail != null);
+      if (userEmail == null) {
+        throw new BadCredentialsException("Invalid credentials");
+      }
+      User user = userRepo.findById(userEmail.getUserId()).orElse(null);
+      log.info("[diag] login.user-lookup userId={} found={}", userEmail.getUserId(), user != null);
+      if (user == null) {
+        throw new BadCredentialsException("Invalid credentials");
+      }
+      boolean locked = attemptTracker.isLocked(user.getId());
+      log.info("[diag] login.locked={}", locked);
+      if (locked) {
+        throw new BadCredentialsException("Account temporarily locked");
+      }
+      log.info("[diag] login.status={}", user.getStatus());
+      if (user.getStatus() != UserStatus.ACTIVE) {
+        attemptTracker.recordFailure(user.getId());
+        throw new BadCredentialsException("Account not active");
+      }
+      String storedHash = user.getPasswordHash();
+      log.info(
+          "[diag] login.hash-info length={} pendingPlaceholder={}",
+          storedHash == null ? -1 : storedHash.length(),
+          "__PENDING__".equals(storedHash));
+      boolean matches = passwordEncoder.matches(password, storedHash);
+      log.info("[diag] login.matches={}", matches);
+      if (!matches) {
+        attemptTracker.recordFailure(user.getId());
+        throw new BadCredentialsException("Invalid credentials");
+      }
+      attemptTracker.recordSuccess(user.getId());
+      RefreshTokenService.IssuedToken issued = refreshTokenService.issueNew(user.getId());
+      log.info("[diag] login.refresh-issued");
+      LoginResult result = buildLoginResult(user, userEmail, issued);
+      log.info("[diag] login.success");
+      return result;
+    } catch (BadCredentialsException e) {
+      log.warn("[diag] login.bad-credentials reason={}", e.getMessage());
+      throw e;
+    } catch (Exception e) {
+      log.error(
+          "[diag] login.unexpected-exception class={} msg={}",
+          e.getClass().getName(),
+          e.getMessage(),
+          e);
+      throw e;
     }
-    User user = userRepo.findById(userEmail.getUserId()).orElse(null);
-    if (user == null) {
-      throw new BadCredentialsException("Invalid credentials");
-    }
-    if (attemptTracker.isLocked(user.getId())) {
-      log.warn("Login locked for userId={}", user.getId());
-      throw new BadCredentialsException("Account temporarily locked");
-    }
-    if (user.getStatus() != UserStatus.ACTIVE) {
-      log.info("Login rejected for userId={} status={}", user.getId(), user.getStatus());
-      attemptTracker.recordFailure(user.getId());
-      throw new BadCredentialsException("Account not active");
-    }
-    if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-      attemptTracker.recordFailure(user.getId());
-      throw new BadCredentialsException("Invalid credentials");
-    }
-    attemptTracker.recordSuccess(user.getId());
-    RefreshTokenService.IssuedToken issued = refreshTokenService.issueNew(user.getId());
-    return buildLoginResult(user, userEmail, issued);
   }
 
   @Transactional

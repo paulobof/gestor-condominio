@@ -11,3 +11,4 @@ public class GestorCondominioApplication {
     SpringApplication.run(GestorCondominioApplication.class, args);
   }
 }
+// rebuild trigger 2026-05-26-1640

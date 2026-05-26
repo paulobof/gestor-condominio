@@ -46,7 +46,7 @@ public class RefreshToken {
   private Instant createdAt = Instant.now();
 
   @Column(name = "updated_at")
-  private Instant updatedAt;
+  private Instant updatedAt = Instant.now();
 
   @Column(name = "deleted_at")
   private Instant deletedAt;

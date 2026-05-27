@@ -26,7 +26,7 @@ public class SensitiveAccessLog {
   @Column(name = "acted_at", nullable = false)
   private Instant actedAt;
 
-  @Column(name = "client_ip", columnDefinition = "inet")
+  @Column(name = "client_ip", columnDefinition = "text")
   private String clientIp;
 
   @Column(name = "user_agent", length = 255)

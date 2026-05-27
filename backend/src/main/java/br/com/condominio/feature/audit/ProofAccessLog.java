@@ -23,7 +23,7 @@ public class ProofAccessLog {
   @Column(name = "accessed_at", nullable = false)
   private Instant accessedAt;
 
-  @Column(name = "ip", columnDefinition = "inet")
+  @Column(name = "ip", columnDefinition = "text")
   private String ip;
 
   @Column(name = "user_agent", length = 255)

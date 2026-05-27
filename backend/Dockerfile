@@ -7,10 +7,6 @@ COPY mvnw pom.xml ./
 RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 COPY src ./src
 RUN ./mvnw -q -B clean package -DskipTests
-# TESTE DEFINITIVO TEMPORARIO: exit 1 incondicional.
-# Se o deploy AINDA der "done", o Dokploy nao esta buildando este Dockerfile (H1 checkout stale).
-# Se der "error", o Dokploy usa este Dockerfile (logo H2 container/imagem nao trocados). Remover apos.
-RUN echo "FORCED_FAIL_PROBE_afe7f23" && exit 1
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app

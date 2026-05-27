@@ -7,10 +7,10 @@ COPY mvnw pom.xml ./
 RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 COPY src ./src
 RUN ./mvnw -q -B clean package -DskipTests
-# DIAGNOSTICO TEMPORARIO: falha o build se o jar nao tiver o ConsentController (plano 2B)
-RUN unzip -p target/gestor-condominio.jar BOOT-INF/classes/br/com/condominio/feature/consent/ConsentController.class > /dev/null \
-    && echo "ASSERT OK: ConsentController presente no jar" \
-    || (echo "ASSERT FAIL: ConsentController AUSENTE no jar recem-compilado (H1 git stale)" && exit 1)
+# TESTE DEFINITIVO TEMPORARIO: exit 1 incondicional.
+# Se o deploy AINDA der "done", o Dokploy nao esta buildando este Dockerfile (H1 checkout stale).
+# Se der "error", o Dokploy usa este Dockerfile (logo H2 container/imagem nao trocados). Remover apos.
+RUN echo "FORCED_FAIL_PROBE_afe7f23" && exit 1
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app

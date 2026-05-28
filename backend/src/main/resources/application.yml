@@ -34,6 +34,15 @@ spring:
       adminName: ${APP_ADMIN_NAME:Paulo}
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  task:
+    scheduling:
+      pool:
+        size: 4
+    execution:
+      pool:
+        core-size: 2
+        max-size: 4
+        queue-capacity: 100
 
 server:
   port: 8080
@@ -100,3 +109,38 @@ app:
       bucket-recommendations: ${MINIO_BUCKET_RECOMMENDATIONS:recommendations}
       presigned-ttl-proofs-seconds: ${MINIO_PRESIGNED_TTL_PROOFS_SECONDS:300}
       presigned-ttl-photos-seconds: ${MINIO_PRESIGNED_TTL_PHOTOS_SECONDS:600}
+  whatsapp:
+    webhook-url: ${APP_WHATSAPP_WEBHOOK_URL:http://localhost:9999/send-message}
+    hmac-keys: ${APP_WHATSAPP_HMAC_KEYS:v1:cGxhY2Vob2xkZXItc2VjcmV0LWtleS1mb3ItZGV2LWVudg==}
+    hmac-active-kid: ${APP_WHATSAPP_HMAC_ACTIVE_KID:v1}
+    timeout-ms: ${APP_WHATSAPP_TIMEOUT_MS:5000}
+    max-retries: ${APP_WHATSAPP_MAX_RETRIES:5}
+    retry-interval-ms: ${APP_WHATSAPP_RETRY_INTERVAL_MS:60000}
+    anti-replay-window-seconds: ${APP_WHATSAPP_ANTI_REPLAY_WINDOW_S:5}
+  password-reset:
+    ttl: ${APP_PASSWORD_RESET_TTL:PT30M}
+    base-url: ${APP_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset}
+  proof-retention-days: ${APP_PROOF_RETENTION_DAYS:180}
+  inactive-account-anonymize-months: ${APP_INACTIVE_ACCOUNT_MONTHS:12}
+
+resilience4j:
+  timelimiter:
+    instances:
+      whatsapp:
+        timeoutDuration: ${APP_WHATSAPP_TIMEOUT_MS:5000}ms
+  retry:
+    instances:
+      whatsapp:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - br.com.condominio.feature.whatsapp.WhatsAppSendException
+  circuitbreaker:
+    instances:
+      whatsapp:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3

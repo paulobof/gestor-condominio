@@ -100,7 +100,7 @@ public class User {
   @Column(name = "consent_accepted_at")
   private Instant consentAcceptedAt;
 
-  @Column(name = "consent_accepted_ip", columnDefinition = "inet")
+  @Column(name = "consent_accepted_ip", columnDefinition = "text")
   private String consentAcceptedIp;
 
   @Column(name = "whatsapp_opt_in", nullable = false)

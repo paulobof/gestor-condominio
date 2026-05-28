@@ -35,3 +35,15 @@ export async function me(): Promise<AuthenticatedUserView> {
   const r = await api.get<AuthenticatedUserView>('/auth/me');
   return r.data;
 }
+
+/**
+ * Solicita reset de senha via WhatsApp. Backend sempre responde 202 — não vaza
+ * existência. Frontend deve mostrar a mesma mensagem genérica em ambos os casos.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await api.post('/auth/password/request-reset', { email });
+}
+
+export async function consumePasswordReset(token: string, newPassword: string): Promise<void> {
+  await api.post('/auth/password/consume-reset', { token, newPassword });
+}

@@ -170,4 +170,48 @@ public class User {
     this.approvedByUserId = approverId;
     this.rejectionReason = reason;
   }
+
+  /**
+   * Atualiza o opt-in de WhatsApp. Quando ativando, marca {@code whatsappOptInAt}. Quando
+   * desativando, mantém o histórico (não limpa o timestamp; serve para auditoria).
+   */
+  public void setWhatsappOptIn(boolean optIn) {
+    boolean wasOff = !this.whatsappOptIn;
+    this.whatsappOptIn = optIn;
+    if (optIn && wasOff) {
+      this.whatsappOptInAt = Instant.now();
+    }
+  }
+
+  /**
+   * Anonimiza o usuário (LGPD Art. 18). Substitui PII por placeholders, limpa referência ao
+   * comprovante (object key será apagado fora da transação pelo listener), revoga consent timestamp
+   * e marca {@code anonymized_at}. Preserva FKs históricas (proof_access_log, sensitive_access_log,
+   * user_role) para rastreabilidade legal. Idempotente: aplicar duas vezes não muda nada.
+   *
+   * @return o object key do comprovante a ser purgado do MinIO (null se nenhum)
+   */
+  public String anonymize() {
+    if (this.status == UserStatus.ANONYMIZED) {
+      return null;
+    }
+    String objectKeyToPurge = this.residenceProofObjectKey;
+    this.fullName = "Usuário Removido";
+    this.greetingName = "Usuário Removido";
+    this.phone = null;
+    this.phoneVerifiedAt = null;
+    this.gender = null;
+    this.birthDate = null;
+    this.passwordHash = "__ANONYMIZED__";
+    this.mustChangePassword = false;
+    this.residenceProofObjectKey = null;
+    this.residenceProofFilename = null;
+    this.residenceProofContentType = null;
+    // Mantém residenceProofUploadedAt para historicidade do fluxo.
+    this.consentAcceptedIp = null;
+    this.whatsappOptIn = false;
+    this.status = UserStatus.ANONYMIZED;
+    this.anonymizedAt = Instant.now();
+    return objectKeyToPurge;
+  }
 }

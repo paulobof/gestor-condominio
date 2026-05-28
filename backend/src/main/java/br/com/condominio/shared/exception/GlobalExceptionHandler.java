@@ -1,6 +1,7 @@
 package br.com.condominio.shared.exception;
 
 import br.com.condominio.feature.password.PasswordResetException;
+import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.registration.RegistrationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,24 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handlePasswordReset(PasswordResetException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(ApiError.of(400, "Bad Request", ex.getCode(), ex.getMessage(), requestId()));
+  }
+
+  @ExceptionHandler(PrivacyException.class)
+  public ResponseEntity<ApiError> handlePrivacy(PrivacyException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "INVALID_PASSWORD" -> HttpStatus.UNAUTHORIZED;
+          case "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -26,4 +26,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
               + "WHERE token_family = :family AND revoked = false",
       nativeQuery = true)
   int revokeFamily(@Param("family") UUID family, @Param("reason") String reason);
+
+  /** Revoga todos os refresh tokens ativos do usuário. Usado após troca de senha por reset. */
+  @Modifying
+  @Query(
+      value =
+          "UPDATE refresh_token SET revoked = true, revoked_at = now(), revoked_reason = :reason "
+              + "WHERE user_id = :userId AND revoked = false",
+      nativeQuery = true)
+  int revokeAllByUserId(@Param("userId") UUID userId, @Param("reason") String reason);
 }

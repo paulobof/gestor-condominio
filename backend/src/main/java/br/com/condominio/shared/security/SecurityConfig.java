@@ -43,7 +43,9 @@ public class SecurityConfig {
                         HttpMethod.POST,
                         "/api/auth/login",
                         "/api/auth/refresh",
-                        "/api/auth/register-master")
+                        "/api/auth/register-master",
+                        "/api/auth/password/request-reset",
+                        "/api/auth/password/consume-reset")
                     .permitAll()
                     .requestMatchers(
                         HttpMethod.GET, "/api/units/lookup", "/api/privacy/document/current")

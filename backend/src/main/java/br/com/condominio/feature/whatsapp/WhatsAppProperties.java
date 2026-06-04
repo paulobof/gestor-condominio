@@ -1,52 +1,31 @@
 package br.com.condominio.feature.whatsapp;
 
 import java.time.Duration;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Config do WhatsApp outbound. {@code hmacKeys} no formato {@code v1:base64,v2:base64} permite
- * rotação sem downtime — o bot do Paulo sabe qual chave usar pelo header {@code X-Hmac-Kid}.
+ * Config do WhatsApp outbound via Evolution API ({@code evo.paulobof.com.br}, contrato v2). O envio
+ * é {@code POST {baseUrl}/message/sendText/{instance}} autenticado pelo header {@code apikey}. O
+ * texto da mensagem é renderizado no backend ({@link WhatsAppMessageRenderer}), não no gateway.
  */
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "app.whatsapp")
 public class WhatsAppProperties {
-  private String webhookUrl;
-  private String hmacKeys;
-  private String hmacActiveKid = "v1";
+  /** Base URL do Evolution (sem barra final), ex.: {@code https://evo.paulobof.com.br}. */
+  private String baseUrl;
+
+  /** Token da instância (header {@code apikey}). Segredo — fora de logs/toString. */
+  private String apiKey;
+
+  /** Nome da instância no Evolution (path do sendText), não o UUID interno do manager. */
+  private String instance;
+
   private int timeoutMs = 5000;
   private int maxRetries = 5;
   private int retryIntervalMs = 60_000;
-  private int antiReplayWindowSeconds = 5;
-
-  /** Mapa kid → bytes da chave (decode base64). Construído eagerly no startup. */
-  public Map<String, byte[]> parsedHmacKeys() {
-    if (hmacKeys == null || hmacKeys.isBlank()) {
-      throw new IllegalStateException("app.whatsapp.hmac-keys nao configurado");
-    }
-    Map<String, byte[]> map = new HashMap<>();
-    for (String entry : hmacKeys.split(",")) {
-      String trimmed = entry.trim();
-      int sep = trimmed.indexOf(':');
-      if (sep <= 0 || sep >= trimmed.length() - 1) {
-        throw new IllegalStateException(
-            "hmac-keys entry invalido: '" + trimmed + "' (formato esperado: kid:base64)");
-      }
-      String kid = trimmed.substring(0, sep);
-      byte[] key = Base64.getDecoder().decode(trimmed.substring(sep + 1));
-      map.put(kid, key);
-    }
-    if (!map.containsKey(hmacActiveKid)) {
-      throw new IllegalStateException(
-          "hmac-active-kid='" + hmacActiveKid + "' nao encontrado em hmac-keys: " + map.keySet());
-    }
-    return Map.copyOf(map);
-  }
 
   public Duration timeout() {
     return Duration.ofMillis(timeoutMs);

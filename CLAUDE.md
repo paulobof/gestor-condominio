@@ -44,7 +44,7 @@ Limitações: `@SQLRestriction` **não filtra** queries nativas nem `JdbcTemplat
 
 ## Comunicação outbound
 
-**Apenas via WhatsApp** através do bot do Paulo. **Nunca** e-mail.
+**Apenas via WhatsApp** através do **Evolution API** (`evo.paulobof.com.br`, contrato v2). **Nunca** e-mail. O **texto é renderizado no backend** (`WhatsAppMessageRenderer`), nunca no gateway; o telefone é normalizado para DDI antes do envio (`PhoneNumberNormalizer`). Auth por header `apikey` (não logar). Envio sempre via outbox + retry (`WhatsAppOutboxService` / `WhatsAppRetryScheduler`).
 
 ## Uploads
 

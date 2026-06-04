@@ -1,6 +1,6 @@
 # Plano 2C — Reset de senha via WhatsApp + LGPD self-service
 
-> **STATUS:** ✅ **DEPLOYED em HML e validado e2e** em 2026-05-28. Todo backend (PR 2C-1 + 2C-2: WhatsApp client com HMAC + Resilience4j, outbox + retry scheduler, PasswordResetService, PrivacyService com export/anonymize/processing-activities, 3 retention schedulers) + frontend (PR 2C-3: ForgotPasswordPage, ResetPasswordPage, PrivacyPage) estão no `main`. 45 testes backend passando. Smoke das 6 rotas SPA em HML retornou 200; bundle JS contém todas as strings esperadas (`Esqueci minha senha`, `ANONIMIZAR`, `request-reset`, `consume-reset`, `processing-activities`, `whatsapp-opt-in`). Task 14 (e2e full do reset com bot real) fica out-of-scope deste plano e depende de (1) `APP_WHATSAPP_WEBHOOK_URL` no backend-hml apontar pro bot do Paulo (hoje aponta pra placeholder), (2) um usuário em HML com `phone_verified_at != null`. Sem isso o request-reset cria o token mas o envio cai em outbox FAILED — o scheduler reprocessa. Issue out-of-scope: InactiveAccountScheduler (anonimizar contas 12m sem login) — User não tem `last_login_at` ainda; precisa migration adicional.
+> **STATUS:** ✅ **DEPLOYED em HML e validado e2e** em 2026-05-28. Todo backend (PR 2C-1 + 2C-2: WhatsApp client com HMAC + Resilience4j, outbox + retry scheduler, PasswordResetService, PrivacyService com export/anonymize/processing-activities, 3 retention schedulers) + frontend (PR 2C-3: ForgotPasswordPage, ResetPasswordPage, PrivacyPage) estão no `main`. 45 testes backend passando. Smoke das 6 rotas SPA em HML retornou 200; bundle JS contém todas as strings esperadas (`Esqueci minha senha`, `ANONIMIZAR`, `request-reset`, `consume-reset`, `processing-activities`, `whatsapp-opt-in`). Task 14 (e2e full do reset com bot real) fica out-of-scope deste plano e depende de (1) `APP_WHATSAPP_WEBHOOK_URL` no backend-hml apontar pro bot do Paulo (hoje aponta pra placeholder), (2) um usuário em HML com `phone_verified_at != null`. **[ATUALIZAÇÃO 2026-06-03]** A abordagem do "bot do Paulo" via webhook HMAC foi substituída por integração direta com o **Evolution API** — ver `## Addendum 2026-06-03` no fim deste arquivo (PR 2C-4), que reescreve o transporte e fecha a Task 14. Sem isso o request-reset cria o token mas o envio cai em outbox FAILED — o scheduler reprocessa. Issue out-of-scope: InactiveAccountScheduler (anonimizar contas 12m sem login) — User não tem `last_login_at` ainda; precisa migration adicional.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to execute this plan task-by-task. Marcar `[x]` SÓ depois do e2e em HML passar (per [[feedback-validate-e2e]]).
 
@@ -617,3 +617,79 @@ PR target: ≤400 linhas é inviável neste plano todo. Split em **3 PRs**:
 - PR 2C-3: Frontend + E2E (Tasks 13–14) — ~400 linhas
 
 Cada PR mergeável independente, mas 2C-3 depende dos endpoints existirem (2C-1 e 2C-2 mergeados primeiro).
+
+---
+
+## Addendum 2026-06-03 — Migração do transporte: "bot do Paulo" → Evolution API direto (PR 2C-4)
+
+> **Contexto:** o transporte WhatsApp do 2C foi escrito para um intermediário hipotético (`bot.paulobof.com.br`) que recebia um POST assinado HMAC + enum de template e renderizava o texto. Na prática o gateway é o **Evolution API** (`evo.paulobof.com.br`, distribuição "Evolution GO", contrato v2), que **não renderiza template** e autentica por **`apikey`**, não HMAC. Este addendum migra o transporte para falar Evolution direto, fechando a dependência da **Task 14** (e2e do reset com bot real). Decisão de arquitetura tomada com o Paulo em 2026-06-03.
+
+**Goal:** Substituir o transporte HMAC→webhook por chamada direta ao Evolution API `sendText`, movendo a renderização dos templates para o backend e normalizando o telefone para o formato que o Evolution exige (dígitos com DDI). Nenhuma outra parte do 2C muda.
+
+**Princípio — só o transporte muda.** Permanecem intactos: `WhatsAppOutboxService`, `WhatsAppOutboxEntry`/`Repository`, `WhatsAppRetryScheduler`, `PasswordResetEventListener` (`@TransactionalEventListener(phase=AFTER_COMMIT)`), `WhatsAppTemplate`, `WhatsAppSendException`, e o Resilience4j (`@CircuitBreaker`+`@Retry`+fallback). A assinatura pública `WhatsAppNotificationClient.send(String toPhone, WhatsAppTemplate, Map<String,Object> data)` **não muda** → nenhum caller é tocado.
+
+### Contrato Evolution (v2 / Evolution GO)
+
+```
+POST {base-url}/message/sendText/{instance}
+Headers: apikey: <api-key>, Content-Type: application/json
+Body:    { "number": "5511988887777", "text": "<texto já renderizado>" }
+Sucesso: 2xx (corpo com key.id, status PENDING). Não-2xx → WhatsAppSendException (gatilha retry/outbox FAILED).
+```
+
+### Mudanças
+
+**Removido (HMAC inteiro):** em `WhatsAppNotificationClient` — `sign()`, `signWith()`, `hmacKeys`, `buildSignedBody()`, headers `X-Signature`/`X-Hmac-Kid`. Em `WhatsAppProperties` — `webhookUrl`, `hmacKeys`, `hmacActiveKid`, `antiReplayWindowSeconds`, `parsedHmacKeys()`.
+
+**`WhatsAppProperties` (alterado):** novos campos `baseUrl`, `apiKey`, `instance`. Mantidos: `timeoutMs`, `maxRetries`, `retryIntervalMs`, `timeout()`.
+
+**`WhatsAppMessageRenderer` (novo):** `String render(WhatsAppTemplate, Map<String,Object> data)`. Templates PT-BR (copy aprovada pelo Paulo em 2026-06-03):
+- `PASSWORD_RESET` (espera `greetingName`, `link`, `ttlMinutes`):
+  > Olá, {greetingName}! 👋\n\nVocê pediu a redefinição da sua senha no HELBOR TRILOGY HOME.\n\nCrie uma nova senha pelo link (válido por {ttlMinutes} min):\n{link}\n\nNão foi você? Pode ignorar esta mensagem.
+- `PASSWORD_CHANGED` (espera `greetingName`):
+  > Olá, {greetingName}! ✅\n\nSua senha do HELBOR TRILOGY HOME foi alterada com sucesso.\n\nNão reconhece? Fale com a administração imediatamente.
+- `INACTIVITY_WARNING` (espera `greetingName`, `daysLeft`):
+  > Olá, {greetingName}.\n\nSua conta no HELBOR TRILOGY HOME será anonimizada em {daysLeft} dias por inatividade (LGPD). Faça login para mantê-la ativa.
+
+  Campo ausente em `data` → `WhatsAppSendException` (não envia texto com `null`/`{var}` cru).
+
+**`PhoneNumberNormalizer` (novo):** `String toEvolutionNumber(String raw)`. Heurística BR: remove tudo que não é dígito; se resultado tem 10 ou 11 dígitos (DDD+número, sem DDI) prefixa `55`; se 12 ou 13, assume DDI presente; qualquer outro tamanho → `WhatsAppSendException` com motivo (vira outbox FAILED rastreável).
+
+**`WhatsAppNotificationClient` (reescrito, mesmo nome/assinatura):** `send()` → `number = normalizer.toEvolutionNumber(toPhone)`; `text = renderer.render(template, data)`; `POST {baseUrl}/message/sendText/{instance}` com header `apikey` e body `{number, text}`. Mantém `@CircuitBreaker(name="whatsapp")`+`@Retry(name="whatsapp")`+`sendFallback`. Não-2xx (`WebClientResponseException`) e falha de transporte → `WhatsAppSendException`. `redactPhone()` mantido nos logs (nunca logar telefone/texto cru — CLAUDE.md).
+
+**`application.yml`:**
+```yaml
+app.whatsapp:
+  base-url: ${APP_WHATSAPP_BASE_URL:http://localhost:9999}
+  api-key:  ${APP_WHATSAPP_API_KEY:dev-placeholder}
+  instance: ${APP_WHATSAPP_INSTANCE:dev}
+  timeout-ms: ${APP_WHATSAPP_TIMEOUT_MS:5000}
+  max-retries: ${APP_WHATSAPP_MAX_RETRIES:5}
+  retry-interval-ms: ${APP_WHATSAPP_RETRY_INTERVAL_MS:60000}
+```
+Remover as linhas `webhook-url`, `hmac-keys`, `hmac-active-kid`, `anti-replay-window-seconds`.
+
+**`deploy/dokploy-backend.env.example`:** trocar `APP_WHATSAPP_WEBHOOK_URL=...` + HMAC por `APP_WHATSAPP_BASE_URL=https://evo.paulobof.com.br`, `APP_WHATSAPP_API_KEY=<set-no-dokploy>`, `APP_WHATSAPP_INSTANCE=<nome-da-instancia>`.
+
+**`CLAUDE.md`:** seção "Comunicação outbound" — trocar "através do bot do Paulo" por "através do **Evolution API** (`evo.paulobof.com.br`); o **texto é renderizado no backend** (`WhatsAppMessageRenderer`), nunca no gateway". Manter "**Nunca** e-mail".
+
+### Tasks (TDD — marcar `[x]` só após verde; e2e só após HML, per [[feedback-validate-e2e]])
+
+- [ ] **T14.1 — `PhoneNumberNormalizerTest` + `PhoneNumberNormalizer`.** Casos: `+55 11 98888-7777`→`5511988887777`; `11988887777`→`5511988887777`; `1133334444`→`551133334444`; `5511988887777`→inalterado; `551133334444`→inalterado; `"123"`→exceção; `null`/vazio→exceção.
+- [ ] **T14.2 — `WhatsAppMessageRendererTest` + `WhatsAppMessageRenderer`.** Um teste por template verificando substituição das variáveis e presença de "HELBOR TRILOGY HOME"; teste de `data` faltando campo → `WhatsAppSendException`.
+- [ ] **T14.3 — `WhatsAppProperties`.** Trocar campos (remover HMAC, adicionar baseUrl/apiKey/instance). Sem `parsedHmacKeys()`.
+- [ ] **T14.4 — Reescrever `WhatsAppNotificationClientTest`.** Usar o mesmo mock HTTP que o projeto já usa (verificar `pom.xml`: WireMock/MockWebServer/`okhttp mockwebserver`). Asserts: método/URL = `POST .../message/sendText/{instance}`; header `apikey` presente e correto; body JSON = `{number, text}` com number normalizado e text renderizado; resposta 4xx/5xx → `WhatsAppSendException`; remover todos os testes de HMAC/assinatura/jti.
+- [ ] **T14.5 — Reescrever `WhatsAppNotificationClient`** até os testes T14.4 passarem (injeta `WhatsAppMessageRenderer` + `PhoneNumberNormalizer`).
+- [ ] **T14.6 — `application.yml` + `deploy/dokploy-backend.env.example` + `CLAUDE.md`.** Suite backend completa verde (`./mvnw test`).
+- [ ] **T14.7 — Deploy HML + e2e real.** Setar `APP_WHATSAPP_BASE_URL/API_KEY/INSTANCE` no Dokploy do backend-hml (api-key + nome da instância fornecidos pelo Paulo, fora do repo). Usuário HML com `phone_verified_at != null` e telefone real do Paulo. `POST /api/auth/password/request-reset` → confirmar mensagem chegando no WhatsApp e `whatsapp_outbox` = SENT. Marcar Task 14 (e o plano) como concluídos.
+
+### Riscos específicos do addendum
+
+| Risco | Mitigação |
+|---|---|
+| `apikey` vaza em log | Header nunca logado; `WhatsAppProperties.apiKey` fora de `@ToString`. Logs só com `redactPhone` e nome do template. |
+| Telefone sem DDI/ inválido em base legada | `PhoneNumberNormalizer` lança exceção clara → outbox FAILED com motivo; não trava o fluxo (usuário recebeu 202). Auditável depois. |
+| Evolution offline / instância desconectada | Resilience4j + outbox + retry job (já existentes) cobrem; mesma garantia do desenho original. |
+| Contrato Evolution GO divergir do v2 | Confirmado contrato v2 (`{number,text}`) na doc oficial; T14.7 valida e2e real antes de fechar. |
+
+PR target: **PR 2C-4** (~250–350 linhas, cabe em ≤400).

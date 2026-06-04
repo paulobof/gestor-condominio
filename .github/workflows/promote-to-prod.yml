@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://app.helbor.exemplo
+      url: https://app.helbor.paulobof.com.br
     env:
       MIN_SOAK_MINUTES: 30
     steps:
@@ -54,7 +54,7 @@ jobs:
       - name: Wait for Prod readiness
         run: |
           for i in $(seq 1 18); do
-            if curl -fs https://api.helbor.exemplo/actuator/health/readiness; then
+            if curl -fs https://api.helbor.paulobof.com.br/actuator/health/readiness; then
               echo "Prod UP."
               exit 0
             fi

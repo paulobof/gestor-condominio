@@ -17,11 +17,12 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.netty.http.client.HttpClient;
 
 /**
- * Cliente do Evolution API (contrato v2 / Evolution GO). Renderiza o texto no backend ({@link
+ * Cliente do Evolution GO (gateway WhatsApp do projeto). Renderiza o texto no backend ({@link
  * WhatsAppMessageRenderer}), normaliza o telefone ({@link PhoneNumberNormalizer}) e faz {@code POST
- * {baseUrl}/message/sendText/{instance}} autenticado por {@code apikey}, com body {@code {number,
- * text}}. Bloqueante ({@code .block()} com timeout). Resilience4j cuida de retry e circuit breaker;
- * em falha lança {@link WhatsAppSendException} para o listener marcar a outbox como FAILED.
+ * {baseUrl}/send/text} autenticado por {@code apikey} (o token da instância seleciona qual número
+ * envia), com body {@code {number, text}}. Bloqueante ({@code .block()} com timeout). Resilience4j
+ * cuida de retry e circuit breaker; em falha lança {@link WhatsAppSendException} para o listener
+ * marcar a outbox como FAILED.
  */
 @Component
 @Slf4j
@@ -57,7 +58,7 @@ public class WhatsAppNotificationClient {
   public void send(String toPhone, WhatsAppTemplate template, Map<String, Object> data) {
     String number = normalizer.toEvolutionNumber(toPhone);
     String text = renderer.render(template, data);
-    String uri = props.getBaseUrl() + "/message/sendText/" + props.getInstance();
+    String uri = props.getBaseUrl() + "/send/text";
     try {
       webClient
           .post()

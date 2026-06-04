@@ -59,7 +59,7 @@ class WhatsAppNotificationClientTest {
 
     RecordedRequest req = server.takeRequest();
     assertThat(req.getMethod()).isEqualTo("POST");
-    assertThat(req.getPath()).isEqualTo("/message/sendText/trilogy");
+    assertThat(req.getPath()).isEqualTo("/send/text");
     assertThat(req.getHeader("apikey")).isEqualTo("secret-key");
     assertThat(req.getHeader("Content-Type")).startsWith("application/json");
 

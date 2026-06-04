@@ -628,13 +628,15 @@ Cada PR mergeável independente, mas 2C-3 depende dos endpoints existirem (2C-1 
 
 **Princípio — só o transporte muda.** Permanecem intactos: `WhatsAppOutboxService`, `WhatsAppOutboxEntry`/`Repository`, `WhatsAppRetryScheduler`, `PasswordResetEventListener` (`@TransactionalEventListener(phase=AFTER_COMMIT)`), `WhatsAppTemplate`, `WhatsAppSendException`, e o Resilience4j (`@CircuitBreaker`+`@Retry`+fallback). A assinatura pública `WhatsAppNotificationClient.send(String toPhone, WhatsAppTemplate, Map<String,Object> data)` **não muda** → nenhum caller é tocado.
 
-### Contrato Evolution (v2 / Evolution GO)
+### Contrato Evolution GO (confirmado via swagger `/swagger/doc.json` em 2026-06-04)
+
+> **Correção:** o gateway real é o **Evolution GO** (`evoapicloud/evolution-go`), cujo path difere do Evolution API clássico (TS). NÃO é `/message/sendText/{instance}`. É `/send/text`, e a **instância é selecionada pelo `apikey`** (token da instância), não pela URL. Verificado: `GET /instance/status` com o token retorna `{"Connected":true,"LoggedIn":true}`.
 
 ```
-POST {base-url}/message/sendText/{instance}
-Headers: apikey: <api-key>, Content-Type: application/json
+POST {base-url}/send/text
+Headers: apikey: <token-da-instância>, Content-Type: application/json
 Body:    { "number": "5511988887777", "text": "<texto já renderizado>" }
-Sucesso: 2xx (corpo com key.id, status PENDING). Não-2xx → WhatsAppSendException (gatilha retry/outbox FAILED).
+Sucesso: 2xx ({"message":"success", ...}). Não-2xx → WhatsAppSendException (gatilha retry/outbox FAILED).
 ```
 
 ### Mudanças

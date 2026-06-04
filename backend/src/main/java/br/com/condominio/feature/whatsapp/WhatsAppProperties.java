@@ -6,9 +6,10 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Config do WhatsApp outbound via Evolution API ({@code evo.paulobof.com.br}, contrato v2). O envio
- * é {@code POST {baseUrl}/message/sendText/{instance}} autenticado pelo header {@code apikey}. O
- * texto da mensagem é renderizado no backend ({@link WhatsAppMessageRenderer}), não no gateway.
+ * Config do WhatsApp outbound via Evolution GO ({@code evo.paulobof.com.br}). O envio é {@code POST
+ * {baseUrl}/send/text} autenticado pelo header {@code apikey} (o token da instância já seleciona o
+ * número que envia). O texto é renderizado no backend ({@link WhatsAppMessageRenderer}), não no
+ * gateway.
  */
 @Getter
 @Setter
@@ -20,7 +21,10 @@ public class WhatsAppProperties {
   /** Token da instância (header {@code apikey}). Segredo — fora de logs/toString. */
   private String apiKey;
 
-  /** Nome da instância no Evolution (path do sendText), não o UUID interno do manager. */
+  /**
+   * Nome da instância (ex.: {@code Bot-Robo}). Informativo/log — no Evolution GO a instância é
+   * selecionada pelo {@code apiKey} (token da instância), não pela URL.
+   */
   private String instance;
 
   private int timeoutMs = 5000;

@@ -1,3 +1,9 @@
+spring:
+  config:
+    # Segredos locais (ex.: APP_WHATSAPP_API_KEY) ficam em backend/.env.dev.local — gitignored.
+    # Opcional: ausente em CI/colega que não configurou Evolution; aí valem os defaults do application.yml.
+    import: optional:file:.env.dev.local[.properties]
+
 logging:
   level:
     root: INFO

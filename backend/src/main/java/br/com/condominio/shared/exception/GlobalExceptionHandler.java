@@ -1,5 +1,6 @@
 package br.com.condominio.shared.exception;
 
+import br.com.condominio.feature.classified.ClassifiedException;
 import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.registration.RegistrationException;
@@ -37,6 +38,24 @@ public class GlobalExceptionHandler {
         switch (ex.getCode()) {
           case "INVALID_PASSWORD" -> HttpStatus.UNAUTHORIZED;
           case "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(ClassifiedException.class)
+  public ResponseEntity<ApiError> handleClassified(ClassifiedException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

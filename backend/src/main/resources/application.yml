@@ -121,6 +121,9 @@ app:
     base-url: ${APP_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset}
   proof-retention-days: ${APP_PROOF_RETENTION_DAYS:180}
   inactive-account-anonymize-months: ${APP_INACTIVE_ACCOUNT_MONTHS:12}
+  feature:
+    classifieds:
+      enabled: ${APP_FEATURE_CLASSIFIEDS_ENABLED:false}
 
 resilience4j:
   timelimiter:

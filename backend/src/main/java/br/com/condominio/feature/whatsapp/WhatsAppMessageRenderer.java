@@ -49,6 +49,20 @@ public class WhatsAppMessageRenderer {
               + " será anonimizada em "
               + req(d, "daysLeft", template)
               + " dias por inatividade (LGPD). Faça login para mantê-la ativa.";
+      case RECOMMENDATION_CONSENT ->
+          "Olá, "
+              + req(d, "greetingName", template)
+              + "! 👋\n\n"
+              + req(d, "recommenderName", template)
+              + " indicou você como "
+              + req(d, "serviceName", template)
+              + " no "
+              + CONDO
+              + ".\n\n"
+              + "Você autoriza que essa indicação apareça para os moradores? Responda pelo link:\n"
+              + req(d, "link", template)
+              + "\n\n"
+              + "Se não foi você ou não quer aparecer, é só recusar no link.";
     };
   }
 

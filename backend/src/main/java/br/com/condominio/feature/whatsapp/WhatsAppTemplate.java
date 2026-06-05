@@ -10,5 +10,10 @@ public enum WhatsAppTemplate {
   /** Senha alterada com sucesso (informativo). Espera data: {@code {greetingName}}. */
   PASSWORD_CHANGED,
   /** Aviso de inatividade prestes a anonimizar conta. Espera: {@code {greetingName, daysLeft}}. */
-  INACTIVITY_WARNING
+  INACTIVITY_WARNING,
+  /**
+   * Pedido de consentimento ao morador indicado. Espera: {@code {greetingName, recommenderName,
+   * serviceName, link}}.
+   */
+  RECOMMENDATION_CONSENT
 }

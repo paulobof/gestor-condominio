@@ -37,7 +37,9 @@ public class ClassifiedController {
       @RequestParam(required = false) ClassifiedStatus status,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    return service.list(status, PageRequest.of(page, Math.min(size, 100)));
+    int safePage = Math.max(page, 0);
+    int safeSize = Math.min(Math.max(size, 1), 100);
+    return service.list(status, PageRequest.of(safePage, safeSize));
   }
 
   @GetMapping("/{id}")

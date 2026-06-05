@@ -173,4 +173,23 @@ class RecommendationServiceTest {
     service.hide(id);
     verify(repo).save(any(Recommendation.class));
   }
+
+  @Test
+  void residentConsent_whenNotPending_invalidState() {
+    UUID id = UUID.randomUUID();
+    Recommendation r = persisted(id, author, RecommendationStatus.ACTIVE);
+    ReflectionTestUtils.setField(r, "residentUserId", resident);
+    when(repo.findById(id)).thenReturn(Optional.of(r));
+    assertThatThrownBy(() -> service.residentConsent(id, resident, false, true))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "INVALID_STATE");
+  }
+
+  @Test
+  void create_resident_userNotFound_throwsNotFound() {
+    when(userRepo.findById(resident)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.create(author, req(true, resident)))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
 }

@@ -97,6 +97,9 @@ public class ClassifiedService {
     } catch (IOException e) {
       throw new ClassifiedException("PHOTO_UPLOAD_FAILED", "Falha ao enviar a imagem.");
     }
+    // Trade-off aceito p/ escala de condomínio: a checagem de limite (countByClassifiedId)
+    // e o save não são atômicos (TOCTOU) e, se o save falhar após o upload, o objeto fica
+    // órfão no bucket. O índice único parcial (classified_id, ordering) impede linha duplicada.
     int ordering = photoRepo.maxOrdering(id) + 1;
     ClassifiedPhoto saved = photoRepo.save(ClassifiedPhoto.create(id, objectKey, mime, ordering));
     return new ClassifiedPhotoView(saved.getId(), saved.getOrdering(), saved.getContentType());

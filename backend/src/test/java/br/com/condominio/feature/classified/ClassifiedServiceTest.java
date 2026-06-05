@@ -187,6 +187,29 @@ class ClassifiedServiceTest {
   }
 
   @Test
+  void removePhoto_byAuthor_softDeletes() {
+    UUID id = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
+    ClassifiedPhoto p = ClassifiedPhoto.create(id, "obj-key-1", "image/jpeg", 0);
+    ReflectionTestUtils.setField(p, "id", photoId);
+    when(photoRepo.findByIdAndClassifiedId(photoId, id)).thenReturn(Optional.of(p));
+    service.removePhoto(id, photoId, author, false);
+    verify(photoRepo).delete(p);
+  }
+
+  @Test
+  void removePhoto_notFound_throws() {
+    UUID id = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
+    when(photoRepo.findByIdAndClassifiedId(photoId, id)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.removePhoto(id, photoId, author, false))
+        .isInstanceOf(ClassifiedException.class)
+        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
+
+  @Test
   void photoUrl_returnsPresigned() {
     UUID id = UUID.randomUUID();
     UUID photoId = UUID.randomUUID();

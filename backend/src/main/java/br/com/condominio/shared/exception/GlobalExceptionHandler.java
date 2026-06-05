@@ -3,6 +3,7 @@ package br.com.condominio.shared.exception;
 import br.com.condominio.feature.classified.ClassifiedException;
 import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
+import br.com.condominio.feature.recommendation.RecommendationException;
 import br.com.condominio.feature.registration.RegistrationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +53,24 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(ClassifiedException.class)
   public ResponseEntity<ApiError> handleClassified(ClassifiedException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(RecommendationException.class)
+  public ResponseEntity<ApiError> handleRecommendation(RecommendationException ex) {
     HttpStatus status =
         switch (ex.getCode()) {
           case "NOT_FOUND" -> HttpStatus.NOT_FOUND;

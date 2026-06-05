@@ -11,6 +11,9 @@ import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import jakarta.transaction.Transactional;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -147,6 +151,65 @@ public class RecommendationService {
     } else {
       repo.delete(r); // recusa = soft delete (direito do titular)
     }
+  }
+
+  private static final long MAX_PHOTO_BYTES = 1_048_576L;
+  private static final int MAX_PHOTOS = 5;
+
+  /** NÃO transacional: upload pro MinIO acontece fora de transação (CLAUDE.md). */
+  public RecommendationPhotoView addPhoto(
+      UUID id, UUID actorId, boolean canModerate, MultipartFile file) {
+    loadOwned(id, actorId, canModerate);
+    if (photoRepo.countByRecommendationId(id) >= MAX_PHOTOS) {
+      throw new RecommendationException("PHOTO_LIMIT", "Máximo de 5 fotos por indicação.");
+    }
+    String mime;
+    try (InputStream in = file.getInputStream()) {
+      mime = magicBytes.detect(in);
+    } catch (IOException e) {
+      throw new RecommendationException("PHOTO_READ_FAILED", "Falha ao ler a imagem.");
+    }
+    if (!magicBytes.isAcceptedForPhoto(mime)) {
+      throw new RecommendationException("PHOTO_TYPE_INVALID", "Aceitamos JPG, PNG ou WEBP.");
+    }
+    if (file.getSize() > MAX_PHOTO_BYTES) {
+      throw new RecommendationException("PHOTO_TOO_LARGE", "Foto deve ter no máximo 1MB.");
+    }
+    String objectKey;
+    try (InputStream in = file.getInputStream()) {
+      objectKey = storage.upload(props.getBucketRecommendations(), in, file.getSize(), mime);
+    } catch (IOException e) {
+      throw new RecommendationException("PHOTO_UPLOAD_FAILED", "Falha ao enviar a imagem.");
+    }
+    // Trade-off aceito p/ escala de condomínio: checagem de limite e save não são atômicos
+    // (TOCTOU) e, se o save falhar após o upload, o objeto fica órfão no bucket. O índice
+    // único parcial (recommendation_id, ordering) impede linha duplicada.
+    int ordering = photoRepo.maxOrdering(id) + 1;
+    RecommendationPhoto saved =
+        photoRepo.save(RecommendationPhoto.create(id, objectKey, mime, ordering));
+    return new RecommendationPhotoView(saved.getId(), saved.getOrdering(), saved.getContentType());
+  }
+
+  @Transactional
+  public void removePhoto(UUID id, UUID photoId, UUID actorId, boolean canModerate) {
+    loadOwned(id, actorId, canModerate);
+    RecommendationPhoto p =
+        photoRepo
+            .findByIdAndRecommendationId(photoId, id)
+            .orElseThrow(() -> new RecommendationException("NOT_FOUND", "Foto não encontrada."));
+    photoRepo.delete(p);
+  }
+
+  public String photoUrl(UUID id, UUID photoId) {
+    load(id);
+    RecommendationPhoto p =
+        photoRepo
+            .findByIdAndRecommendationId(photoId, id)
+            .orElseThrow(() -> new RecommendationException("NOT_FOUND", "Foto não encontrada."));
+    return storage.presignedGetUrl(
+        props.getBucketRecommendations(),
+        p.getObjectKey(),
+        Duration.ofSeconds(props.getPresignedTtlPhotosSeconds()));
   }
 
   private void applyTags(Recommendation r, List<String> slugs) {

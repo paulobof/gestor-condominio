@@ -3,9 +3,12 @@ package br.com.condominio.feature.recommendation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import br.com.condominio.feature.recommendation.dto.CreateRecommendationRequest;
+import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
 import br.com.condominio.feature.recommendation.dto.UpdateRecommendationRequest;
 import br.com.condominio.feature.recommendation.event.RecommendationConsentRequestedEvent;
@@ -21,6 +24,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class RecommendationServiceTest {
@@ -191,5 +195,106 @@ class RecommendationServiceTest {
     assertThatThrownBy(() -> service.create(author, req(true, resident)))
         .isInstanceOf(RecommendationException.class)
         .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
+
+  private MockMultipartFile jpeg(int size) {
+    return new MockMultipartFile("file", "p.jpg", "image/jpeg", new byte[size]);
+  }
+
+  @Test
+  void addPhoto_overLimit_throws() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(photoRepo.countByRecommendationId(id)).thenReturn(5L);
+    assertThatThrownBy(() -> service.addPhoto(id, author, false, jpeg(10)))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "PHOTO_LIMIT");
+  }
+
+  @Test
+  void addPhoto_invalidType_throws() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(photoRepo.countByRecommendationId(id)).thenReturn(0L);
+    when(magicBytes.detect(any())).thenReturn("application/pdf");
+    when(magicBytes.isAcceptedForPhoto("application/pdf")).thenReturn(false);
+    assertThatThrownBy(() -> service.addPhoto(id, author, false, jpeg(10)))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "PHOTO_TYPE_INVALID");
+  }
+
+  @Test
+  void addPhoto_tooLarge_throws() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(photoRepo.countByRecommendationId(id)).thenReturn(0L);
+    when(magicBytes.detect(any())).thenReturn("image/jpeg");
+    when(magicBytes.isAcceptedForPhoto("image/jpeg")).thenReturn(true);
+    assertThatThrownBy(() -> service.addPhoto(id, author, false, jpeg(1_048_577)))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "PHOTO_TOO_LARGE");
+  }
+
+  @Test
+  void addPhoto_happyPath_uploadsAndSaves() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(photoRepo.countByRecommendationId(id)).thenReturn(0L);
+    when(photoRepo.maxOrdering(id)).thenReturn(-1);
+    when(magicBytes.detect(any())).thenReturn("image/jpeg");
+    when(magicBytes.isAcceptedForPhoto("image/jpeg")).thenReturn(true);
+    when(storage.upload(eq(props.getBucketRecommendations()), any(), anyLong(), eq("image/jpeg")))
+        .thenReturn("obj-key-1");
+    when(photoRepo.save(any(RecommendationPhoto.class))).thenAnswer(i -> i.getArgument(0));
+
+    RecommendationPhotoView v = service.addPhoto(id, author, false, jpeg(100));
+
+    assertThat(v.ordering()).isEqualTo(0);
+    verify(storage)
+        .upload(eq(props.getBucketRecommendations()), any(), anyLong(), eq("image/jpeg"));
+    verify(photoRepo).save(any(RecommendationPhoto.class));
+  }
+
+  @Test
+  void removePhoto_byAuthor_softDeletes() {
+    UUID id = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    RecommendationPhoto p = RecommendationPhoto.create(id, "obj-key-1", "image/jpeg", 0);
+    ReflectionTestUtils.setField(p, "id", photoId);
+    when(photoRepo.findByIdAndRecommendationId(photoId, id)).thenReturn(Optional.of(p));
+    service.removePhoto(id, photoId, author, false);
+    verify(photoRepo).delete(p);
+  }
+
+  @Test
+  void removePhoto_notFound_throws() {
+    UUID id = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(photoRepo.findByIdAndRecommendationId(photoId, id)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.removePhoto(id, photoId, author, false))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
+
+  @Test
+  void photoUrl_returnsPresigned() {
+    UUID id = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    RecommendationPhoto p = RecommendationPhoto.create(id, "obj-key-1", "image/jpeg", 0);
+    ReflectionTestUtils.setField(p, "id", photoId);
+    when(photoRepo.findByIdAndRecommendationId(photoId, id)).thenReturn(Optional.of(p));
+    when(storage.presignedGetUrl(eq(props.getBucketRecommendations()), eq("obj-key-1"), any()))
+        .thenReturn("https://minio/obj-key-1?sig");
+    assertThat(service.photoUrl(id, photoId)).startsWith("https://minio/");
   }
 }

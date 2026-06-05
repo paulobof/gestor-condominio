@@ -92,4 +92,19 @@ class RecommendationTest {
     r.hide();
     assertThatThrownBy(r::hide).isInstanceOf(IllegalStateException.class);
   }
+
+  @Test
+  void edit_updatesFields_andNarrowsRating() {
+    Recommendation r = external();
+    r.edit("Eletricista", "Maria", "11888887777", "Rua Y", "R$120/h", 4, "boa");
+    assertThat(r.getServiceName()).isEqualTo("Eletricista");
+    assertThat(r.getRating()).isEqualTo((short) 4);
+  }
+
+  @Test
+  void edit_withNullRating_keepsNull() {
+    Recommendation r = external();
+    r.edit("Pintor", "João", "11999990000", "Rua X", "R$80/h", null, "ok");
+    assertThat(r.getRating()).isNull();
+  }
 }

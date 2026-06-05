@@ -8,6 +8,9 @@ import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import jakarta.transaction.Transactional;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +67,61 @@ public class ClassifiedService {
     Classified c = loadOwned(id, actorId, canModerate);
     photoRepo.findByClassifiedIdOrderByOrdering(id).forEach(photoRepo::delete);
     repo.delete(c);
+  }
+
+  private static final long MAX_PHOTO_BYTES = 1_048_576L;
+  private static final int MAX_PHOTOS = 5;
+
+  /** NÃO transacional: upload pro MinIO acontece fora de transação (CLAUDE.md). */
+  public ClassifiedPhotoView addPhoto(
+      UUID id, UUID actorId, boolean canModerate, MultipartFile file) {
+    loadOwned(id, actorId, canModerate);
+    if (photoRepo.countByClassifiedId(id) >= MAX_PHOTOS) {
+      throw new ClassifiedException("PHOTO_LIMIT", "Máximo de 5 fotos por anúncio.");
+    }
+    String mime;
+    try (InputStream in = file.getInputStream()) {
+      mime = magicBytes.detect(in);
+    } catch (IOException e) {
+      throw new ClassifiedException("PHOTO_READ_FAILED", "Falha ao ler a imagem.");
+    }
+    if (!magicBytes.isAcceptedForPhoto(mime)) {
+      throw new ClassifiedException("PHOTO_TYPE_INVALID", "Aceitamos JPG, PNG ou WEBP.");
+    }
+    if (file.getSize() > MAX_PHOTO_BYTES) {
+      throw new ClassifiedException("PHOTO_TOO_LARGE", "Foto deve ter no máximo 1MB.");
+    }
+    String objectKey;
+    try (InputStream in = file.getInputStream()) {
+      objectKey = storage.upload(props.getBucketClassifieds(), in, file.getSize(), mime);
+    } catch (IOException e) {
+      throw new ClassifiedException("PHOTO_UPLOAD_FAILED", "Falha ao enviar a imagem.");
+    }
+    int ordering = photoRepo.maxOrdering(id) + 1;
+    ClassifiedPhoto saved = photoRepo.save(ClassifiedPhoto.create(id, objectKey, mime, ordering));
+    return new ClassifiedPhotoView(saved.getId(), saved.getOrdering(), saved.getContentType());
+  }
+
+  @Transactional
+  public void removePhoto(UUID id, UUID photoId, UUID actorId, boolean canModerate) {
+    loadOwned(id, actorId, canModerate);
+    ClassifiedPhoto p =
+        photoRepo
+            .findByIdAndClassifiedId(photoId, id)
+            .orElseThrow(() -> new ClassifiedException("NOT_FOUND", "Foto não encontrada."));
+    photoRepo.delete(p);
+  }
+
+  public String photoUrl(UUID id, UUID photoId) {
+    load(id);
+    ClassifiedPhoto p =
+        photoRepo
+            .findByIdAndClassifiedId(photoId, id)
+            .orElseThrow(() -> new ClassifiedException("NOT_FOUND", "Foto não encontrada."));
+    return storage.presignedGetUrl(
+        props.getBucketClassifieds(),
+        p.getObjectKey(),
+        Duration.ofSeconds(props.getPresignedTtlPhotosSeconds()));
   }
 
   private void applyStatus(Classified c, ClassifiedStatus target) {

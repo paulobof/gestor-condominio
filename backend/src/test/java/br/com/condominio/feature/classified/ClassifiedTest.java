@@ -47,9 +47,24 @@ class ClassifiedTest {
   }
 
   @Test
+  void markSold_whenArchived_throws() {
+    Classified c = active();
+    c.archive();
+    assertThatThrownBy(c::markSold).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
   void reactivate_fromArchived_becomesActive() {
     Classified c = active();
     c.archive();
+    c.reactivate();
+    assertThat(c.getStatus()).isEqualTo(ClassifiedStatus.ACTIVE);
+  }
+
+  @Test
+  void reactivate_fromSold_becomesActive() {
+    Classified c = active();
+    c.markSold();
     c.reactivate();
     assertThat(c.getStatus()).isEqualTo(ClassifiedStatus.ACTIVE);
   }

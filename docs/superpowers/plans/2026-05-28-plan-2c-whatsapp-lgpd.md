@@ -677,13 +677,15 @@ Remover as linhas `webhook-url`, `hmac-keys`, `hmac-active-kid`, `anti-replay-wi
 
 ### Tasks (TDD — marcar `[x]` só após verde; e2e só após HML, per [[feedback-validate-e2e]])
 
-- [ ] **T14.1 — `PhoneNumberNormalizerTest` + `PhoneNumberNormalizer`.** Casos: `+55 11 98888-7777`→`5511988887777`; `11988887777`→`5511988887777`; `1133334444`→`551133334444`; `5511988887777`→inalterado; `551133334444`→inalterado; `"123"`→exceção; `null`/vazio→exceção.
-- [ ] **T14.2 — `WhatsAppMessageRendererTest` + `WhatsAppMessageRenderer`.** Um teste por template verificando substituição das variáveis e presença de "HELBOR TRILOGY HOME"; teste de `data` faltando campo → `WhatsAppSendException`.
-- [ ] **T14.3 — `WhatsAppProperties`.** Trocar campos (remover HMAC, adicionar baseUrl/apiKey/instance). Sem `parsedHmacKeys()`.
-- [ ] **T14.4 — Reescrever `WhatsAppNotificationClientTest`.** Usar o mesmo mock HTTP que o projeto já usa (verificar `pom.xml`: WireMock/MockWebServer/`okhttp mockwebserver`). Asserts: método/URL = `POST .../message/sendText/{instance}`; header `apikey` presente e correto; body JSON = `{number, text}` com number normalizado e text renderizado; resposta 4xx/5xx → `WhatsAppSendException`; remover todos os testes de HMAC/assinatura/jti.
-- [ ] **T14.5 — Reescrever `WhatsAppNotificationClient`** até os testes T14.4 passarem (injeta `WhatsAppMessageRenderer` + `PhoneNumberNormalizer`).
-- [ ] **T14.6 — `application.yml` + `deploy/dokploy-backend.env.example` + `CLAUDE.md`.** Suite backend completa verde (`./mvnw test`).
-- [ ] **T14.7 — Deploy HML + e2e real.** Setar `APP_WHATSAPP_BASE_URL/API_KEY/INSTANCE` no Dokploy do backend-hml (api-key + nome da instância fornecidos pelo Paulo, fora do repo). Usuário HML com `phone_verified_at != null` e telefone real do Paulo. `POST /api/auth/password/request-reset` → confirmar mensagem chegando no WhatsApp e `whatsapp_outbox` = SENT. Marcar Task 14 (e o plano) como concluídos.
+- [x] **T14.1 — `PhoneNumberNormalizerTest` + `PhoneNumberNormalizer`.** Casos: `+55 11 98888-7777`→`5511988887777`; `11988887777`→`5511988887777`; `1133334444`→`551133334444`; `5511988887777`→inalterado; `551133334444`→inalterado; `"123"`→exceção; `null`/vazio→exceção.
+- [x] **T14.2 — `WhatsAppMessageRendererTest` + `WhatsAppMessageRenderer`.** Um teste por template verificando substituição das variáveis e presença de "HELBOR TRILOGY HOME"; teste de `data` faltando campo → `WhatsAppSendException`.
+- [x] **T14.3 — `WhatsAppProperties`.** Trocar campos (remover HMAC, adicionar baseUrl/apiKey/instance). Sem `parsedHmacKeys()`.
+- [x] **T14.4 — Reescrever `WhatsAppNotificationClientTest`.** Asserts: `POST /send/text` (Evolution GO), header `apikey`, body `{number, text}`, 4xx/5xx → `WhatsAppSendException`.
+- [x] **T14.5 — Reescrever `WhatsAppNotificationClient`** (injeta `WhatsAppMessageRenderer` + `PhoneNumberNormalizer`).
+- [x] **T14.6 — `application.yml` + `deploy/dokploy-backend.env.example` + `CLAUDE.md`.** Suite backend verde (58 testes).
+- [x] **T14.7 — Deploy HML + e2e real.** ✅ **VALIDADO 2026-06-04** (instância `Bot-Robo`). `request-reset` → 202; `whatsapp_outbox`=SENT (attempts=0, sem erro); `password_reset_token.delivered_at` setado; mensagem confirmada chegando no WhatsApp do Paulo (`5511996293140`). **Durante o e2e foram descobertos e corrigidos 2 bugs latentes** (commit `cc804ff`), invisíveis aos testes unitários com mock e ao startup (ddl-auto=none):
+  1. **`password_reset_token.created_ip` era `inet` (V4)** mas a entidade faz bind de `String` → Postgres recusa `varchar→inet` no INSERT → **500** no request-reset. Corrigido por **`V14__password_reset_token_ip_text.sql`** (`inet→text`, mesmo padrão V11/V12).
+  2. **`PasswordResetEventListener.sendAndRecord` era `@Transactional` mas self-invoked** (proxy ignorado) → `tokenRepo.markDelivered` (`@Modifying`) sem transação → `TransactionRequiredException`, marcando outbox FAILED após o envio já ter ocorrido (retry reenviava → WhatsApp duplicado). Corrigido: `@Transactional` próprio no `markDelivered`; removido o `@Transactional` inócuo do listener.
 
 ### Riscos específicos do addendum
 

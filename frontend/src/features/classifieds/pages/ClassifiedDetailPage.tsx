@@ -47,6 +47,7 @@ export function ClassifiedDetailPage() {
   useEffect(() => {
     if (!id || !c) return;
     let active = true;
+    setPhotoUrls({}); // reseta ao trocar de anúncio: evita URLs antigas/rotacionadas e crescimento ilimitado
     c.photos.forEach((photo) => {
       getClassifiedPhotoUrl(id, photo.id)
         .then((url) => {

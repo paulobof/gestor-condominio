@@ -70,6 +70,7 @@ export function ClassifiedFormPage() {
     if (!id) return;
     let active = true;
     setLoading(true);
+    setPhotoUrls({}); // estado limpo ao carregar o anúncio em edição
     getClassified(id)
       .then((c) => {
         if (!active) return;

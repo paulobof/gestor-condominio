@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -63,9 +62,15 @@ public class PasswordResetEventListener {
   /**
    * Enfileira na outbox e tenta enviar imediatamente. Se sucesso, marca SENT + delivered_at. Se
    * falha, marca FAILED — o scheduler reprocessa.
+   *
+   * <p>Sem {@code @Transactional}: a chamada HTTP ao Evolution ({@code client.send}) não pode rodar
+   * dentro de transação (CLAUDE.md). Cada escrita gerencia a sua própria transação — {@code
+   * outbox.*} via {@link WhatsAppOutboxService} e {@code tokenRepo.markDelivered} via
+   * {@code @Transactional} no próprio repositório. (Antes este método era {@code @Transactional},
+   * mas, por ser invocado internamente no mesmo bean, o proxy era ignorado e o {@code
+   * markDelivered} quebrava com {@code TransactionRequiredException}.)
    */
-  @Transactional
-  protected void sendAndRecord(
+  private void sendAndRecord(
       String toPhone, WhatsAppTemplate template, Map<String, Object> data, UUID tokenId) {
     WhatsAppOutboxEntry entry = outbox.enqueue(toPhone, template, data);
     Instant now = Instant.now();

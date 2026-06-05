@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, UUID> {
 
@@ -19,8 +20,17 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
           + "WHERE t.userId = :userId AND t.usedAt IS NULL")
   int invalidateAllUserTokens(@Param("userId") UUID userId, @Param("now") Instant now);
 
-  /** Marca delivered_at se ainda não foi marcado. Usado pelo listener async após bot enviar. */
+  /**
+   * Marca delivered_at se ainda não foi marcado. Usado pelo listener async após bot enviar.
+   *
+   * <p>{@code @Transactional} próprio: o listener ({@code
+   * PasswordResetEventListener.sendAndRecord}) roda fora de transação (a chamada HTTP ao Evolution
+   * não pode segurar transação, per CLAUDE.md), então este {@code @Modifying} precisa abrir a sua
+   * própria — senão lança {@code TransactionRequiredException ("Executing an update/delete
+   * query")}.
+   */
   @Modifying
+  @Transactional
   @Query(
       "UPDATE PasswordResetToken t SET t.deliveredAt = :now "
           + "WHERE t.id = :id AND t.deliveredAt IS NULL")

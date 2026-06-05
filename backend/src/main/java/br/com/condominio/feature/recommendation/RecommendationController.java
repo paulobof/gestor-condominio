@@ -51,8 +51,9 @@ public class RecommendationController {
 
   @GetMapping("/{id}")
   @PreAuthorize("isAuthenticated()")
-  public RecommendationView get(@PathVariable UUID id) {
-    return service.getById(id);
+  public RecommendationView get(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.getById(id, me.userId(), canModerate(me));
   }
 
   @PostMapping

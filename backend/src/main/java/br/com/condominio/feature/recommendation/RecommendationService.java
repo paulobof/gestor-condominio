@@ -80,8 +80,18 @@ public class RecommendationService {
   // @Transactional nas leituras: view() acessa r.getTags() (@ManyToMany lazy); sem sessão aberta
   // daria LazyInitializationException.
   @Transactional
-  public RecommendationView getById(UUID id) {
-    return view(load(id));
+  public RecommendationView getById(UUID id, UUID actorId, boolean canModerate) {
+    Recommendation r = load(id);
+    // Indicação não-ACTIVE (PENDING_RESIDENT_CONSENT/HIDDEN) carrega PII do morador ainda sem
+    // consentimento: só o autor, o morador indicado ou um moderador podem vê-la. Para os demais,
+    // NOT_FOUND (não confirma existência).
+    if (r.getStatus() != RecommendationStatus.ACTIVE
+        && !canModerate
+        && !actorId.equals(r.getRecommendedByUserId())
+        && !actorId.equals(r.getResidentUserId())) {
+      throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
+    }
+    return view(r);
   }
 
   @Transactional

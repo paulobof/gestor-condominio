@@ -197,6 +197,35 @@ class RecommendationServiceTest {
         .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
   }
 
+  @Test
+  void getById_active_visibleToAnyone() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    assertThat(service.getById(id, stranger, false).serviceName()).isEqualTo("Pintor");
+  }
+
+  @Test
+  void getById_pending_byStranger_notFound() {
+    UUID id = UUID.randomUUID();
+    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
+    ReflectionTestUtils.setField(r, "residentUserId", resident);
+    when(repo.findById(id)).thenReturn(Optional.of(r));
+    assertThatThrownBy(() -> service.getById(id, stranger, false))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
+
+  @Test
+  void getById_pending_byIndicatedResident_ok() {
+    UUID id = UUID.randomUUID();
+    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
+    ReflectionTestUtils.setField(r, "residentUserId", resident);
+    when(repo.findById(id)).thenReturn(Optional.of(r));
+    assertThat(service.getById(id, resident, false).status())
+        .isEqualTo(RecommendationStatus.PENDING_RESIDENT_CONSENT);
+  }
+
   private MockMultipartFile jpeg(int size) {
     return new MockMultipartFile("file", "p.jpg", "image/jpeg", new byte[size]);
   }

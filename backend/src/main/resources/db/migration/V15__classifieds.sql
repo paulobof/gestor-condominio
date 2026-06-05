@@ -33,8 +33,9 @@ CREATE TABLE classified_photo (
     deleted_at      timestamptz
 );
 
+-- ordering pode ter gaps após soft-delete; o service normaliza (próximo = max+1).
+-- Este índice único também serve lookups por classified_id (prefixo à esquerda),
+-- dispensando um índice separado só de classified_id.
 CREATE UNIQUE INDEX uq_classified_photo_ordering
     ON classified_photo (classified_id, ordering)
-    WHERE deleted_at IS NULL;
-CREATE INDEX idx_classified_photo_owner ON classified_photo (classified_id)
     WHERE deleted_at IS NULL;

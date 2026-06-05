@@ -57,7 +57,11 @@ public class RecommendationConsentEventListener {
       outbox.markSent(entry.getId(), now);
     } catch (RuntimeException ex) {
       outbox.markFailed(entry.getId(), ex.getMessage(), now);
-      log.warn("Falha ao enviar consentimento recommendationId={}", e.recommendationId());
+      log.warn(
+          "Falha ao enviar consentimento recommendationId={} outboxId={} reason={}",
+          e.recommendationId(),
+          entry.getId(),
+          ex.getMessage());
     }
   }
 }

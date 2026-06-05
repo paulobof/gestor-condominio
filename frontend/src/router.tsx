@@ -7,6 +7,9 @@ import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { PrivacyPage } from '@/features/privacy/pages/PrivacyPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PendingRegistrationsPage } from '@/features/admin/pages/PendingRegistrationsPage';
+import { ClassifiedsListPage } from '@/features/classifieds/pages/ClassifiedsListPage';
+import { ClassifiedDetailPage } from '@/features/classifieds/pages/ClassifiedDetailPage';
+import { ClassifiedFormPage } from '@/features/classifieds/pages/ClassifiedFormPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -36,6 +39,38 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <PrivacyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/classificados',
+    element: (
+      <ProtectedRoute>
+        <ClassifiedsListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/classificados/novo',
+    element: (
+      <ProtectedRoute>
+        <ClassifiedFormPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/classificados/:id',
+    element: (
+      <ProtectedRoute>
+        <ClassifiedDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/classificados/:id/editar',
+    element: (
+      <ProtectedRoute>
+        <ClassifiedFormPage />
       </ProtectedRoute>
     ),
   },

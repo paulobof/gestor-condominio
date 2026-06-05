@@ -10,6 +10,10 @@ import { PendingRegistrationsPage } from '@/features/admin/pages/PendingRegistra
 import { ClassifiedsListPage } from '@/features/classifieds/pages/ClassifiedsListPage';
 import { ClassifiedDetailPage } from '@/features/classifieds/pages/ClassifiedDetailPage';
 import { ClassifiedFormPage } from '@/features/classifieds/pages/ClassifiedFormPage';
+import { RecommendationsListPage } from '@/features/recommendations/pages/RecommendationsListPage';
+import { RecommendationDetailPage } from '@/features/recommendations/pages/RecommendationDetailPage';
+import { RecommendationFormPage } from '@/features/recommendations/pages/RecommendationFormPage';
+import { PendingConsentPage } from '@/features/recommendations/pages/PendingConsentPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -71,6 +75,46 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ClassifiedFormPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/indicacoes',
+    element: (
+      <ProtectedRoute>
+        <RecommendationsListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/indicacoes/nova',
+    element: (
+      <ProtectedRoute>
+        <RecommendationFormPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/indicacoes/pendentes',
+    element: (
+      <ProtectedRoute>
+        <PendingConsentPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/indicacoes/:id',
+    element: (
+      <ProtectedRoute>
+        <RecommendationDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/indicacoes/:id/editar',
+    element: (
+      <ProtectedRoute>
+        <RecommendationFormPage />
       </ProtectedRoute>
     ),
   },

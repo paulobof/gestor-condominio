@@ -19,11 +19,23 @@ public final class MockAuth {
 
   private MockAuth() {}
 
+  /** Usuário autenticado comum (não-master da unidade). */
   public static RequestPostProcessor user(UUID userId, String... authorities) {
-    List<String> auths = Arrays.asList(authorities);
+    return build(userId, false, authorities);
+  }
+
+  /** Usuário autenticado que é master da unidade ({@code isUnitMaster=true}). */
+  public static RequestPostProcessor master(UUID userId, String... authorities) {
+    return build(userId, true, authorities);
+  }
+
+  private static RequestPostProcessor build(UUID userId, boolean isUnitMaster, String... auths) {
+    List<String> authorities = Arrays.asList(auths);
     AuthenticatedUserPrincipal principal =
-        new AuthenticatedUserPrincipal(userId, "Tester", List.of(), auths, null, false);
-    List<SimpleGrantedAuthority> granted = auths.stream().map(SimpleGrantedAuthority::new).toList();
+        new AuthenticatedUserPrincipal(
+            userId, "Tester", List.of(), authorities, null, isUnitMaster);
+    List<SimpleGrantedAuthority> granted =
+        authorities.stream().map(SimpleGrantedAuthority::new).toList();
     return SecurityMockMvcRequestPostProcessors.authentication(
         new UsernamePasswordAuthenticationToken(principal, null, granted));
   }

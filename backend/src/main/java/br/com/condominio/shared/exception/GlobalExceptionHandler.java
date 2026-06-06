@@ -16,6 +16,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 @Slf4j
@@ -133,6 +135,17 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
             ApiError.of(409, "Conflict", "BUSINESS_RULE_VIOLATION", ex.getMessage(), requestId()));
+  }
+
+  /**
+   * Rota/recurso não mapeado (ex.: endpoint atrás de feature flag desligada). Sem este handler, o
+   * catch-all {@link #handleGeneric} transformaria o 404 do framework em 500, poluindo métricas de
+   * erro e disparando alertas para 404s benignos.
+   */
+  @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+  public ResponseEntity<ApiError> handleNotFound(Exception ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(ApiError.of(404, "Not Found", "NOT_FOUND", "Recurso não encontrado.", requestId()));
   }
 
   @ExceptionHandler(Exception.class)

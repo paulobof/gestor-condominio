@@ -16,13 +16,19 @@ const ITEMS: NavItem[] = [
   { to: '/classificados', label: 'Vendas', icon: ShoppingBag },
 ];
 
-/** Barra de navegação fixa inferior (estilo app). Respeita a safe-area do iOS. */
+/**
+ * Barra de navegação fixa inferior (estilo app), no preto do logo. Item ativo destacado em branco.
+ * Respeita a safe-area do iOS.
+ */
 export function BottomNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 text-white"
+      style={{
+        backgroundColor: 'hsl(var(--brand-ink))',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       <ul className="mx-auto flex h-16 max-w-3xl items-stretch justify-around">
         {ITEMS.map((item) => {
@@ -35,7 +41,7 @@ export function BottomNav() {
                 className={({ isActive }) =>
                   [
                     'flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors',
-                    isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                    isActive ? 'text-white' : 'text-white/55 hover:text-white/90',
                   ].join(' ')
                 }
               >
@@ -44,7 +50,7 @@ export function BottomNav() {
                     <span
                       className={[
                         'flex h-7 w-7 items-center justify-center rounded-xl transition-colors',
-                        isActive ? 'bg-primary/10' : '',
+                        isActive ? 'bg-white/15' : '',
                       ].join(' ')}
                     >
                       <Icon className="h-5 w-5" aria-hidden="true" />

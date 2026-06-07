@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 import { useState } from 'react';
-import { Home } from 'lucide-react';
 
 const schema = z.object({
   email: z.string().min(1, 'Informe seu e-mail').email('E-mail inválido'),
@@ -47,12 +46,17 @@ export function LoginPage() {
     <main className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <Home className="text-primary" aria-hidden="true" />
-            <span className="font-heading font-semibold text-lg">HELBOR TRILOGY HOME</span>
+          <div className="flex justify-center">
+            <img
+              src="/icon-512.png"
+              alt="HELBOR TRILOGY HOME"
+              className="h-20 w-20 rounded-2xl shadow-sm"
+              width={80}
+              height={80}
+            />
           </div>
           <CardTitle>Entrar no sistema</CardTitle>
-          <CardDescription>Use seu e-mail cadastrado.</CardDescription>
+          <CardDescription>HELBOR TRILOGY HOME · use seu e-mail cadastrado.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>

@@ -32,6 +32,15 @@
     --border: 214 32% 91%;
     --ring: 210 78% 47%;
     --radius: 0.75rem;
+
+    /* Marca HELBOR TRILOGY HOME — preto do wordmark + as cores do losango.
+       Constantes nos dois temas (não mudam no dark). */
+    --brand-ink: 0 0% 8%;
+    --brand-red: 350 80% 48%;
+    --brand-orange: 32 90% 50%;
+    --brand-yellow: 45 93% 52%;
+    --brand-green: 132 52% 40%;
+    --brand-blue: 205 72% 44%;
   }
 
   .dark {

@@ -19,7 +19,7 @@ import org.hibernate.annotations.SQLRestriction;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(of = "id", callSuper = false)
 @ToString(of = {"id", "serviceName", "status"})
-@SQLDelete(sql = "UPDATE recommendation SET deleted_at = now() WHERE id = ?")
+@SQLDelete(sql = "UPDATE recommendation SET deleted_at = now() WHERE id = ? AND version = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class Recommendation {
 

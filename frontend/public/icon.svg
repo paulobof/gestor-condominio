@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="HELBOR TRILOGY HOME">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="18" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M128 432V176l128-72 128 72v256" fill="#0b1220"/>
+    <path d="M96 432h320"/>
+  </g>
+  <g fill="#38bdf8">
+    <rect x="168" y="208" width="40" height="40" rx="6"/>
+    <rect x="236" y="208" width="40" height="40" rx="6"/>
+    <rect x="304" y="208" width="40" height="40" rx="6"/>
+    <rect x="168" y="280" width="40" height="40" rx="6"/>
+    <rect x="304" y="280" width="40" height="40" rx="6"/>
+    <rect x="232" y="344" width="48" height="88" rx="6"/>
+  </g>
+</svg>

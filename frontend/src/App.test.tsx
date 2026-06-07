@@ -34,10 +34,9 @@ function renderApp(authorities: string[] = ['USER_VIEW']) {
 }
 
 describe('App', () => {
-  it('renderiza o nome do condominio e o greeting', () => {
+  it('mostra a saudação do usuário logado', () => {
     renderApp();
-    expect(screen.getByText(/helbor trilogy home/i)).toBeInTheDocument();
-    expect(screen.getByText(/paulo/i)).toBeInTheDocument();
+    expect(screen.getByText(/olá, paulo/i)).toBeInTheDocument();
   });
 
   it('mostra os atalhos de navegação (mural, indicações, classificados)', () => {

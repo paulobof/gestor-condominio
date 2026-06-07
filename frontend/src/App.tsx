@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
   Home,
-  LogOut,
   Megaphone,
   Lightbulb,
   ShoppingBag,
@@ -9,7 +8,6 @@ import {
   ClipboardCheck,
   ShieldCheck,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -23,12 +21,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  {
-    to: '/avisos',
-    title: 'Mural de avisos',
-    desc: 'Comunicados do condomínio.',
-    icon: Megaphone,
-  },
+  { to: '/avisos', title: 'Mural de avisos', desc: 'Comunicados do condomínio.', icon: Megaphone },
   {
     to: '/indicacoes',
     title: 'Indicações',
@@ -63,67 +56,47 @@ const NAV: NavItem[] = [
 ];
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const can = (item: NavItem) =>
     !item.requires || (user?.authorities.includes(item.requires) ?? false);
   const items = NAV.filter(can);
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="container flex items-center gap-3 py-6">
-          <Home className="text-primary" aria-hidden="true" />
-          <h1 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight flex-1">
-            HELBOR TRILOGY HOME
-          </h1>
-          {user && (
-            <div className="flex items-center gap-3 text-sm">
-              <span className="text-muted-foreground">
-                Olá,{' '}
-                <strong className="text-foreground">{user.greetingName || user.fullName}</strong>
-              </span>
-              <Button variant="ghost" size="sm" onClick={logout} aria-label="Sair">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
+    <section className="container space-y-6 py-6">
+      <div>
+        <h1 className="text-2xl font-heading font-semibold">
+          Olá, {user?.greetingName || user?.fullName || 'morador'} 👋
+        </h1>
+        <p className="text-muted-foreground">Escolha uma área do portal.</p>
+      </div>
 
-      <section className="container py-8 space-y-6">
-        <p className="text-muted-foreground max-w-prose">
-          Bem-vindo ao portal de gestão do condomínio. Escolha uma área abaixo.
-        </p>
-
-        <nav aria-label="Áreas do portal">
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <Card className="h-full min-h-[44px] transition-colors hover:bg-accent">
-                      <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                        <span className="rounded-md bg-primary/10 p-2 text-primary">
-                          <Icon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                        <CardTitle className="text-base">{item.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{item.desc}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </section>
-    </main>
+      <nav aria-label="Áreas do portal">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <Card className="h-full transition-colors hover:bg-accent">
+                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                      <span className="rounded-md bg-primary/10 p-2 text-primary">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <CardTitle className="text-base">{item.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </section>
   );
 }

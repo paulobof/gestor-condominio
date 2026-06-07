@@ -37,7 +37,14 @@ export function ClassifiedsListPage() {
   return (
     <main className="mx-auto max-w-3xl p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-heading font-semibold">Classificados</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
+          <span
+            aria-hidden="true"
+            className="inline-block h-6 w-1.5 rounded-full"
+            style={{ backgroundColor: 'hsl(var(--brand-green))' }}
+          />
+          Classificados
+        </h1>
         <Button asChild className="min-h-[44px]">
           <Link to="/classificados/novo">Novo anúncio</Link>
         </Button>

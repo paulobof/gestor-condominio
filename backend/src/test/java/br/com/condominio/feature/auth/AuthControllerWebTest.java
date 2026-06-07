@@ -113,6 +113,17 @@ class AuthControllerWebTest {
   }
 
   @Test
+  void refresh_replayOrInvalid_returns401() throws Exception {
+    // RefreshTokenService lança SecurityException em token desconhecido/expirado/replay.
+    when(authService.refresh("ref-bad"))
+        .thenThrow(new SecurityException("Refresh token replay detected"));
+
+    mvc.perform(post("/api/auth/refresh").cookie(new Cookie("refresh_token", "ref-bad")))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("SESSION_INVALID"));
+  }
+
+  @Test
   void me_authenticated_returns200() throws Exception {
     when(authService.me(UID)).thenReturn(userView());
 

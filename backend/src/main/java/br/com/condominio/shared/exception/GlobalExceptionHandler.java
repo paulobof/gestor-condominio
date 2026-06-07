@@ -133,6 +133,24 @@ public class GlobalExceptionHandler {
                 requestId()));
   }
 
+  /**
+   * Falha de refresh token (desconhecido/expirado/replay) é lançada como {@link SecurityException}
+   * pelo {@code RefreshTokenService}. É 401 (sessão inválida → relogar), não 500 — o cliente trata
+   * o 401 limpando a sessão e indo pro login. Não logar o token; mensagem genérica.
+   */
+  @ExceptionHandler(SecurityException.class)
+  public ResponseEntity<ApiError> handleSecurity(SecurityException ex) {
+    log.warn("Refresh/security rejeitado: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(
+            ApiError.of(
+                401,
+                "Unauthorized",
+                "SESSION_INVALID",
+                "Sessão expirada ou inválida. Faça login novamente.",
+                requestId()));
+  }
+
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
   public ResponseEntity<ApiError> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)

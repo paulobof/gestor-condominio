@@ -126,6 +126,8 @@ app:
       enabled: ${APP_FEATURE_CLASSIFIEDS_ENABLED:false}
     recommendations:
       enabled: ${APP_FEATURE_RECOMMENDATIONS_ENABLED:false}
+    announcements:
+      enabled: ${APP_FEATURE_ANNOUNCEMENTS_ENABLED:false}
   recommendation:
     consent-base-url: ${APP_RECOMMENDATION_CONSENT_BASE_URL:http://localhost:5173/indicacoes/pendentes}
 

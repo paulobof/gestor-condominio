@@ -18,7 +18,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(of = "id", callSuper = false)
 @ToString(of = {"id", "code"})
-@SQLDelete(sql = "UPDATE unit SET deleted_at = now() WHERE id = ?")
+@SQLDelete(sql = "UPDATE unit SET deleted_at = now() WHERE id = ? AND version = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class Unit {
 

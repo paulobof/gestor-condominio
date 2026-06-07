@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useState } from 'react';
 
 const schema = z.object({
@@ -43,7 +44,10 @@ export function LoginPage() {
   };
 
   return (
-    <main className="min-h-dvh flex items-center justify-center bg-background p-4">
+    <main className="relative min-h-dvh flex items-center justify-center bg-background p-4">
+      <div className="absolute right-3 top-3">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3 text-center">
           <div className="flex justify-center">
@@ -56,7 +60,7 @@ export function LoginPage() {
             />
           </div>
           <CardTitle>Entrar no sistema</CardTitle>
-          <CardDescription>HELBOR TRILOGY HOME · use seu e-mail cadastrado.</CardDescription>
+          <CardDescription>Use seu e-mail cadastrado.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -93,12 +97,18 @@ export function LoginPage() {
             <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? 'Entrando...' : 'Entrar'}
             </Button>
-            <div className="text-center text-sm">
+            <div className="space-y-1 text-center text-sm">
               <Link
                 to="/forgot-password"
-                className="text-muted-foreground hover:text-foreground underline"
+                className="block text-muted-foreground hover:text-foreground underline"
               >
                 Esqueci minha senha
+              </Link>
+              <Link
+                to="/register-master"
+                className="block text-muted-foreground hover:text-foreground underline"
+              >
+                Primeiro acesso? Cadastre-se
               </Link>
             </div>
           </form>

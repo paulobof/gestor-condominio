@@ -1,5 +1,6 @@
 package br.com.condominio.shared.exception;
 
+import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
 import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
@@ -79,6 +80,20 @@ public class GlobalExceptionHandler {
           case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
           default -> HttpStatus.BAD_REQUEST;
         };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(AnnouncementException.class)
+  public ResponseEntity<ApiError> handleAnnouncement(AnnouncementException ex) {
+    HttpStatus status =
+        "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
     return ResponseEntity.status(status)
         .body(
             ApiError.of(

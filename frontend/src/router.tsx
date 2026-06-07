@@ -14,6 +14,9 @@ import { RecommendationsListPage } from '@/features/recommendations/pages/Recomm
 import { RecommendationDetailPage } from '@/features/recommendations/pages/RecommendationDetailPage';
 import { RecommendationFormPage } from '@/features/recommendations/pages/RecommendationFormPage';
 import { PendingConsentPage } from '@/features/recommendations/pages/PendingConsentPage';
+import { AnnouncementsListPage } from '@/features/announcements/pages/AnnouncementsListPage';
+import { AnnouncementDetailPage } from '@/features/announcements/pages/AnnouncementDetailPage';
+import { AnnouncementFormPage } from '@/features/announcements/pages/AnnouncementFormPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -115,6 +118,38 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <RecommendationFormPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/avisos',
+    element: (
+      <ProtectedRoute>
+        <AnnouncementsListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/avisos/novo',
+    element: (
+      <ProtectedRoute>
+        <AnnouncementFormPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/avisos/:id',
+    element: (
+      <ProtectedRoute>
+        <AnnouncementDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/avisos/:id/editar',
+    element: (
+      <ProtectedRoute>
+        <AnnouncementFormPage />
       </ProtectedRoute>
     ),
   },

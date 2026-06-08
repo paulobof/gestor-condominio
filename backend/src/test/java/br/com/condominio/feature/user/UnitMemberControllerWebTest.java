@@ -42,6 +42,10 @@ class UnitMemberControllerWebTest {
 
   private static final String VALID_BODY =
       "{\"fullName\":\"Maria Silva\",\"greetingName\":\"Maria\",\"email\":\"maria@test.com\","
+          + "\"phone\":\"11999998888\",\"password\":\"Senha@1234\",\"whatsappOptIn\":true}";
+
+  private static final String WEAK_PASSWORD_BODY =
+      "{\"fullName\":\"Maria Silva\",\"greetingName\":\"Maria\",\"email\":\"maria@test.com\","
           + "\"phone\":\"11999998888\",\"password\":\"senha12345\",\"whatsappOptIn\":true}";
 
   @Test
@@ -86,6 +90,17 @@ class UnitMemberControllerWebTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_BODY))
         .andExpect(status().isForbidden());
+    verify(service, never()).createMember(any(), any());
+  }
+
+  @Test
+  void create_weakPassword_returns400() throws Exception {
+    mvc.perform(
+            post("/api/units/me/members")
+                .with(MockAuth.master(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(WEAK_PASSWORD_BODY))
+        .andExpect(status().isBadRequest());
     verify(service, never()).createMember(any(), any());
   }
 

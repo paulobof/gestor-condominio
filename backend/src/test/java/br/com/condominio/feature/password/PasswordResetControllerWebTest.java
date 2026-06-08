@@ -58,9 +58,9 @@ class PasswordResetControllerWebTest {
     mvc.perform(
             post("/api/auth/password/consume-reset")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"tok-123\",\"newPassword\":\"novaSenha123\"}"))
+                .content("{\"token\":\"tok-123\",\"newPassword\":\"Senha@1234\"}"))
         .andExpect(status().isNoContent());
-    verify(service).consumeReset(eq("tok-123"), eq("novaSenha123"), any());
+    verify(service).consumeReset(eq("tok-123"), eq("Senha@1234"), any());
   }
 
   @Test
@@ -72,7 +72,7 @@ class PasswordResetControllerWebTest {
     mvc.perform(
             post("/api/auth/password/consume-reset")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"tok-ruim\",\"newPassword\":\"novaSenha123\"}"))
+                .content("{\"token\":\"tok-ruim\",\"newPassword\":\"Senha@1234\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
   }
@@ -83,6 +83,17 @@ class PasswordResetControllerWebTest {
             post("/api/auth/password/consume-reset")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"token\":\"tok-123\",\"newPassword\":\"123\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    verify(service, never()).consumeReset(any(), any(), any());
+  }
+
+  @Test
+  void consumeReset_weakPassword_returns400() throws Exception {
+    mvc.perform(
+            post("/api/auth/password/consume-reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"any-token\",\"newPassword\":\"senha12345\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     verify(service, never()).consumeReset(any(), any(), any());

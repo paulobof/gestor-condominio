@@ -1,5 +1,6 @@
 package br.com.condominio.feature.user.dto;
 
+import br.com.condominio.shared.validation.StrongPassword;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
@@ -10,5 +11,5 @@ public record CreateUnitMemberRequest(
     @NotBlank @Pattern(regexp = "\\+?[0-9]{10,15}") String phone,
     @Size(max = 20) String gender,
     LocalDate birthDate,
-    @NotBlank @Size(min = 8) String password,
+    @NotBlank @StrongPassword String password,
     boolean whatsappOptIn) {}

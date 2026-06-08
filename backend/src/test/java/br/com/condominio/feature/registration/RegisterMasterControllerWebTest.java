@@ -43,7 +43,7 @@ class RegisterMasterControllerWebTest {
             .param("email", email)
             .param("phone", "11999998888")
             .param("unitCode", "A-101")
-            .param("password", "senha12345")
+            .param("password", "Senha@1234")
             .param("consentVersion", "v3")
             .param("whatsappOptIn", "true");
   }
@@ -63,6 +63,27 @@ class RegisterMasterControllerWebTest {
   @Test
   void registerMaster_invalidEmail_returns400() throws Exception {
     mvc.perform(withFields(multipart("/api/auth/register-master"), "naoEhEmail"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+    verify(service, never()).registerMaster(any(), any(), any());
+  }
+
+  @Test
+  void registerMaster_weakPassword_returns400() throws Exception {
+    mvc.perform(
+            multipart("/api/auth/register-master")
+                .file(
+                    new MockMultipartFile(
+                        "proof", "proof.pdf", "application/pdf", new byte[] {1, 2}))
+                .param("fullName", "Paulo Teste")
+                .param("greetingName", "Paulo")
+                .param("email", "paulo@test.com")
+                .param("phone", "11999998888")
+                .param("unitCode", "A-101")
+                .param("password", "senha12345")
+                .param("consentVersion", "v3")
+                .param("whatsappOptIn", "true"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 

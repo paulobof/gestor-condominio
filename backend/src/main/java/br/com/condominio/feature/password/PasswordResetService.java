@@ -115,10 +115,6 @@ public class PasswordResetService {
                     new PasswordResetException(
                         "INVALID_OR_EXPIRED_TOKEN", "Token inválido ou expirado."));
 
-    if (newPassword == null || newPassword.length() < 8) {
-      throw new PasswordResetException("PASSWORD_POLICY", "Senha não atende à política mínima.");
-    }
-
     // Checa reuso: nova senha não pode bater com nenhuma das últimas N.
     List<PasswordHistory> recent = historyRepo.findTop5ByUserIdOrderByCreatedAtDesc(user.getId());
     for (PasswordHistory h : recent) {

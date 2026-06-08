@@ -1,5 +1,6 @@
 package br.com.condominio.feature.registration.dto;
 
+import br.com.condominio.shared.validation.StrongPassword;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
@@ -11,6 +12,6 @@ public record RegisterMasterRequest(
     @Size(max = 20) String gender,
     LocalDate birthDate,
     @NotBlank String unitCode,
-    @NotBlank @Size(min = 8) String password,
+    @NotBlank @StrongPassword String password,
     @NotBlank String consentVersion,
     boolean whatsappOptIn) {}

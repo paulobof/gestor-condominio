@@ -7,20 +7,12 @@ import { z } from 'zod';
 import { Home } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { consumePasswordReset } from '@/features/auth/api/authApi';
-
-// Política mínima: 8 caracteres + maiúscula + minúscula + número + especial.
-const passwordSchema = z
-  .string()
-  .min(8, 'Mínimo 8 caracteres')
-  .max(128, 'Máximo 128 caracteres')
-  .regex(/[A-Z]/, 'Pelo menos uma letra maiúscula')
-  .regex(/[a-z]/, 'Pelo menos uma letra minúscula')
-  .regex(/[0-9]/, 'Pelo menos um número')
-  .regex(/[^A-Za-z0-9]/, 'Pelo menos um caractere especial');
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
+import { passwordSchema } from '@/features/auth/passwordPolicy';
 
 const schema = z
   .object({
@@ -44,6 +36,7 @@ export function ResetPasswordPage() {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
@@ -91,9 +84,8 @@ export function ResetPasswordPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="newPassword">Nova senha</Label>
-              <Input
+              <PasswordInput
                 id="newPassword"
-                type="password"
                 autoComplete="new-password"
                 {...register('newPassword')}
                 aria-invalid={!!errors.newPassword}
@@ -103,15 +95,12 @@ export function ResetPasswordPage() {
                   {errors.newPassword.message}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Mínimo 8 caracteres com maiúscula, minúscula, número e caractere especial.
-              </p>
+              <PasswordChecklist value={watch('newPassword') ?? ''} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirme a nova senha</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 autoComplete="new-password"
                 {...register('confirmPassword')}
                 aria-invalid={!!errors.confirmPassword}

@@ -9,6 +9,9 @@ import { UnitSelector } from '@/components/UnitSelector';
 import { ProofUploader } from '@/components/ProofUploader';
 import { ConsentBox } from '@/features/consent/ConsentBox';
 import { registerMaster } from '@/features/consent/api/consentApi';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
+import { isStrongPassword } from '@/features/auth/passwordPolicy';
 
 export function RegisterMasterPage() {
   const navigate = useNavigate();
@@ -33,7 +36,7 @@ export function RegisterMasterPage() {
     !!phone &&
     !!unitCode &&
     hasMaster === false &&
-    password.length >= 8 &&
+    isStrongPassword(password) &&
     !!consentVersion &&
     !!proof;
 
@@ -87,20 +90,34 @@ export function RegisterMasterPage() {
             <h3 className="font-semibold">2. Seus dados</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Nome completo</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-              </div>
-              <div>
-                <Label>Como prefere ser chamado</Label>
-                <Input value={greetingName} onChange={(e) => setGreetingName(e.target.value)} />
-              </div>
-              <div>
-                <Label>E-mail</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <div>
-                <Label>Telefone (WhatsApp)</Label>
+                <Label htmlFor="fullName">Nome completo</Label>
                 <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="greetingName">Como prefere ser chamado</Label>
+                <Input
+                  id="greetingName"
+                  value={greetingName}
+                  onChange={(e) => setGreetingName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+                <Input
+                  id="phone"
                   type="tel"
                   placeholder="+5511..."
                   value={phone}
@@ -129,12 +146,13 @@ export function RegisterMasterPage() {
                 </select>
               </div>
               <div className="col-span-2">
-                <Label>Senha (mínimo 8 caracteres)</Label>
-                <Input
-                  type="password"
+                <Label htmlFor="password">Senha</Label>
+                <PasswordInput
+                  id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <PasswordChecklist value={password} />
               </div>
             </div>
             <label className="flex items-center gap-2 text-sm">

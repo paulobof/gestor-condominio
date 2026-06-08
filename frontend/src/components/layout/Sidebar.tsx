@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   ShieldCheck,
   BookOpen,
+  Phone,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -26,6 +27,7 @@ const ITEMS: NavItem[] = [
   { to: '/', label: 'Início', icon: Home, brand: 'ink', end: true },
   { to: '/avisos', label: 'Avisos', icon: Megaphone, brand: 'red' },
   { to: '/informacoes', label: 'Informações', icon: BookOpen, brand: 'blue' },
+  { to: '/contatos', label: 'Contatos', icon: Phone, brand: 'blue' },
   { to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
   { to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
   { to: '/indicacoes/pendentes', label: 'Consentimentos', icon: BellRing, brand: 'blue' },

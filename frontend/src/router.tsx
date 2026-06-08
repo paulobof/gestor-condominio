@@ -18,6 +18,8 @@ import { PendingConsentPage } from '@/features/recommendations/pages/PendingCons
 import { AnnouncementsListPage } from '@/features/announcements/pages/AnnouncementsListPage';
 import { AnnouncementDetailPage } from '@/features/announcements/pages/AnnouncementDetailPage';
 import { AnnouncementFormPage } from '@/features/announcements/pages/AnnouncementFormPage';
+import { InformacoesPage } from '@/features/faq/pages/InformacoesPage';
+import { FaqAdminPage } from '@/features/faq/pages/FaqAdminPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -50,6 +52,8 @@ const router = createBrowserRouter([
       { path: '/avisos/novo', element: <AnnouncementFormPage /> },
       { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
       { path: '/avisos/:id/editar', element: <AnnouncementFormPage /> },
+      { path: '/informacoes', element: <InformacoesPage /> },
+      { path: '/informacoes/gerenciar', element: <FaqAdminPage /> },
     ],
   },
 ]);

@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleId> {
   List<UserRole> findById_UserId(UUID userId);
+
+  long countById_RoleId(Short roleId);
 }

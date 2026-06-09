@@ -5,5 +5,6 @@ public enum RoleName {
   COUNCIL,
   STAFF,
   RESIDENT,
-  DOORMAN
+  DOORMAN,
+  MURAL_EDITOR
 }

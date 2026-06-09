@@ -80,6 +80,7 @@ class AnnouncementServiceTest {
 
     assertThat(v.title()).isEqualTo("Novo");
     assertThat(v.body()).isEqualTo("novo corpo");
+    assertThat(v.position()).isZero();
   }
 
   @Test
@@ -101,5 +102,6 @@ class AnnouncementServiceTest {
     var page = service.list(PageRequest.of(0, 20));
 
     assertThat(page.getContent()).hasSize(1);
+    assertThat(page.getContent().get(0).position()).isZero();
   }
 }

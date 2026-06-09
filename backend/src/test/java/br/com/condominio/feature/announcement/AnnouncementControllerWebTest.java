@@ -58,7 +58,8 @@ class AnnouncementControllerWebTest {
 
     mvc.perform(get("/api/announcements").with(MockAuth.user(UID)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].title").value("Manutenção"));
+        .andExpect(jsonPath("$.content[0].title").value("Manutenção"))
+        .andExpect(jsonPath("$.content[0].position").value(0));
   }
 
   @Test

@@ -15,7 +15,6 @@ export function AnnouncementFormPage() {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [pinned, setPinned] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
 
@@ -28,7 +27,6 @@ export function AnnouncementFormPage() {
         if (!active) return;
         setTitle(a.title);
         setBody(a.body);
-        setPinned(a.pinned);
       })
       .catch(() => toast.error('Erro ao carregar o aviso.'))
       .finally(() => {
@@ -51,7 +49,7 @@ export function AnnouncementFormPage() {
     }
     setSaving(true);
     try {
-      const payload = { title: title.trim(), body: body.trim(), pinned };
+      const payload = { title: title.trim(), body: body.trim() };
       if (isEdit && id) {
         await updateAnnouncement(id, payload);
         toast.success('Aviso atualizado.');
@@ -105,15 +103,6 @@ export function AnnouncementFormPage() {
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
-            <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-5 w-5"
-                checked={pinned}
-                onChange={(e) => setPinned(e.target.checked)}
-              />
-              <span className="text-sm font-medium">Fixar no topo do mural</span>
-            </label>
             <Button type="submit" disabled={saving} className="min-h-[44px] w-full">
               {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Publicar aviso'}
             </Button>

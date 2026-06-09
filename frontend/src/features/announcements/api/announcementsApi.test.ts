@@ -11,6 +11,7 @@ import {
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  reorderAnnouncements,
 } from './announcementsApi';
 
 const get = vi.mocked(api.get);
@@ -47,21 +48,25 @@ describe('announcementsApi — contrato com o backend', () => {
 
   it('createAnnouncement faz POST com o corpo', async () => {
     post.mockResolvedValue({ data: { id: 'a1' } });
-    await createAnnouncement({ title: 'Manutenção', body: 'corpo', pinned: true });
-    expect(post).toHaveBeenCalledWith('/announcements', {
-      title: 'Manutenção',
-      body: 'corpo',
-      pinned: true,
-    });
+    await createAnnouncement({ title: 'Manutenção', body: 'corpo' });
+    expect(post).toHaveBeenCalledWith('/announcements', { title: 'Manutenção', body: 'corpo' });
   });
 
   it('updateAnnouncement faz PUT no id', async () => {
     put.mockResolvedValue({ data: { id: 'a1' } });
-    await updateAnnouncement('a1', { title: 'Novo', body: 'corpo', pinned: false });
+    await updateAnnouncement('a1', { title: 'Novo', body: 'corpo' });
     expect(put).toHaveBeenCalledWith(
       '/announcements/a1',
-      expect.objectContaining({ title: 'Novo', pinned: false })
+      expect.objectContaining({ title: 'Novo' })
     );
+  });
+
+  it('reorderAnnouncements faz PUT em /reorder com os items', async () => {
+    put.mockResolvedValue({ data: undefined });
+    await reorderAnnouncements([{ id: 'a1', position: 0 }]);
+    expect(put).toHaveBeenCalledWith('/announcements/reorder', {
+      items: [{ id: 'a1', position: 0 }],
+    });
   });
 
   it('deleteAnnouncement faz DELETE no id', async () => {

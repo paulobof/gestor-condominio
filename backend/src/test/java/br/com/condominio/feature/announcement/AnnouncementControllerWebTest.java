@@ -49,8 +49,7 @@ class AnnouncementControllerWebTest {
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
 
   private AnnouncementView view() {
-    return new AnnouncementView(
-        AID, "Manutenção", "corpo", true, Instant.now(), UID, Instant.now());
+    return new AnnouncementView(AID, "Manutenção", "corpo", 0, Instant.now(), UID, Instant.now());
   }
 
   @Test
@@ -59,8 +58,7 @@ class AnnouncementControllerWebTest {
 
     mvc.perform(get("/api/announcements").with(MockAuth.user(UID)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].title").value("Manutenção"))
-        .andExpect(jsonPath("$.content[0].pinned").value(true));
+        .andExpect(jsonPath("$.content[0].title").value("Manutenção"));
   }
 
   @Test
@@ -77,7 +75,7 @@ class AnnouncementControllerWebTest {
             post("/api/announcements")
                 .with(MockAuth.user(UID, MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\",\"pinned\":true}"))
+                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("Manutenção"));
   }
@@ -88,7 +86,7 @@ class AnnouncementControllerWebTest {
             post("/api/announcements")
                 .with(MockAuth.user(UID))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\",\"pinned\":false}"))
+                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\"}"))
         .andExpect(status().isForbidden());
     verify(service, never()).create(any(), any());
   }

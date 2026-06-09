@@ -33,21 +33,32 @@ class AnnouncementServiceTest {
     when(repo.save(any(Announcement.class))).thenAnswer(i -> i.getArgument(0));
   }
 
-  private Announcement persisted(UUID id, boolean pinned) {
-    Announcement a = Announcement.create(author, "Aviso", "corpo", pinned);
+  private Announcement persisted(UUID id, int position) {
+    Announcement a = Announcement.create(author, "Aviso", "corpo", position);
     ReflectionTestUtils.setField(a, "id", id);
     return a;
   }
 
   @Test
-  void create_savesAndReturnsView() {
+  void create_putsNewAtTop_minusOne() {
+    when(repo.findMinPosition()).thenReturn(2);
+
     AnnouncementView v =
-        service.create(author, new CreateAnnouncementRequest("Manutenção", "corpo", true));
+        service.create(author, new CreateAnnouncementRequest("Manutenção", "corpo"));
 
     assertThat(v.title()).isEqualTo("Manutenção");
-    assertThat(v.pinned()).isTrue();
     assertThat(v.authorUserId()).isEqualTo(author);
+    assertThat(v.position()).isEqualTo(1);
     verify(repo).save(any(Announcement.class));
+  }
+
+  @Test
+  void create_firstAnnouncement_positionZero() {
+    when(repo.findMinPosition()).thenReturn(null);
+
+    AnnouncementView v = service.create(author, new CreateAnnouncementRequest("Regras", "corpo"));
+
+    assertThat(v.position()).isZero();
   }
 
   @Test
@@ -63,19 +74,18 @@ class AnnouncementServiceTest {
   @Test
   void update_editsFields() {
     UUID id = UUID.randomUUID();
-    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, true)));
+    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, 0)));
 
-    AnnouncementView v =
-        service.update(id, new UpdateAnnouncementRequest("Novo", "novo corpo", false));
+    AnnouncementView v = service.update(id, new UpdateAnnouncementRequest("Novo", "novo corpo"));
 
     assertThat(v.title()).isEqualTo("Novo");
-    assertThat(v.pinned()).isFalse();
+    assertThat(v.body()).isEqualTo("novo corpo");
   }
 
   @Test
   void delete_softDeletesViaRepository() {
     UUID id = UUID.randomUUID();
-    Announcement a = persisted(id, false);
+    Announcement a = persisted(id, 0);
     when(repo.findById(id)).thenReturn(Optional.of(a));
 
     service.delete(id);
@@ -85,12 +95,11 @@ class AnnouncementServiceTest {
 
   @Test
   void list_mapsPageToViews() {
-    when(repo.findAllByOrderByPinnedDescPublishedAtDesc(any()))
-        .thenReturn(new PageImpl<>(List.of(persisted(UUID.randomUUID(), true))));
+    when(repo.findAllByOrderByPositionAsc(any()))
+        .thenReturn(new PageImpl<>(List.of(persisted(UUID.randomUUID(), 0))));
 
     var page = service.list(PageRequest.of(0, 20));
 
     assertThat(page.getContent()).hasSize(1);
-    assertThat(page.getContent().get(0).pinned()).isTrue();
   }
 }

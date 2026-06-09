@@ -23,7 +23,7 @@ public class AnnouncementService {
 
   @Transactional(readOnly = true)
   public Page<AnnouncementView> list(Pageable pageable) {
-    return repo.findAllByOrderByPinnedDescPublishedAtDesc(pageable).map(AnnouncementView::of);
+    return repo.findAllByOrderByPositionAsc(pageable).map(AnnouncementView::of);
   }
 
   @Transactional(readOnly = true)
@@ -33,14 +33,16 @@ public class AnnouncementService {
 
   @Transactional
   public AnnouncementView create(UUID authorId, CreateAnnouncementRequest body) {
-    Announcement a = Announcement.create(authorId, body.title(), body.body(), body.pinned());
+    Integer min = repo.findMinPosition();
+    int top = (min == null ? 0 : min - 1);
+    Announcement a = Announcement.create(authorId, body.title(), body.body(), top);
     return AnnouncementView.of(repo.save(a));
   }
 
   @Transactional
   public AnnouncementView update(UUID id, UpdateAnnouncementRequest body) {
     Announcement a = find(id);
-    a.edit(body.title(), body.body(), body.pinned());
+    a.edit(body.title(), body.body());
     return AnnouncementView.of(a);
   }
 

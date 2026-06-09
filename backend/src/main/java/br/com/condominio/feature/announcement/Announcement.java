@@ -8,7 +8,9 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
-/** Aviso do mural publicado pelo síndico. Soft delete; fixados aparecem primeiro na listagem. */
+/**
+ * Aviso do mural publicado por quem tem ANNOUNCEMENT_MANAGE. Soft delete; ordem manual (position).
+ */
 @Entity
 @Table(name = "announcement")
 @DynamicInsert
@@ -33,7 +35,7 @@ public class Announcement {
   private String body;
 
   @Column(nullable = false)
-  private boolean pinned;
+  private int position;
 
   @Column(name = "published_at", insertable = false, updatable = false)
   private Instant publishedAt;
@@ -55,18 +57,21 @@ public class Announcement {
     updatedAt = Instant.now();
   }
 
-  public static Announcement create(UUID authorUserId, String title, String body, boolean pinned) {
+  public static Announcement create(UUID authorUserId, String title, String body, int position) {
     Announcement a = new Announcement();
     a.authorUserId = authorUserId;
     a.title = title;
     a.body = body;
-    a.pinned = pinned;
+    a.position = position;
     return a;
   }
 
-  public void edit(String title, String body, boolean pinned) {
+  public void edit(String title, String body) {
     this.title = title;
     this.body = body;
-    this.pinned = pinned;
+  }
+
+  public void moveTo(int position) {
+    this.position = position;
   }
 }

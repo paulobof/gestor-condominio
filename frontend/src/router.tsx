@@ -14,7 +14,6 @@ import { ClassifiedFormPage } from '@/features/classifieds/pages/ClassifiedFormP
 import { RecommendationsListPage } from '@/features/recommendations/pages/RecommendationsListPage';
 import { RecommendationDetailPage } from '@/features/recommendations/pages/RecommendationDetailPage';
 import { RecommendationFormPage } from '@/features/recommendations/pages/RecommendationFormPage';
-import { PendingConsentPage } from '@/features/recommendations/pages/PendingConsentPage';
 import { AnnouncementsListPage } from '@/features/announcements/pages/AnnouncementsListPage';
 import { AnnouncementDetailPage } from '@/features/announcements/pages/AnnouncementDetailPage';
 import { AnnouncementFormPage } from '@/features/announcements/pages/AnnouncementFormPage';
@@ -47,7 +46,6 @@ const router = createBrowserRouter([
       { path: '/classificados/:id/editar', element: <ClassifiedFormPage /> },
       { path: '/indicacoes', element: <RecommendationsListPage /> },
       { path: '/indicacoes/nova', element: <RecommendationFormPage /> },
-      { path: '/indicacoes/pendentes', element: <PendingConsentPage /> },
       { path: '/indicacoes/:id', element: <RecommendationDetailPage /> },
       { path: '/indicacoes/:id/editar', element: <RecommendationFormPage /> },
       { path: '/avisos', element: <AnnouncementsListPage /> },

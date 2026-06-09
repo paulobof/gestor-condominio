@@ -1,7 +1,7 @@
 import { api } from '@/lib/api';
 import type { Tag } from './tagsApi';
 
-export type RecommendationStatus = 'ACTIVE' | 'PENDING_RESIDENT_CONSENT' | 'HIDDEN';
+export type RecommendationStatus = 'ACTIVE' | 'HIDDEN';
 
 export interface OpeningHours {
   dayOfWeek: number;
@@ -89,15 +89,6 @@ export async function updateRecommendation(
 
 export async function deleteRecommendation(id: string) {
   await api.delete(`/recommendations/${id}`);
-}
-
-export async function listPendingConsent() {
-  const r = await api.get('/recommendations/pending-consent');
-  return r.data as Recommendation[];
-}
-
-export async function respondConsent(id: string, approved: boolean) {
-  await api.post(`/recommendations/${id}/resident-consent`, { approved });
 }
 
 export async function hideRecommendation(id: string) {

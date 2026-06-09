@@ -42,9 +42,9 @@ class RecommendationTest {
   }
 
   @Test
-  void create_resident_isPendingConsent() {
-    assertThat(resident(UUID.randomUUID()).getStatus())
-        .isEqualTo(RecommendationStatus.PENDING_RESIDENT_CONSENT);
+  void create_resident_isActive() {
+    // Indicações de morador não exigem mais aprovação: entram ACTIVE direto.
+    assertThat(resident(UUID.randomUUID()).getStatus()).isEqualTo(RecommendationStatus.ACTIVE);
   }
 
   @Test
@@ -63,20 +63,6 @@ class RecommendationTest {
                     5,
                     "ok"))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void consentByResident_fromPending_becomesActive() {
-    Recommendation r = resident(UUID.randomUUID());
-    r.consentByResident();
-    assertThat(r.getStatus()).isEqualTo(RecommendationStatus.ACTIVE);
-    assertThat(r.getResidentConsentAt()).isNotNull();
-  }
-
-  @Test
-  void consentByResident_whenNotPending_throws() {
-    Recommendation r = external();
-    assertThatThrownBy(r::consentByResident).isInstanceOf(IllegalStateException.class);
   }
 
   @Test

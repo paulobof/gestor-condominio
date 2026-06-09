@@ -59,9 +59,6 @@ public class Recommendation {
   @Column(nullable = false, length = 30)
   private RecommendationStatus status;
 
-  @Column(name = "resident_consent_at")
-  private Instant residentConsentAt;
-
   @ManyToMany
   @JoinTable(
       name = "recommendation_tag",
@@ -108,8 +105,7 @@ public class Recommendation {
     r.priceRange = priceRange;
     r.rating = rating == null ? null : rating.shortValue();
     r.comment = comment;
-    r.status =
-        resident ? RecommendationStatus.PENDING_RESIDENT_CONSENT : RecommendationStatus.ACTIVE;
+    r.status = RecommendationStatus.ACTIVE;
     return r;
   }
 
@@ -133,18 +129,6 @@ public class Recommendation {
   public void replaceTags(Set<Tag> newTags) {
     this.tags.clear();
     this.tags.addAll(newTags);
-  }
-
-  public boolean isPendingConsent() {
-    return status == RecommendationStatus.PENDING_RESIDENT_CONSENT;
-  }
-
-  public void consentByResident() {
-    if (status != RecommendationStatus.PENDING_RESIDENT_CONSENT) {
-      throw new IllegalStateException("Indicação não está aguardando consentimento.");
-    }
-    status = RecommendationStatus.ACTIVE;
-    residentConsentAt = Instant.now();
   }
 
   public void hide() {

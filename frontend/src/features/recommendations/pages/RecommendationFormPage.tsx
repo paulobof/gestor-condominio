@@ -213,13 +213,7 @@ export function RecommendationFormPage() {
           isResident,
           residentUserId: isResident ? residentUserId.trim() : null,
         });
-        if (isResident) {
-          toast.success(
-            'Indicação criada. Ela ficará pendente de consentimento do morador antes de aparecer.'
-          );
-        } else {
-          toast.success('Indicação criada. Adicione fotos e horários, se desejar.');
-        }
+        toast.success('Indicação criada. Adicione fotos e horários, se desejar.');
         navigate(`/indicacoes/${created.id}/editar`, { replace: true });
       }
     } catch (err) {
@@ -375,7 +369,7 @@ export function RecommendationFormPage() {
                       placeholder="00000000-0000-0000-0000-000000000000"
                     />
                     <p className="text-xs text-muted-foreground">
-                      A indicação ficará pendente de consentimento do morador antes de aparecer.
+                      Identifica que o profissional indicado é um morador do prédio.
                     </p>
                   </div>
                 )}

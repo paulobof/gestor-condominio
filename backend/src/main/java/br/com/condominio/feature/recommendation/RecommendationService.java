@@ -1,12 +1,9 @@
 package br.com.condominio.feature.recommendation;
 
 import br.com.condominio.feature.recommendation.dto.*;
-import br.com.condominio.feature.recommendation.event.RecommendationConsentRequestedEvent;
 import br.com.condominio.feature.tag.Tag;
 import br.com.condominio.feature.tag.TagService;
 import br.com.condominio.feature.tag.dto.TagView;
-import br.com.condominio.feature.user.User;
-import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -20,7 +17,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,11 +31,9 @@ public class RecommendationService {
   private final RecommendationPhotoRepository photoRepo;
   private final RecommendationOpeningHoursRepository hoursRepo;
   private final TagService tagService;
-  private final UserRepository userRepo;
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
-  private final ApplicationEventPublisher events;
 
   @Transactional
   public RecommendationView create(UUID authorId, CreateRecommendationRequest req) {
@@ -58,22 +52,6 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
-    if (req.isResident()) {
-      User resident =
-          userRepo
-              .findById(req.residentUserId())
-              .orElseThrow(
-                  () ->
-                      new RecommendationException("NOT_FOUND", "Morador indicado não encontrado."));
-      events.publishEvent(
-          new RecommendationConsentRequestedEvent(
-              r.getId(),
-              resident.getId(),
-              resident.getPhone(),
-              resident.getGreetingName(),
-              authorDisplay(authorId),
-              r.getServiceName()));
-    }
     return view(r);
   }
 
@@ -82,9 +60,8 @@ public class RecommendationService {
   @Transactional
   public RecommendationView getById(UUID id, UUID actorId, boolean canModerate) {
     Recommendation r = load(id);
-    // Indicação não-ACTIVE (PENDING_RESIDENT_CONSENT/HIDDEN) carrega PII do morador ainda sem
-    // consentimento: só o autor, o morador indicado ou um moderador podem vê-la. Para os demais,
-    // NOT_FOUND (não confirma existência).
+    // Indicação HIDDEN (oculta por moderação) só é visível ao autor, ao morador indicado ou a um
+    // moderador. Para os demais, NOT_FOUND (não confirma existência).
     if (r.getStatus() != RecommendationStatus.ACTIVE
         && !canModerate
         && !actorId.equals(r.getRecommendedByUserId())
@@ -100,16 +77,6 @@ public class RecommendationService {
     String t = (tag == null || tag.isBlank()) ? null : tag;
     String s = (search == null || search.isBlank()) ? null : search;
     return repo.search(t, residentOnly, s, pageable).map(this::view);
-  }
-
-  @Transactional
-  public List<RecommendationView> pendingConsentFor(UUID residentUserId) {
-    return repo
-        .findByResidentUserIdAndStatus(
-            residentUserId, RecommendationStatus.PENDING_RESIDENT_CONSENT)
-        .stream()
-        .map(this::view)
-        .toList();
   }
 
   @Transactional
@@ -142,25 +109,6 @@ public class RecommendationService {
     Recommendation r = load(id);
     r.hide();
     repo.save(r);
-  }
-
-  @Transactional
-  public void residentConsent(UUID id, UUID actorId, boolean canModerate, boolean approved) {
-    Recommendation r = load(id);
-    boolean isTheResident = actorId.equals(r.getResidentUserId());
-    if (!isTheResident && !canModerate) {
-      throw new RecommendationException("FORBIDDEN", "Apenas o morador indicado pode responder.");
-    }
-    if (!r.isPendingConsent()) {
-      throw new RecommendationException(
-          "INVALID_STATE", "Indicação não está aguardando consentimento.");
-    }
-    if (approved) {
-      r.consentByResident();
-      repo.save(r);
-    } else {
-      repo.delete(r); // recusa = soft delete (direito do titular)
-    }
   }
 
   private static final long MAX_PHOTO_BYTES = 1_048_576L;
@@ -240,10 +188,6 @@ public class RecommendationService {
           RecommendationOpeningHours.create(
               recommendationId, (short) h.dayOfWeek(), h.opensAt(), h.closesAt(), h.notes()));
     }
-  }
-
-  private String authorDisplay(UUID authorId) {
-    return userRepo.findById(authorId).map(User::getGreetingName).orElse("Um morador");
   }
 
   private Recommendation load(UUID id) {

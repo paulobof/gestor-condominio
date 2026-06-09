@@ -11,10 +11,7 @@ import br.com.condominio.feature.recommendation.dto.CreateRecommendationRequest;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
 import br.com.condominio.feature.recommendation.dto.UpdateRecommendationRequest;
-import br.com.condominio.feature.recommendation.event.RecommendationConsentRequestedEvent;
 import br.com.condominio.feature.tag.TagService;
-import br.com.condominio.feature.user.User;
-import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -23,7 +20,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -33,11 +29,9 @@ class RecommendationServiceTest {
   private RecommendationPhotoRepository photoRepo;
   private RecommendationOpeningHoursRepository hoursRepo;
   private TagService tagService;
-  private UserRepository userRepo;
   private FileStorage storage;
   private MagicBytesValidator magicBytes;
   private MinioProperties props;
-  private ApplicationEventPublisher events;
   private RecommendationService service;
 
   private final UUID author = UUID.randomUUID();
@@ -50,14 +44,12 @@ class RecommendationServiceTest {
     photoRepo = mock(RecommendationPhotoRepository.class);
     hoursRepo = mock(RecommendationOpeningHoursRepository.class);
     tagService = mock(TagService.class);
-    userRepo = mock(UserRepository.class);
     storage = mock(FileStorage.class);
     magicBytes = mock(MagicBytesValidator.class);
     props = new MinioProperties();
-    events = mock(ApplicationEventPublisher.class);
     service =
         new RecommendationService(
-            repo, photoRepo, hoursRepo, tagService, userRepo, storage, magicBytes, props, events);
+            repo, photoRepo, hoursRepo, tagService, storage, magicBytes, props);
     when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByRecommendationIdOrderByOrdering(any())).thenReturn(List.of());
     when(hoursRepo.findByOwnerIdOrderByDayOfWeek(any())).thenReturn(List.of());
@@ -88,22 +80,17 @@ class RecommendationServiceTest {
   }
 
   @Test
-  void create_external_active_noEvent() {
+  void create_external_active() {
     RecommendationView v = service.create(author, req(false, null));
     assertThat(v.status()).isEqualTo(RecommendationStatus.ACTIVE);
-    verify(events, never()).publishEvent(any(RecommendationConsentRequestedEvent.class));
   }
 
   @Test
-  void create_resident_pending_publishesEvent() {
-    User u = mock(User.class);
-    when(u.getId()).thenReturn(resident);
-    when(u.getPhone()).thenReturn("11988887777");
-    when(u.getGreetingName()).thenReturn("Maria");
-    when(userRepo.findById(resident)).thenReturn(Optional.of(u));
+  void create_resident_active_noApproval() {
+    // Indicação de morador não exige mais consentimento: entra ACTIVE direto, sem evento.
     RecommendationView v = service.create(author, req(true, resident));
-    assertThat(v.status()).isEqualTo(RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    verify(events).publishEvent(any(RecommendationConsentRequestedEvent.class));
+    assertThat(v.status()).isEqualTo(RecommendationStatus.ACTIVE);
+    assertThat(v.isResident()).isTrue();
   }
 
   @Test
@@ -139,62 +126,12 @@ class RecommendationServiceTest {
   }
 
   @Test
-  void residentConsent_approve_activates() {
-    UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
-    when(repo.findById(id)).thenReturn(Optional.of(r));
-    service.residentConsent(id, resident, false, true);
-    assertThat(r.getStatus()).isEqualTo(RecommendationStatus.ACTIVE);
-  }
-
-  @Test
-  void residentConsent_decline_softDeletes() {
-    UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
-    when(repo.findById(id)).thenReturn(Optional.of(r));
-    service.residentConsent(id, resident, false, false);
-    verify(repo).delete(r);
-  }
-
-  @Test
-  void residentConsent_byOther_withoutModerate_forbidden() {
-    UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
-    when(repo.findById(id)).thenReturn(Optional.of(r));
-    assertThatThrownBy(() -> service.residentConsent(id, stranger, false, true))
-        .isInstanceOf(RecommendationException.class)
-        .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
-  }
-
-  @Test
   void hide_byModerator() {
     UUID id = UUID.randomUUID();
     when(repo.findById(id))
         .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
     service.hide(id);
     verify(repo).save(any(Recommendation.class));
-  }
-
-  @Test
-  void residentConsent_whenNotPending_invalidState() {
-    UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.ACTIVE);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
-    when(repo.findById(id)).thenReturn(Optional.of(r));
-    assertThatThrownBy(() -> service.residentConsent(id, resident, false, true))
-        .isInstanceOf(RecommendationException.class)
-        .hasFieldOrPropertyWithValue("code", "INVALID_STATE");
-  }
-
-  @Test
-  void create_resident_userNotFound_throwsNotFound() {
-    when(userRepo.findById(resident)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> service.create(author, req(true, resident)))
-        .isInstanceOf(RecommendationException.class)
-        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
   }
 
   @Test
@@ -206,10 +143,9 @@ class RecommendationServiceTest {
   }
 
   @Test
-  void getById_pending_byStranger_notFound() {
+  void getById_hidden_byStranger_notFound() {
     UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
+    Recommendation r = persisted(id, author, RecommendationStatus.HIDDEN);
     when(repo.findById(id)).thenReturn(Optional.of(r));
     assertThatThrownBy(() -> service.getById(id, stranger, false))
         .isInstanceOf(RecommendationException.class)
@@ -217,13 +153,11 @@ class RecommendationServiceTest {
   }
 
   @Test
-  void getById_pending_byIndicatedResident_ok() {
+  void getById_hidden_byModerator_ok() {
     UUID id = UUID.randomUUID();
-    Recommendation r = persisted(id, author, RecommendationStatus.PENDING_RESIDENT_CONSENT);
-    ReflectionTestUtils.setField(r, "residentUserId", resident);
+    Recommendation r = persisted(id, author, RecommendationStatus.HIDDEN);
     when(repo.findById(id)).thenReturn(Optional.of(r));
-    assertThat(service.getById(id, resident, false).status())
-        .isEqualTo(RecommendationStatus.PENDING_RESIDENT_CONSENT);
+    assertThat(service.getById(id, stranger, true).status()).isEqualTo(RecommendationStatus.HIDDEN);
   }
 
   private MockMultipartFile jpeg(int size) {

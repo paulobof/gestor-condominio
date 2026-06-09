@@ -4,7 +4,6 @@ import {
   Megaphone,
   Lightbulb,
   ShoppingBag,
-  BellRing,
   ClipboardCheck,
   ShieldCheck,
   BookOpen,
@@ -30,7 +29,6 @@ const ITEMS: NavItem[] = [
   { to: '/contatos', label: 'Contatos', icon: Phone, brand: 'blue' },
   { to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
   { to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
-  { to: '/indicacoes/pendentes', label: 'Consentimentos', icon: BellRing, brand: 'blue' },
   {
     to: '/admin/registrations',
     label: 'Cadastros pendentes',

@@ -1,6 +1,5 @@
 package br.com.condominio.feature.recommendation;
 
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,9 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface RecommendationRepository extends JpaRepository<Recommendation, UUID> {
-
-  List<Recommendation> findByResidentUserIdAndStatus(
-      UUID residentUserId, RecommendationStatus status);
 
   // cast(:param as string): sem o cast, o Hibernate 6 vincula parâmetro String null como `bytea`
   // no Postgres, e `lower(bytea)` não existe (SQLState 42883). O cast fixa o tipo mesmo quando

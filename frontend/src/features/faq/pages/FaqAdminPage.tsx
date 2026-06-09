@@ -155,7 +155,7 @@ export function FaqAdminPage() {
   return (
     <main className="mx-auto max-w-3xl p-4 space-y-6">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to="/informacoes">
+        <Link to="/faq">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>

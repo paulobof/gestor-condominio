@@ -6,7 +6,7 @@ vi.mock('../api/faqApi', () => ({ listFaq: vi.fn() }));
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-import { InformacoesPage } from './InformacoesPage';
+import { FaqPage } from './FaqPage';
 import { listFaq } from '../api/faqApi';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -33,7 +33,7 @@ function setUser(authorities: string[] = []) {
 function renderPage() {
   return render(
     <MemoryRouter>
-      <InformacoesPage />
+      <FaqPage />
     </MemoryRouter>
   );
 }
@@ -43,7 +43,7 @@ beforeEach(() => {
   setUser();
 });
 
-describe('InformacoesPage', () => {
+describe('FaqPage', () => {
   it('renderiza os headings de categoria e as perguntas', async () => {
     listMock.mockResolvedValue([
       faq({ id: 'f1', category: 'Regras', question: 'Posso ter pet?' }),
@@ -66,14 +66,14 @@ describe('InformacoesPage', () => {
     expect(screen.queryByRole('link', { name: /gerenciar/i })).not.toBeInTheDocument();
   });
 
-  it('com FAQ_MANAGE exibe link "Gerenciar" apontando para /informacoes/gerenciar', async () => {
+  it('com FAQ_MANAGE exibe link "Gerenciar" apontando para /faq/gerenciar', async () => {
     setUser(['FAQ_MANAGE']);
     listMock.mockResolvedValue([faq()]);
     renderPage();
 
     const link = await screen.findByRole('link', { name: /gerenciar/i });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/informacoes/gerenciar');
+    expect(link).toHaveAttribute('href', '/faq/gerenciar');
   });
 
   it('mostra estado vazio quando não há FAQs', async () => {

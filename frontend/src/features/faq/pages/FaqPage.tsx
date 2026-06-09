@@ -19,7 +19,7 @@ function groupByCategory(faqs: Faq[]): { category: string; items: Faq[] }[] {
   return order.map((cat) => ({ category: cat, items: map[cat] }));
 }
 
-export function InformacoesPage() {
+export function FaqPage() {
   const { user } = useAuth();
   const canManage = !!user && user.authorities.includes('FAQ_MANAGE');
   const [items, setItems] = useState<Faq[]>([]);
@@ -54,11 +54,11 @@ export function InformacoesPage() {
             className="inline-block h-6 w-1.5 rounded-full"
             style={{ backgroundColor: 'hsl(var(--brand-blue))' }}
           />
-          Informações
+          Perguntas Frequentes
         </h1>
         {canManage && (
           <Button asChild className="min-h-[44px]">
-            <Link to="/informacoes/gerenciar">Gerenciar</Link>
+            <Link to="/faq/gerenciar">Gerenciar</Link>
           </Button>
         )}
       </div>

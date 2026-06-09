@@ -20,6 +20,8 @@ import { AnnouncementDetailPage } from '@/features/announcements/pages/Announcem
 import { AnnouncementFormPage } from '@/features/announcements/pages/AnnouncementFormPage';
 import { InformacoesPage } from '@/features/faq/pages/InformacoesPage';
 import { FaqAdminPage } from '@/features/faq/pages/FaqAdminPage';
+import { ContactsPage } from '@/features/contacts/pages/ContactsPage';
+import { ContactsAdminPage } from '@/features/contacts/pages/ContactsAdminPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -54,6 +56,8 @@ const router = createBrowserRouter([
       { path: '/avisos/:id/editar', element: <AnnouncementFormPage /> },
       { path: '/informacoes', element: <InformacoesPage /> },
       { path: '/informacoes/gerenciar', element: <FaqAdminPage /> },
+      { path: '/contatos', element: <ContactsPage /> },
+      { path: '/contatos/gerenciar', element: <ContactsAdminPage /> },
     ],
   },
 ]);

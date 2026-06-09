@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   BookOpen,
   Info,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -35,6 +36,13 @@ const ITEMS: NavItem[] = [
     icon: ClipboardCheck,
     brand: 'ink',
     requires: 'REGISTRATION_VIEW',
+  },
+  {
+    to: '/admin/acessos',
+    label: 'Gerenciar acessos',
+    icon: UserCog,
+    brand: 'ink',
+    requires: 'ROLE_ASSIGN',
   },
   { to: '/privacidade', label: 'Privacidade', icon: ShieldCheck, brand: 'ink' },
 ];

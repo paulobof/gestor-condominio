@@ -52,4 +52,17 @@ describe('Sidebar', () => {
       'page'
     );
   });
+
+  it('esconde "Gerenciar acessos" sem ROLE_ASSIGN', () => {
+    renderSidebar([]);
+    expect(screen.queryByRole('link', { name: /gerenciar acessos/i })).not.toBeInTheDocument();
+  });
+
+  it('mostra "Gerenciar acessos" com ROLE_ASSIGN', () => {
+    renderSidebar(['ROLE_ASSIGN']);
+    expect(screen.getAllByRole('link', { name: /gerenciar acessos/i })[0]).toHaveAttribute(
+      'href',
+      '/admin/acessos'
+    );
+  });
 });

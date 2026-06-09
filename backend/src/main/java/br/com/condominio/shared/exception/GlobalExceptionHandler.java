@@ -1,5 +1,6 @@
 package br.com.condominio.shared.exception;
 
+import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
 import br.com.condominio.feature.faq.FaqException;
@@ -125,6 +126,25 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleInfo(InfoException ex) {
     HttpStatus status =
         "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(AccessException.class)
+  public ResponseEntity<ApiError> handleAccess(AccessException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "ROLE_LIMIT_REACHED" -> HttpStatus.CONFLICT;
+          case "ROLE_NOT_FOUND", "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "ROLE_NOT_ASSIGNABLE", "USER_NOT_ACTIVE" -> HttpStatus.UNPROCESSABLE_ENTITY;
+          default -> HttpStatus.BAD_REQUEST;
+        };
     return ResponseEntity.status(status)
         .body(
             ApiError.of(

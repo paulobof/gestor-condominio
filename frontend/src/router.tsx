@@ -17,10 +17,10 @@ import { RecommendationFormPage } from '@/features/recommendations/pages/Recomme
 import { AnnouncementsListPage } from '@/features/announcements/pages/AnnouncementsListPage';
 import { AnnouncementDetailPage } from '@/features/announcements/pages/AnnouncementDetailPage';
 import { AnnouncementFormPage } from '@/features/announcements/pages/AnnouncementFormPage';
-import { InformacoesPage } from '@/features/faq/pages/InformacoesPage';
+import { FaqPage } from '@/features/faq/pages/FaqPage';
 import { FaqAdminPage } from '@/features/faq/pages/FaqAdminPage';
-import { ContactsPage } from '@/features/contacts/pages/ContactsPage';
-import { ContactsAdminPage } from '@/features/contacts/pages/ContactsAdminPage';
+import { InfoPage } from '@/features/generalinfo/pages/InfoPage';
+import { InfoAdminPage } from '@/features/generalinfo/pages/InfoAdminPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -52,10 +52,10 @@ const router = createBrowserRouter([
       { path: '/avisos/novo', element: <AnnouncementFormPage /> },
       { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
       { path: '/avisos/:id/editar', element: <AnnouncementFormPage /> },
-      { path: '/informacoes', element: <InformacoesPage /> },
-      { path: '/informacoes/gerenciar', element: <FaqAdminPage /> },
-      { path: '/contatos', element: <ContactsPage /> },
-      { path: '/contatos/gerenciar', element: <ContactsAdminPage /> },
+      { path: '/informacoes', element: <InfoPage /> },
+      { path: '/informacoes/gerenciar', element: <InfoAdminPage /> },
+      { path: '/faq', element: <FaqPage /> },
+      { path: '/faq/gerenciar', element: <FaqAdminPage /> },
     ],
   },
 ]);

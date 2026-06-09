@@ -65,14 +65,7 @@ export function AnnouncementDetailPage() {
         </Link>
       </Button>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {a.pinned && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-            Fixado
-          </span>
-        )}
-        <h1 className="text-2xl font-heading font-semibold">{a.title}</h1>
-      </div>
+      <h1 className="text-2xl font-heading font-semibold">{a.title}</h1>
 
       <p className="whitespace-pre-line text-sm leading-relaxed">{a.body}</p>
 

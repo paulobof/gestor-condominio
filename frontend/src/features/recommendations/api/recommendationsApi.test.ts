@@ -11,8 +11,6 @@ import {
   createRecommendation,
   updateRecommendation,
   deleteRecommendation,
-  listPendingConsent,
-  respondConsent,
   hideRecommendation,
   uploadRecommendationPhoto,
   deleteRecommendationPhoto,
@@ -79,18 +77,6 @@ describe('recommendationsApi — contrato com o backend', () => {
     del.mockResolvedValue({ data: undefined });
     await deleteRecommendation('r1');
     expect(del).toHaveBeenCalledWith('/recommendations/r1');
-  });
-
-  it('listPendingConsent bate no endpoint self', async () => {
-    get.mockResolvedValue({ data: [] });
-    await listPendingConsent();
-    expect(get).toHaveBeenCalledWith('/recommendations/pending-consent');
-  });
-
-  it('respondConsent envia { approved } no body', async () => {
-    post.mockResolvedValue({ data: undefined });
-    await respondConsent('r1', true);
-    expect(post).toHaveBeenCalledWith('/recommendations/r1/resident-consent', { approved: true });
   });
 
   it('hideRecommendation faz POST em /hide sem body', async () => {

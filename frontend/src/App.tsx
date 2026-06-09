@@ -1,13 +1,5 @@
 import { Link } from 'react-router-dom';
-import {
-  Home,
-  Megaphone,
-  Lightbulb,
-  ShoppingBag,
-  BellRing,
-  ClipboardCheck,
-  ShieldCheck,
-} from 'lucide-react';
+import { Home, Megaphone, Lightbulb, ShoppingBag, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -44,13 +36,6 @@ const NAV: NavItem[] = [
     desc: 'Compra e venda entre moradores.',
     icon: ShoppingBag,
     brand: 'green',
-  },
-  {
-    to: '/indicacoes/pendentes',
-    title: 'Consentimentos pendentes',
-    desc: 'Indicações em que você foi citado.',
-    icon: BellRing,
-    brand: 'blue',
   },
   {
     to: '/admin/registrations',

@@ -157,19 +157,6 @@ class RecommendationControllerWebTest {
     verify(service).hide(RID);
   }
 
-  // ---- consentimento delega flag approved -----------------------------------------
-
-  @Test
-  void residentConsent_returns204_andDelegatesApproved() throws Exception {
-    mvc.perform(
-            post("/api/recommendations/{id}/resident-consent", RID)
-                .with(MockAuth.user(UID))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"approved\":true}"))
-        .andExpect(status().isNoContent());
-    verify(service).residentConsent(RID, UID, false, true);
-  }
-
   // ---- mapeamento exceção→status --------------------------------------------------
 
   @Test

@@ -3,7 +3,6 @@ package br.com.condominio.feature.recommendation;
 import br.com.condominio.feature.recommendation.dto.*;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -42,13 +41,6 @@ public class RecommendationController {
     return service.list(tag, residentOnly, search, PageRequest.of(safePage, safeSize));
   }
 
-  @GetMapping("/pending-consent")
-  @PreAuthorize("isAuthenticated()")
-  public List<RecommendationView> pendingConsent(
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return service.pendingConsentFor(me.userId());
-  }
-
   @GetMapping("/{id}")
   @PreAuthorize("isAuthenticated()")
   public RecommendationView get(
@@ -78,16 +70,6 @@ public class RecommendationController {
   public ResponseEntity<Void> delete(
       @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     service.delete(id, me.userId(), canModerate(me));
-    return ResponseEntity.noContent().build();
-  }
-
-  @PostMapping("/{id}/resident-consent")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Void> residentConsent(
-      @PathVariable UUID id,
-      @Valid @RequestBody ResidentConsentRequest body,
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    service.residentConsent(id, me.userId(), canModerate(me), body.approved());
     return ResponseEntity.noContent().build();
   }
 

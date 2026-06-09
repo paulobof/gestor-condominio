@@ -132,8 +132,6 @@ app:
       enabled: ${APP_FEATURE_FAQ_ENABLED:false}
     contacts:
       enabled: ${APP_FEATURE_CONTACTS_ENABLED:false}
-  recommendation:
-    consent-base-url: ${APP_RECOMMENDATION_CONSENT_BASE_URL:http://localhost:5173/indicacoes/pendentes}
 
 resilience4j:
   timelimiter:

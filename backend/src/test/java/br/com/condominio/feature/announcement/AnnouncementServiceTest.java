@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.condominio.feature.announcement.dto.AnnouncementView;
 import br.com.condominio.feature.announcement.dto.CreateAnnouncementRequest;
+import br.com.condominio.feature.announcement.dto.ReorderAnnouncementsRequest;
 import br.com.condominio.feature.announcement.dto.UpdateAnnouncementRequest;
 import java.util.List;
 import java.util.Optional;
@@ -92,6 +93,24 @@ class AnnouncementServiceTest {
     service.delete(id);
 
     verify(repo).delete(a);
+  }
+
+  @Test
+  void reorder_appliesPositions() {
+    UUID id1 = UUID.randomUUID();
+    UUID id2 = UUID.randomUUID();
+    Announcement a1 = persisted(id1, 0);
+    Announcement a2 = persisted(id2, 1);
+    when(repo.findById(id1)).thenReturn(Optional.of(a1));
+    when(repo.findById(id2)).thenReturn(Optional.of(a2));
+
+    service.reorder(
+        List.of(
+            new ReorderAnnouncementsRequest.Item(id1, 1),
+            new ReorderAnnouncementsRequest.Item(id2, 0)));
+
+    assertThat(a1.getPosition()).isEqualTo(1);
+    assertThat(a2.getPosition()).isZero();
   }
 
   @Test

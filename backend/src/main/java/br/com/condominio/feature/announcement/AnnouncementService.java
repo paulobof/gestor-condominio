@@ -2,7 +2,9 @@ package br.com.condominio.feature.announcement;
 
 import br.com.condominio.feature.announcement.dto.AnnouncementView;
 import br.com.condominio.feature.announcement.dto.CreateAnnouncementRequest;
+import br.com.condominio.feature.announcement.dto.ReorderAnnouncementsRequest;
 import br.com.condominio.feature.announcement.dto.UpdateAnnouncementRequest;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -44,6 +46,13 @@ public class AnnouncementService {
     Announcement a = find(id);
     a.edit(body.title(), body.body());
     return AnnouncementView.of(a);
+  }
+
+  @Transactional
+  public void reorder(List<ReorderAnnouncementsRequest.Item> items) {
+    for (ReorderAnnouncementsRequest.Item it : items) {
+      find(it.id()).moveTo(it.position());
+    }
   }
 
   @Transactional

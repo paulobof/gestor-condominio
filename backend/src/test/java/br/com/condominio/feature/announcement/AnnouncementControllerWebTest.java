@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -116,6 +117,35 @@ class AnnouncementControllerWebTest {
     mvc.perform(delete("/api/announcements/{id}", AID).with(MockAuth.user(UID, MANAGE)))
         .andExpect(status().isNoContent());
     verify(service).delete(AID);
+  }
+
+  @Test
+  void reorder_withManage_returns204() throws Exception {
+    mvc.perform(
+            put("/api/announcements/reorder")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"items\":[{\"id\":\"" + AID + "\",\"position\":0}]}"))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void reorder_withoutManage_returns403() throws Exception {
+    mvc.perform(
+            put("/api/announcements/reorder")
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"items\":[{\"id\":\"" + AID + "\",\"position\":0}]}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void reorder_unauthenticated_isRejected() throws Exception {
+    mvc.perform(
+            put("/api/announcements/reorder")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"items\":[{\"id\":\"" + AID + "\",\"position\":0}]}"))
+        .andExpect(status().is4xxClientError());
   }
 
   @Test

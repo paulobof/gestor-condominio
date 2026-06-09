@@ -14,7 +14,14 @@
 
 ## Conceito
 
-Uma aba **"Informações Gerais"** (`/informacoes`) com uma lista de **seções**, cada uma com **título** e **corpo formatado** (rich text). O síndico cria/edita/exclui/reordena; qualquer usuário autenticado visualiza (somente leitura). Sem horário de funcionamento, sem telefone estruturado — tudo é conteúdo livre dentro das seções.
+Uma aba **"Informações"** (`/informacoes`) com uma lista de **seções**, cada uma com **título** e **corpo formatado** (rich text). O síndico cria/edita/exclui/reordena; qualquer usuário autenticado visualiza (somente leitura). Sem horário de funcionamento, sem telefone estruturado — tudo é conteúdo livre dentro das seções.
+
+### Resolução de nomenclatura (colisão com o FAQ)
+
+Hoje a aba rotulada **"Informações"** (`/informacoes`) é, na verdade, a feature de **FAQ** (`features/faq`, página `InformacoesPage`). Para a nova feature assumir "Informações" sem ambiguidade:
+
+- **FAQ é renomeado** para **"Perguntas Frequentes"**, rota **`/faq`** (admin `/faq/gerenciar`). Backend do FAQ (`/api/faq`) **não muda** — só rótulo/rotas no frontend. `InformacoesPage.tsx` → `FaqPage.tsx`.
+- **A nova feature** (seções livres) assume o rótulo **"Informações"** e a rota **`/informacoes`** (admin `/informacoes/gerenciar`), no lugar onde estava **Contatos**.
 
 ## Backend (novo módulo `feature/info`, remove `feature/contact`)
 
@@ -34,7 +41,7 @@ Uma aba **"Informações Gerais"** (`/informacoes`) com uma lista de **seções*
 ### DTOs
 - `CreateInfoSectionRequest(@NotBlank @Size(max=120) String title, @NotBlank String body)`.
 - `UpdateInfoSectionRequest(@NotBlank @Size(max=120) String title, @NotBlank String body)`.
-- `ReorderRequest(@NotEmpty List<UUID> orderedIds)`.
+- `ReorderRequest(@NotEmpty List<Item> items)` com `Item(@NotNull UUID id, int position)` (espelha `ReorderFaqRequest`).
 - `InfoSectionView(UUID id, String title, String body, int position, Instant updatedAt)`.
 
 ### Segurança — sanitização do HTML (STRIDE)
@@ -46,7 +53,7 @@ Uma aba **"Informações Gerais"** (`/informacoes`) com uma lista de **seções*
 - `create(req)` → sanitiza `body`, calcula `position` (último + 1), salva.
 - `update(id, req)` → sanitiza `body`, `edit(...)`; `NOT_FOUND` se ausente.
 - `delete(id)` → soft delete.
-- `reorder(orderedIds)` → aplica `position` conforme a ordem da lista; ids ausentes/extras geram `400`.
+- `reorder(items)` → aplica a `position` de cada `Item`; `NOT_FOUND` se algum id não existir.
 - `InfoException("NOT_FOUND", ...)` + mapeamento no `GlobalExceptionHandler` (404/400), como nas outras features.
 
 ### Controller `InfoSectionController` (`/api/info-sections`)
@@ -71,8 +78,9 @@ Uma aba **"Informações Gerais"** (`/informacoes`) com uma lista de **seções*
 ### Feature
 - **`features/generalinfo/api/generalInfoApi.ts`**: tipos `InfoSection`, `InfoSectionBody`; `listSections`, `createSection`, `updateSection`, `deleteSection`, `reorderSections`.
 - **`/informacoes` → `InfoPage`**: lista as seções (título + `RichTextView`), somente leitura. Botão "Gerenciar" → `/informacoes/gerenciar` apenas com `INFO_MANAGE`. Estado vazio amigável.
-- **`/informacoes/gerenciar` → `InfoAdminPage`**: lista com **arrastar para reordenar** (chama `reorderSections`); criar/editar via `RichTextEditor`; excluir; toasts.
-- **Sidebar:** item **"Informações Gerais"** → `/informacoes` (substitui "Contatos"). Atualiza `router.tsx`.
+- **`/informacoes/gerenciar` → `InfoAdminPage`**: lista com **setas ↑/↓** para reordenar (troca a `position` de itens adjacentes e chama `reorderSections`, espelhando `FaqAdminPage`); criar/editar via `RichTextEditor`; excluir; toasts.
+- **Sidebar:** item **"Informações"** → `/informacoes` (substitui "Contatos"); o item do FAQ vira **"Perguntas Frequentes"** → `/faq`. Atualiza `router.tsx`.
+- **Renomeação do FAQ (frontend):** `InformacoesPage.tsx` → `FaqPage.tsx` (rótulo "Perguntas Frequentes", links internos para `/faq` e `/faq/gerenciar`); `FaqAdminPage` link de volta para `/faq`; rotas `/faq` e `/faq/gerenciar` no router; atualizar testes correspondentes.
 - Remove `features/contacts` (páginas, api, testes). **Mantém** `components/openinghours/` (usado pelas Indicações).
 
 ### Dependências novas (frontend)

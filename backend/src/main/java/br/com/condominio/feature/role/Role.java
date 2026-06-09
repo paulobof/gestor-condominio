@@ -23,4 +23,7 @@ public class Role {
 
   @Column(name = "max_holders")
   private Short maxHolders;
+
+  @Column(name = "assignable", nullable = false)
+  private boolean assignable;
 }

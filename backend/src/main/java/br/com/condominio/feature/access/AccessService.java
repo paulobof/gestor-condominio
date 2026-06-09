@@ -77,6 +77,8 @@ public class AccessService {
     if (userRoleRepo.existsById(id)) {
       return; // idempotente: já tem a role
     }
+    // NOTE: check-then-act sob max_holders tem corrida teórica entre count e save. Aceitável:
+    // app single-instance, operação rara do síndico; a PK de user_role impede duplicar o mesmo par.
     if (role.getMaxHolders() != null
         && userRoleRepo.countById_RoleId(roleId) >= role.getMaxHolders()) {
       throw new AccessException(

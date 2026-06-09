@@ -104,4 +104,11 @@ class AccessControllerWebTest {
         .andExpect(status().isNoContent());
     verify(service).remove(eq(UID), eq(TARGET), eq((short) 6));
   }
+
+  @Test
+  void remove_withoutRoleAssign_returns403() throws Exception {
+    mvc.perform(delete("/api/access/users/{id}/roles/{roleId}", TARGET, 6).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).remove(any(), any(), eq((short) 6));
+  }
 }

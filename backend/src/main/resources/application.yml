@@ -130,8 +130,8 @@ app:
       enabled: ${APP_FEATURE_ANNOUNCEMENTS_ENABLED:false}
     faq:
       enabled: ${APP_FEATURE_FAQ_ENABLED:false}
-    contacts:
-      enabled: ${APP_FEATURE_CONTACTS_ENABLED:false}
+    generalinfo:
+      enabled: ${APP_FEATURE_GENERALINFO_ENABLED:false}
 
 resilience4j:
   timelimiter:

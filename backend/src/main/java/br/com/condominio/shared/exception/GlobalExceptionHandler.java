@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -127,6 +128,24 @@ public class GlobalExceptionHandler {
             .toList();
     return ResponseEntity.badRequest()
         .body(ApiError.validation("Verifique os campos.", fields, requestId()));
+  }
+
+  /**
+   * Corpo da requisição ilegível (JSON malformado, encoding inválido, tipo incompatível). É erro do
+   * cliente (400), não 500 — sem este handler o catch-all {@link #handleGeneric} transformaria um
+   * payload quebrado em Internal Server Error, poluindo métricas/alertas. Mensagem genérica: não
+   * expor detalhes do parser nem ecoar o corpo recebido.
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiError> handleNotReadable(HttpMessageNotReadableException ex) {
+    return ResponseEntity.badRequest()
+        .body(
+            ApiError.of(
+                400,
+                "Bad Request",
+                "MALFORMED_REQUEST",
+                "Corpo da requisição inválido ou ilegível.",
+                requestId()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)

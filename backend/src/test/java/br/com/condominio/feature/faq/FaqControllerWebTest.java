@@ -98,6 +98,19 @@ class FaqControllerWebTest {
   }
 
   @Test
+  void create_malformedJson_returns400() throws Exception {
+    // Corpo ilegível (JSON quebrado) é erro do cliente: deve ser 400, não 500.
+    mvc.perform(
+            post("/api/faq")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"Pergunta?\",")) // JSON truncado
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    verify(service, never()).create(any());
+  }
+
+  @Test
   void publish_withManage_returns200() throws Exception {
     when(service.setPublished(eq(FID), eq(true))).thenReturn(view());
 

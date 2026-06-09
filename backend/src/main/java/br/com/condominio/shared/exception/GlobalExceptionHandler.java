@@ -2,7 +2,6 @@ package br.com.condominio.shared.exception;
 
 import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
-import br.com.condominio.feature.contact.ContactException;
 import br.com.condominio.feature.faq.FaqException;
 import br.com.condominio.feature.info.InfoException;
 import br.com.condominio.feature.password.PasswordResetException;
@@ -124,20 +123,6 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(InfoException.class)
   public ResponseEntity<ApiError> handleInfo(InfoException ex) {
-    HttpStatus status =
-        "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-    return ResponseEntity.status(status)
-        .body(
-            ApiError.of(
-                status.value(),
-                status.getReasonPhrase(),
-                ex.getCode(),
-                ex.getMessage(),
-                requestId()));
-  }
-
-  @ExceptionHandler(ContactException.class)
-  public ResponseEntity<ApiError> handleContact(ContactException ex) {
     HttpStatus status =
         "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
     return ResponseEntity.status(status)

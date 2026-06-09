@@ -84,6 +84,16 @@ describe('AccessManagementPage', () => {
     await waitFor(() => expect(removeMock).toHaveBeenCalledWith('u1', 6));
   });
 
+  it('busca sem resultados exibe mensagem de estado vazio', async () => {
+    searchMock.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await user.type(screen.getByLabelText(/buscar/i), 'xyz');
+    await user.click(screen.getByRole('button', { name: /buscar/i }));
+
+    expect(await screen.findByText('Nenhum usuário encontrado.')).toBeInTheDocument();
+  });
+
   it('erro 409 mostra a mensagem do servidor e reverte o toggle', async () => {
     assignMock.mockRejectedValue({
       response: { data: { message: 'Limite de 3 atingido para Conselheiro.' } },

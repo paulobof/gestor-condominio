@@ -24,11 +24,13 @@ export function AccessManagementPage() {
   const [selected, setSelected] = useState<UserSearchResult | null>(null);
   const [roleIds, setRoleIds] = useState<Set<number>>(new Set());
   const [searching, setSearching] = useState(false);
+  const [pending, setPending] = useState<Set<number>>(new Set());
+  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     listAssignableRoles()
       .then(setRoles)
-      .catch(() => toast.error('Erro ao carregar as roles.'));
+      .catch(() => toast.error('Erro ao carregar os perfis de acesso.'));
   }, []);
 
   const doSearch = async (e: React.FormEvent) => {
@@ -36,8 +38,10 @@ export function AccessManagementPage() {
     if (query.trim().length < 2) return;
     setSearching(true);
     setSelected(null);
+    setSearched(false);
     try {
       setResults(await searchUsers(query.trim()));
+      setSearched(true);
     } catch {
       toast.error('Erro ao buscar usuários.');
     } finally {
@@ -46,6 +50,7 @@ export function AccessManagementPage() {
   };
 
   const selectUser = async (u: UserSearchResult) => {
+    setSearched(false);
     setSelected(u);
     try {
       setRoleIds(new Set(await getUserRoleIds(u.id)));
@@ -64,9 +69,15 @@ export function AccessManagementPage() {
       else next.add(role.id);
       return next;
     });
+    setPending((prev) => {
+      const next = new Set(prev);
+      next.add(role.id);
+      return next;
+    });
     try {
       if (has) await removeRole(selected.id, role.id);
       else await assignRole(selected.id, role.id);
+      toast.success('Acesso atualizado.');
     } catch (err) {
       // reverte
       setRoleIds((prev) => {
@@ -76,6 +87,12 @@ export function AccessManagementPage() {
         return next;
       });
       toast.error(errorMessage(err, 'Falha ao atualizar acesso.'));
+    } finally {
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(role.id);
+        return next;
+      });
     }
   };
 
@@ -106,6 +123,10 @@ export function AccessManagementPage() {
           Buscar
         </Button>
       </form>
+
+      {searched && !selected && results.length === 0 && (
+        <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
+      )}
 
       {results.length > 0 && !selected && (
         <ul className="mb-4 space-y-2">
@@ -141,6 +162,7 @@ export function AccessManagementPage() {
                   checked={roleIds.has(role.id)}
                   onChange={() => toggle(role)}
                   aria-label={role.label}
+                  disabled={pending.has(role.id)}
                 />
                 <span>{role.label}</span>
               </label>

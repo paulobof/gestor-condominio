@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
-import { listAnnouncements, type Announcement } from '../api/announcementsApi';
+import {
+  listAnnouncements,
+  reorderAnnouncements,
+  type Announcement,
+} from '../api/announcementsApi';
 
 export function AnnouncementsListPage() {
   const { user } = useAuth();
@@ -12,23 +17,32 @@ export function AnnouncementsListPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
+  const load = () => {
     setLoading(true);
-    listAnnouncements()
-      .then((p) => {
-        if (active) setItems(p.content);
-      })
-      .catch(() => {
-        if (active) toast.error('Erro ao carregar avisos.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    return listAnnouncements()
+      .then((p) => setItems(p.content))
+      .catch(() => toast.error('Erro ao carregar avisos.'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
+
+  const move = async (i: number, j: number) => {
+    if (j < 0 || j >= items.length) return;
+    const a = items[i];
+    const b = items[j];
+    try {
+      await reorderAnnouncements([
+        { id: a.id, position: b.position },
+        { id: b.id, position: a.position },
+      ]);
+      await load();
+    } catch {
+      toast.error('Erro ao reordenar.');
+    }
+  };
 
   return (
     <main className="mx-auto max-w-3xl p-4">
@@ -54,28 +68,47 @@ export function AnnouncementsListPage() {
         <p className="text-muted-foreground">Nenhum aviso.</p>
       ) : (
         <ul className="space-y-3">
-          {items.map((a) => (
-            <li key={a.id}>
+          {items.map((a, idx) => (
+            <li key={a.id} className="flex items-stretch gap-2">
               <Link
                 to={`/avisos/${a.id}`}
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="block flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Card className="h-full transition-colors hover:bg-accent">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      {a.pinned && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Fixado
-                        </span>
-                      )}
-                      {a.title}
-                    </CardTitle>
+                    <CardTitle className="text-base">{a.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="line-clamp-2 text-sm text-muted-foreground">{a.body}</p>
                   </CardContent>
                 </Card>
               </Link>
+              {canManage && (
+                <div className="flex flex-col justify-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Mover para cima"
+                    className="min-h-[44px] min-w-[44px]"
+                    disabled={idx === 0}
+                    onClick={() => move(idx, idx - 1)}
+                  >
+                    <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Mover para baixo"
+                    className="min-h-[44px] min-w-[44px]"
+                    disabled={idx === items.length - 1}
+                    onClick={() => move(idx, idx + 1)}
+                  >
+                    <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

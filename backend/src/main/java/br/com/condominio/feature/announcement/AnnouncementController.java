@@ -2,6 +2,7 @@ package br.com.condominio.feature.announcement;
 
 import br.com.condominio.feature.announcement.dto.AnnouncementView;
 import br.com.condominio.feature.announcement.dto.CreateAnnouncementRequest;
+import br.com.condominio.feature.announcement.dto.ReorderAnnouncementsRequest;
 import br.com.condominio.feature.announcement.dto.UpdateAnnouncementRequest;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -48,6 +49,14 @@ public class AnnouncementController {
       @Valid @RequestBody CreateAnnouncementRequest body,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.create(me.userId(), body));
+  }
+
+  // /reorder ANTES de /{id} para "reorder" não ser capturado como path variable.
+  @PutMapping("/reorder")
+  @PreAuthorize("hasAuthority('ANNOUNCEMENT_MANAGE')")
+  public ResponseEntity<Void> reorder(@Valid @RequestBody ReorderAnnouncementsRequest body) {
+    service.reorder(body.items());
+    return ResponseEntity.noContent().build();
   }
 
   @PutMapping("/{id}")

@@ -8,7 +8,7 @@ public record AnnouncementView(
     UUID id,
     String title,
     String body,
-    boolean pinned,
+    int position,
     Instant publishedAt,
     UUID authorUserId,
     Instant updatedAt) {
@@ -18,7 +18,7 @@ public record AnnouncementView(
         a.getId(),
         a.getTitle(),
         a.getBody(),
-        a.isPinned(),
+        a.getPosition(),
         a.getPublishedAt(),
         a.getAuthorUserId(),
         a.getUpdatedAt());

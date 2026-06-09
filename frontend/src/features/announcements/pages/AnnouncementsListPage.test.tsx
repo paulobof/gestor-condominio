@@ -1,16 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../api/announcementsApi', () => ({ listAnnouncements: vi.fn() }));
+vi.mock('../api/announcementsApi', () => ({
+  listAnnouncements: vi.fn(),
+  reorderAnnouncements: vi.fn(),
+}));
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
+import userEvent from '@testing-library/user-event';
 import { AnnouncementsListPage } from './AnnouncementsListPage';
-import { listAnnouncements } from '../api/announcementsApi';
+import { listAnnouncements, reorderAnnouncements } from '../api/announcementsApi';
 import { useAuth } from '@/features/auth/useAuth';
 
 const listMock = vi.mocked(listAnnouncements);
+const reorderMock = vi.mocked(reorderAnnouncements);
 const useAuthMock = vi.mocked(useAuth);
 
 function page(content: unknown[]) {
@@ -22,7 +27,7 @@ function announcement(over: Record<string, unknown> = {}) {
     id: 'a1',
     title: 'Manutenção da bomba',
     body: 'Água desligada das 9h às 12h.',
-    pinned: false,
+    position: 0,
     publishedAt: '2026-06-06T00:00:00Z',
     authorUserId: 'u1',
     updatedAt: '2026-06-06T00:00:00Z',
@@ -48,12 +53,12 @@ beforeEach(() => {
 });
 
 describe('AnnouncementsListPage', () => {
-  it('lista avisos e marca os fixados', async () => {
-    listMock.mockResolvedValue(page([announcement({ pinned: true })]));
+  it('lista avisos', async () => {
+    listMock.mockResolvedValue(page([announcement()]));
     renderPage();
 
     expect(await screen.findByText('Manutenção da bomba')).toBeInTheDocument();
-    expect(screen.getByText('Fixado')).toBeInTheDocument();
+    expect(screen.queryByText('Fixado')).not.toBeInTheDocument();
   });
 
   it('mostra estado vazio', async () => {
@@ -77,5 +82,34 @@ describe('AnnouncementsListPage', () => {
     await screen.findByText('Nenhum aviso.');
 
     expect(screen.queryByRole('link', { name: /novo aviso/i })).not.toBeInTheDocument();
+  });
+
+  it('com ANNOUNCEMENT_MANAGE reordena ao clicar na seta para baixo', async () => {
+    setUser(['ANNOUNCEMENT_MANAGE']);
+    const a = announcement({ id: 'a', title: 'Primeiro', position: 0 });
+    const b = announcement({ id: 'b', title: 'Segundo', position: 1 });
+    listMock.mockResolvedValue(page([a, b]));
+    reorderMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Primeiro');
+
+    await user.click(screen.getAllByRole('button', { name: 'Mover para baixo' })[0]);
+
+    await waitFor(() =>
+      expect(reorderMock).toHaveBeenCalledWith([
+        { id: 'a', position: 1 },
+        { id: 'b', position: 0 },
+      ])
+    );
+  });
+
+  it('sem ANNOUNCEMENT_MANAGE não mostra setas', async () => {
+    setUser([]);
+    listMock.mockResolvedValue(page([announcement()]));
+    renderPage();
+    await screen.findByText('Manutenção da bomba');
+
+    expect(screen.queryByRole('button', { name: 'Mover para baixo' })).not.toBeInTheDocument();
   });
 });

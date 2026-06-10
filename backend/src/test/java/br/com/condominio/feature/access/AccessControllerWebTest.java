@@ -13,6 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -24,6 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -64,7 +68,29 @@ class AccessControllerWebTest {
   @Test
   void users_unauthenticated_isRejected() throws Exception {
     mvc.perform(get("/api/access/users").param("q", "ana")).andExpect(status().is4xxClientError());
-    verify(service, never()).searchUsers(any());
+    verify(service, never()).listUsers(any(), any());
+  }
+
+  @Test
+  void users_withRoleAssign_returns200_pagedWithBadges() throws Exception {
+    var row =
+        new UserAccessRow(
+            TARGET, "Ana Lima", "A-101", List.of(new RoleBadge((short) 6, "Editor do Mural")));
+    when(service.listUsers("", PageRequest.of(0, 20)))
+        .thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
+
+    mvc.perform(get("/api/access/users").with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].displayName").value("Ana Lima"))
+        .andExpect(jsonPath("$.content[0].roles[0].label").value("Editor do Mural"))
+        .andExpect(jsonPath("$.last").value(true));
+  }
+
+  @Test
+  void users_withoutPermission_returns403() throws Exception {
+    mvc.perform(get("/api/access/users").with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).listUsers(any(), any());
   }
 
   @Test

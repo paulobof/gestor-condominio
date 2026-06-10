@@ -199,6 +199,7 @@ class AccessServiceTest {
         .thenReturn(new PageImpl<>(List.of()));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
 
+    // página vazia → ids vazio → findById_UserIdIn não é chamado (por isso não é stubado)
     service.listUsers("  ana  ", PageRequest.of(0, 20));
 
     verify(userSearchRepo).findActivePage("ana", PageRequest.of(0, 20));

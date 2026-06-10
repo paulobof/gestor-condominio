@@ -137,4 +137,14 @@ class AccessControllerWebTest {
         .andExpect(status().isForbidden());
     verify(service, never()).remove(any(), any(), eq((short) 6));
   }
+
+  @Test
+  void users_sizeAbove100_isCappedTo100() throws Exception {
+    when(service.listUsers("", PageRequest.of(0, 100))).thenReturn(new PageImpl<>(List.of()));
+
+    mvc.perform(get("/api/access/users").param("size", "200").with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isOk());
+
+    verify(service).listUsers("", PageRequest.of(0, 100));
+  }
 }

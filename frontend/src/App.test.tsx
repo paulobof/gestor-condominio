@@ -67,4 +67,14 @@ describe('App', () => {
       '/admin/registrations'
     );
   });
+
+  it('usa cor adaptável (não brand-ink fixo) no card neutro, para contraste no dark', () => {
+    renderApp(['REGISTRATION_VIEW']);
+    const link = screen.getByRole('link', { name: /cadastros pendentes/i });
+    const iconWrap = link.querySelector('svg')?.parentElement;
+    expect(iconWrap).toBeTruthy();
+    const style = iconWrap!.getAttribute('style') ?? '';
+    expect(style).toContain('--foreground');
+    expect(style).not.toContain('--brand-ink');
+  });
 });

@@ -47,8 +47,11 @@ const NAV: NavItem[] = [
   },
 ];
 
+// 'ink' (itens de sistema) segue --foreground como cor/borda para manter
+// contraste no dark; --brand-ink (preto fixo do wordmark) fica só para fundos.
+const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
 const hsl = (b: Brand, alpha?: number) =>
-  alpha == null ? `hsl(var(--brand-${b}))` : `hsl(var(--brand-${b}) / ${alpha})`;
+  alpha == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${alpha})`;
 
 export default function App() {
   const { user } = useAuth();

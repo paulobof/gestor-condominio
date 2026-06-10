@@ -1,11 +1,14 @@
 package br.com.condominio.feature.role;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleId> {
   List<UserRole> findById_UserId(UUID userId);
+
+  List<UserRole> findById_UserIdIn(Collection<UUID> userIds);
 
   long countById_RoleId(Short roleId);
 }

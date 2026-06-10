@@ -31,6 +31,9 @@ public interface AccessUserRepository extends Repository<User, UUID> {
       """)
   List<UserSearchResult> search(@Param("term") String term, Pageable pageable);
 
+  // :term nunca é passado diretamente a LOWER(); é só concatenado via CONCAT('%', :term, '%'),
+  // e o guard ":term IS NULL" curto-circuita antes. Por isso não precisa de cast(:term as string)
+  // (diferente de RecommendationRepository, que aplica LOWER(:param) direto).
   @Query(
       value =
           """

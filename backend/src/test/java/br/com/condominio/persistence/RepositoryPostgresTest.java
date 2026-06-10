@@ -69,7 +69,7 @@ class RepositoryPostgresTest {
         .doesNotThrowAnyException();
     assertThatCode(() -> accessUsers.findActivePage("ana", PageRequest.of(0, 20)))
         .doesNotThrowAnyException();
-    assertThat(accessUsers.findActivePage(null, PageRequest.of(0, 20))).isNotNull();
+    assertThat(accessUsers.findActivePage(null, PageRequest.of(0, 20)).getContent()).isEmpty();
   }
 
   @Test

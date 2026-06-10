@@ -1,9 +1,22 @@
 import { api } from '@/lib/api';
 
-export interface UserSearchResult {
+export interface RoleBadge {
+  id: number;
+  label: string;
+}
+
+export interface UserAccessRow {
   id: string;
   displayName: string;
   unitLabel: string | null;
+  roles: RoleBadge[];
+}
+
+export interface PageResult<T> {
+  content: T[];
+  number: number;
+  totalPages: number;
+  last: boolean;
 }
 
 export interface AssignableRole {
@@ -12,9 +25,9 @@ export interface AssignableRole {
   label: string;
 }
 
-export async function searchUsers(q: string) {
-  const r = await api.get('/access/users', { params: { q } });
-  return r.data as UserSearchResult[];
+export async function listUsers(q: string, page = 0, size = 20) {
+  const r = await api.get('/access/users', { params: { q, page, size } });
+  return r.data as PageResult<UserAccessRow>;
 }
 
 export async function listAssignableRoles() {

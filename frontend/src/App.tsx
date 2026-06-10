@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Home, Megaphone, Lightbulb, ShoppingBag, ClipboardCheck, ShieldCheck } from 'lucide-react';
+import { Home, Megaphone, Lightbulb, ShoppingBag, ClipboardCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -44,13 +44,6 @@ const NAV: NavItem[] = [
     icon: ClipboardCheck,
     brand: 'ink',
     requires: 'REGISTRATION_VIEW',
-  },
-  {
-    to: '/privacidade',
-    title: 'Privacidade (LGPD)',
-    desc: 'Seus dados, exportação e anonimização.',
-    icon: ShieldCheck,
-    brand: 'ink',
   },
 ];
 

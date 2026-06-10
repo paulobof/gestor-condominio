@@ -5,11 +5,11 @@ import {
   Lightbulb,
   ShoppingBag,
   ClipboardCheck,
-  ShieldCheck,
   BookOpen,
   Info,
   UserCog,
 } from 'lucide-react';
+// nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
@@ -44,7 +44,6 @@ const ITEMS: NavItem[] = [
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
   },
-  { to: '/privacidade', label: 'Privacidade', icon: ShieldCheck, brand: 'ink' },
 ];
 
 // 'ink' é a cor neutra dos itens de sistema. Como ícone/texto ele segue

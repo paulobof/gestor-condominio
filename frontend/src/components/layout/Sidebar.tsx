@@ -47,8 +47,12 @@ const ITEMS: NavItem[] = [
   { to: '/privacidade', label: 'Privacidade', icon: ShieldCheck, brand: 'ink' },
 ];
 
+// 'ink' é a cor neutra dos itens de sistema. Como ícone/texto ele segue
+// --foreground (escuro no tema claro, claro no escuro) para manter contraste no
+// dark; --brand-ink (preto fixo do wordmark) fica só para fundos (header/banner).
+const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
 const hsl = (b: Brand, a?: number) =>
-  a == null ? `hsl(var(--brand-${b}))` : `hsl(var(--brand-${b}) / ${a})`;
+  a == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${a})`;
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();

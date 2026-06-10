@@ -235,6 +235,24 @@ public class RegistrationService {
         java.time.Duration.ofSeconds(props.getPresignedTtlProofsSeconds()));
   }
 
+  /** Conteúdo do comprovante para streaming direto pelo backend (MinIO permanece privado). */
+  @Transactional
+  public ProofContent getProofContent(UUID userId) {
+    User user =
+        userRepo
+            .findById(userId)
+            .orElseThrow(
+                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
+    if (user.getResidenceProofObjectKey() == null) {
+      throw new RegistrationException("NO_PROOF", "Usuário não tem comprovante.");
+    }
+    byte[] content = storage.getObject(props.getBucketProofs(), user.getResidenceProofObjectKey());
+    return new ProofContent(
+        content, user.getResidenceProofContentType(), user.getResidenceProofFilename());
+  }
+
+  public record ProofContent(byte[] content, String contentType, String filename) {}
+
   private PendingRegistrationView toPendingView(User u) {
     String email =
         emailRepo.findByUserId(u.getId()).stream()

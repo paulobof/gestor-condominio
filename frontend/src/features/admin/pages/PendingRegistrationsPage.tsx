@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   approveRegistration,
-  getProofUrl,
+  getProofBlob,
   listPending,
   rejectRegistration,
   type PendingRegistration,
@@ -60,10 +60,13 @@ export function PendingRegistrationsPage() {
 
   const handleViewProof = async (id: string) => {
     try {
-      const url = await getProofUrl(id);
+      const blob = await getProofBlob(id);
+      const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
+      // libera o object URL depois que a aba teve tempo de carregar
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      toast.error('Erro ao gerar URL do comprovante.');
+      toast.error('Erro ao abrir o comprovante.');
     }
   };
 

@@ -116,6 +116,35 @@ class RegistrationServiceTest {
   }
 
   @Test
+  void getProofContent_returnsStoredBytesContentTypeAndFilename() {
+    UUID id = UUID.randomUUID();
+    User user = mock(User.class);
+    when(user.getResidenceProofObjectKey()).thenReturn("obj-key");
+    when(user.getResidenceProofContentType()).thenReturn("image/png");
+    when(user.getResidenceProofFilename()).thenReturn("comprovante.png");
+    when(userRepo.findById(id)).thenReturn(Optional.of(user));
+    byte[] bytes = {1, 2, 3, 4};
+    when(storage.getObject("residence-proofs", "obj-key")).thenReturn(bytes);
+
+    RegistrationService.ProofContent pc = service.getProofContent(id);
+
+    assertThat(pc.content()).isEqualTo(bytes);
+    assertThat(pc.contentType()).isEqualTo("image/png");
+    assertThat(pc.filename()).isEqualTo("comprovante.png");
+  }
+
+  @Test
+  void getProofContent_whenNoProof_throws() {
+    UUID id = UUID.randomUUID();
+    User user = mock(User.class);
+    when(user.getResidenceProofObjectKey()).thenReturn(null);
+    when(userRepo.findById(id)).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> service.getProofContent(id)).isInstanceOf(RegistrationException.class);
+    verify(storage, never()).getObject(any(), any());
+  }
+
+  @Test
   void rejectsWhenEmailAlreadyExists() {
     when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com"))
         .thenReturn(Optional.of(newInstance(UserEmail.class)));

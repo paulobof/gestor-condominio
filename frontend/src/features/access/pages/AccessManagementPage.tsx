@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +17,15 @@ function errorMessage(err: unknown, fallback: string): string {
   return maybe?.response?.data?.message ?? fallback;
 }
 
+const PAGE_SIZE = 20;
+
 export function AccessManagementPage() {
   const [roles, setRoles] = useState<AssignableRole[]>([]);
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<UserAccessRow[]>([]);
   const [page, setPage] = useState(0);
   const [last, setLast] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<UserAccessRow | null>(null);
   const [roleIds, setRoleIds] = useState<Set<number>>(new Set());
   const [pending, setPending] = useState<Set<number>>(new Set());
@@ -34,9 +36,7 @@ export function AccessManagementPage() {
       .catch(() => toast.error('Erro ao carregar os perfis de acesso.'));
   }, []);
 
-  const PAGE_SIZE = 20;
-
-  const load = async (q: string, p: number, append: boolean) => {
+  const load = useCallback(async (q: string, p: number, append: boolean) => {
     setLoading(true);
     try {
       const res = await listUsers(q, p, PAGE_SIZE);
@@ -48,15 +48,16 @@ export function AccessManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // debounce: recarrega a página 0 quando o filtro muda (inclui a carga inicial com q vazio)
+  // busca admin-only com debounce de 300ms; não guardamos corrida de respostas
+  // fora de ordem (janela mínima, impacto baixo).
   useEffect(() => {
     const t = setTimeout(() => {
       void load(query, 0, false);
     }, 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, load]);
 
   const selectUser = async (u: UserAccessRow) => {
     setSelected(u);

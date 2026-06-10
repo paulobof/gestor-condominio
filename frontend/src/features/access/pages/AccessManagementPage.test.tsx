@@ -17,13 +17,16 @@ import {
   listAssignableRoles,
   getUserRoleIds,
   assignRole,
+  removeRole,
   type UserAccessRow,
 } from '../api/accessApi';
+import { toast } from 'sonner';
 
 const listMock = vi.mocked(listUsers);
 const rolesMock = vi.mocked(listAssignableRoles);
 const userRolesMock = vi.mocked(getUserRoleIds);
 const assignMock = vi.mocked(assignRole);
+const removeMock = vi.mocked(removeRole);
 
 const ROLES = [
   { id: 2, name: 'COUNCIL', label: 'Conselheiro' },
@@ -49,6 +52,7 @@ beforeEach(() => {
   );
   userRolesMock.mockResolvedValue([6]);
   assignMock.mockResolvedValue(undefined);
+  removeMock.mockResolvedValue(undefined);
 });
 
 describe('AccessManagementPage', () => {
@@ -89,5 +93,28 @@ describe('AccessManagementPage', () => {
     await screen.findByText('Ana Lima');
     await user.type(screen.getByLabelText(/buscar/i), 'bru');
     await waitFor(() => expect(listMock).toHaveBeenCalledWith('bru', 0, expect.anything()));
+  });
+
+  it('desmarcar uma role chama removeRole', async () => {
+    userRolesMock.mockResolvedValue([6]); // usuário já tem a role
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await user.click(await screen.findByText('Ana Lima'));
+    const checkbox = await screen.findByLabelText('Editor do Mural');
+    expect(checkbox).toBeChecked();
+    await user.click(checkbox);
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith('u1', 6));
+  });
+
+  it('erro ao atribuir reverte o toggle e mostra a mensagem do servidor', async () => {
+    userRolesMock.mockResolvedValue([]); // não tem a role
+    assignMock.mockRejectedValue({ response: { data: { message: 'Limite atingido' } } });
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await user.click(await screen.findByText('Ana Lima'));
+    const checkbox = await screen.findByLabelText('Editor do Mural');
+    await user.click(checkbox);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Limite atingido'));
+    expect(checkbox).not.toBeChecked();
   });
 });

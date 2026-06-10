@@ -11,6 +11,9 @@ public interface FileStorage {
   /** Generate a presigned GET URL valid for ttl seconds. */
   String presignedGetUrl(String bucket, String objectKey, Duration ttl);
 
+  /** Read an object's full content into memory. For small files (proofs/photos ≤5MB). */
+  byte[] getObject(String bucket, String objectKey);
+
   /** Delete an object (used for LGPD anonymization). */
   void delete(String bucket, String objectKey);
 

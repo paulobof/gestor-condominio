@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -127,5 +128,32 @@ class RegistrationAdminControllerWebTest {
     mvc.perform(get("/api/registrations/{id}/proof-url", REG).with(MockAuth.user(UID)))
         .andExpect(status().isForbidden());
     verify(service, never()).getProofPresignedUrl(any());
+  }
+
+  // ---- proof (streaming): RESIDENCE_PROOF_VIEW ------------------------------------
+
+  @Test
+  void proof_withProofView_returns200_streamsContent_noReferrer_andAudits() throws Exception {
+    byte[] bytes = "fake-image-bytes".getBytes();
+    when(service.getProofContent(REG))
+        .thenReturn(new RegistrationService.ProofContent(bytes, "image/png", "comprovante.png"));
+
+    mvc.perform(
+            get("/api/registrations/{id}/proof", REG)
+                .with(MockAuth.user(UID, "RESIDENCE_PROOF_VIEW")))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType("image/png"))
+        .andExpect(content().bytes(bytes))
+        .andExpect(header().string("Content-Disposition", containsString("inline")))
+        .andExpect(header().string("Referrer-Policy", containsString("no-referrer")));
+
+    verify(auditWriter).logProofAccess(any(), any(), any(), anyInt());
+  }
+
+  @Test
+  void proof_withoutPermission_returns403() throws Exception {
+    mvc.perform(get("/api/registrations/{id}/proof", REG).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).getProofContent(any());
   }
 }

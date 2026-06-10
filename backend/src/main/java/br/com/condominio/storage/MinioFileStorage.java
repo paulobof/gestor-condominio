@@ -51,6 +51,16 @@ public class MinioFileStorage implements FileStorage {
   }
 
   @Override
+  public byte[] getObject(String bucket, String objectKey) {
+    try (GetObjectResponse response =
+        client.getObject(GetObjectArgs.builder().bucket(bucket).object(objectKey).build())) {
+      return response.readAllBytes();
+    } catch (Exception e) {
+      throw new IllegalStateException("MinIO getObject failed", e);
+    }
+  }
+
+  @Override
   public void delete(String bucket, String objectKey) {
     try {
       client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(objectKey).build());

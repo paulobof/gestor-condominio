@@ -1,6 +1,8 @@
 package br.com.condominio.feature.access;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleRepository;
@@ -11,12 +13,17 @@ import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AccessService {
-
-  private static final int SEARCH_LIMIT = 20;
-  private static final int MIN_TERM = 2;
 
   private final RoleRepository roleRepo;
   private final UserRoleRepository userRoleRepo;
@@ -46,11 +50,36 @@ public class AccessService {
   }
 
   @Transactional(readOnly = true)
-  public List<UserSearchResult> searchUsers(String term) {
-    if (term == null || term.trim().length() < MIN_TERM) {
-      return List.of();
+  public Page<UserAccessRow> listUsers(String q, Pageable pageable) {
+    String term = (q == null || q.isBlank()) ? null : q.trim();
+    Page<UserSearchResult> page = userSearchRepo.findActivePage(term, pageable);
+    List<UUID> ids = page.getContent().stream().map(UserSearchResult::id).toList();
+
+    Map<Short, String> labelById =
+        roleRepo.findByAssignableTrue().stream()
+            .collect(Collectors.toMap(Role::getId, Role::getLabel));
+
+    Map<UUID, List<RoleBadge>> rolesByUser = new HashMap<>();
+    if (!ids.isEmpty()) {
+      for (UserRole ur : userRoleRepo.findById_UserIdIn(ids)) {
+        String label = labelById.get(ur.getId().getRoleId());
+        if (label == null) {
+          continue; // role não-gerível: não vira badge
+        }
+        rolesByUser
+            .computeIfAbsent(ur.getId().getUserId(), k -> new ArrayList<>())
+            .add(new RoleBadge(ur.getId().getRoleId(), label));
+      }
     }
-    return userSearchRepo.search(term.trim(), PageRequest.of(0, SEARCH_LIMIT));
+    rolesByUser.values().forEach(list -> list.sort(Comparator.comparing(RoleBadge::label)));
+
+    return page.map(
+        u ->
+            new UserAccessRow(
+                u.id(),
+                u.displayName(),
+                u.unitLabel(),
+                rolesByUser.getOrDefault(u.id(), List.of())));
   }
 
   @Transactional(readOnly = true)

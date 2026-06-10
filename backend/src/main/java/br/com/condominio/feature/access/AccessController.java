@@ -1,12 +1,14 @@
 package br.com.condominio.feature.access;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
-import br.com.condominio.feature.access.dto.UserSearchResult;
+import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,8 +34,11 @@ public class AccessController {
 
   @GetMapping("/users")
   @PreAuthorize("hasAuthority('ROLE_ASSIGN')")
-  public List<UserSearchResult> searchUsers(@RequestParam(name = "q", defaultValue = "") String q) {
-    return service.searchUsers(q);
+  public Page<UserAccessRow> users(
+      @RequestParam(name = "q", defaultValue = "") String q,
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    return service.listUsers(q, PageRequest.of(page, Math.min(size, 100)));
   }
 
   @GetMapping("/users/{id}/roles")

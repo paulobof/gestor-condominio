@@ -43,6 +43,7 @@ class RepositoryPostgresTest {
 
   @Autowired private RecommendationRepository recommendations;
   @Autowired private UnitRepository units;
+  @Autowired private br.com.condominio.feature.access.AccessUserRepository accessUsers;
 
   @Test
   void recommendationSearch_nullFilters_runsAgainstPostgres() {
@@ -59,6 +60,16 @@ class RepositoryPostgresTest {
     // Exercita os caminhos lower()/cast com tag, residentOnly e search preenchidos.
     assertThatCode(() -> recommendations.search("encanador", true, "enc", PageRequest.of(0, 10)))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void findActivePage_nullAndNonNullTerm_runsAgainstPostgres() {
+    // Pega bugs de HQL: ":term IS NULL", DISTINCT + countQuery, LEFT JOIN.
+    assertThatCode(() -> accessUsers.findActivePage(null, PageRequest.of(0, 20)))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> accessUsers.findActivePage("ana", PageRequest.of(0, 20)))
+        .doesNotThrowAnyException();
+    assertThat(accessUsers.findActivePage(null, PageRequest.of(0, 20)).getContent()).isEmpty();
   }
 
   @Test

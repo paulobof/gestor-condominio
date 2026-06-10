@@ -6,7 +6,7 @@ vi.mock('@/lib/api', () => ({
 
 import { api } from '@/lib/api';
 import {
-  searchUsers,
+  listUsers,
   listAssignableRoles,
   getUserRoleIds,
   assignRole,
@@ -22,10 +22,10 @@ beforeEach(() => {
 });
 
 describe('accessApi — contrato com o backend', () => {
-  it('searchUsers envia q como param', async () => {
-    get.mockResolvedValue({ data: [] });
-    await searchUsers('ana');
-    expect(get).toHaveBeenCalledWith('/access/users', { params: { q: 'ana' } });
+  it('listUsers envia q, page e size como params', async () => {
+    get.mockResolvedValue({ data: { content: [], number: 0, totalPages: 0, last: true } });
+    await listUsers('ana', 1, 20);
+    expect(get).toHaveBeenCalledWith('/access/users', { params: { q: 'ana', page: 1, size: 20 } });
   });
 
   it('listAssignableRoles faz GET em /access/roles', async () => {

@@ -10,6 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
@@ -26,6 +29,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class AccessServiceTest {
@@ -156,9 +162,47 @@ class AccessServiceTest {
   }
 
   @Test
-  void searchUsers_shortTerm_returnsEmpty() {
-    assertThat(service.searchUsers("a")).isEmpty();
-    verify(userSearchRepo, never()).search(any(), any());
+  void listUsers_mapsRolesIntoBadges() {
+    var u1 = new UserSearchResult(TARGET, "Ana Lima", "A-101");
+    Role muralEditor = role((short) 6, "Editor do Mural", null, true);
+    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+        .thenReturn(new PageImpl<>(List.of(u1)));
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of(muralEditor));
+    when(userRoleRepo.findById_UserIdIn(List.of(TARGET)))
+        .thenReturn(List.of(new UserRole(new UserRoleId(TARGET, (short) 6), null, ACTOR)));
+
+    Page<UserAccessRow> page = service.listUsers("", PageRequest.of(0, 20));
+
+    assertThat(page.getContent()).hasSize(1);
+    UserAccessRow row = page.getContent().get(0);
+    assertThat(row.id()).isEqualTo(TARGET);
+    assertThat(row.displayName()).isEqualTo("Ana Lima");
+    assertThat(row.roles()).containsExactly(new RoleBadge((short) 6, "Editor do Mural"));
+  }
+
+  @Test
+  void listUsers_blankQuery_passesNullTerm_andUserWithoutRoleHasEmptyBadges() {
+    var u1 = new UserSearchResult(TARGET, "Bruno Sá", null);
+    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+        .thenReturn(new PageImpl<>(List.of(u1)));
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+    when(userRoleRepo.findById_UserIdIn(List.of(TARGET))).thenReturn(List.of());
+
+    Page<UserAccessRow> page = service.listUsers("   ", PageRequest.of(0, 20));
+
+    assertThat(page.getContent().get(0).roles()).isEmpty();
+  }
+
+  @Test
+  void listUsers_withTerm_trimsAndForwards() {
+    when(userSearchRepo.findActivePage("ana", PageRequest.of(0, 20)))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+
+    // página vazia → ids vazio → findById_UserIdIn não é chamado (por isso não é stubado)
+    service.listUsers("  ana  ", PageRequest.of(0, 20));
+
+    verify(userSearchRepo).findActivePage("ana", PageRequest.of(0, 20));
   }
 
   @Test

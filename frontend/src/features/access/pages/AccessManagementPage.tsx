@@ -3,13 +3,13 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  searchUsers,
+  listUsers,
   listAssignableRoles,
   getUserRoleIds,
   assignRole,
   removeRole,
   type AssignableRole,
-  type UserSearchResult,
+  type UserAccessRow,
 } from '../api/accessApi';
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -20,12 +20,13 @@ function errorMessage(err: unknown, fallback: string): string {
 export function AccessManagementPage() {
   const [roles, setRoles] = useState<AssignableRole[]>([]);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<UserSearchResult[]>([]);
-  const [selected, setSelected] = useState<UserSearchResult | null>(null);
+  const [rows, setRows] = useState<UserAccessRow[]>([]);
+  const [page, setPage] = useState(0);
+  const [last, setLast] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<UserAccessRow | null>(null);
   const [roleIds, setRoleIds] = useState<Set<number>>(new Set());
-  const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState<Set<number>>(new Set());
-  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     listAssignableRoles()
@@ -33,24 +34,31 @@ export function AccessManagementPage() {
       .catch(() => toast.error('Erro ao carregar os perfis de acesso.'));
   }, []);
 
-  const doSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim().length < 2) return;
-    setSearching(true);
-    setSelected(null);
-    setSearched(false);
+  const PAGE_SIZE = 20;
+
+  const load = async (q: string, p: number, append: boolean) => {
+    setLoading(true);
     try {
-      setResults(await searchUsers(query.trim()));
-      setSearched(true);
+      const res = await listUsers(q, p, PAGE_SIZE);
+      setRows((prev) => (append ? [...prev, ...res.content] : res.content));
+      setPage(res.number);
+      setLast(res.last);
     } catch {
-      toast.error('Erro ao buscar usuários.');
+      toast.error('Erro ao carregar usuários.');
     } finally {
-      setSearching(false);
+      setLoading(false);
     }
   };
 
-  const selectUser = async (u: UserSearchResult) => {
-    setSearched(false);
+  // debounce: recarrega a página 0 quando o filtro muda (inclui a carga inicial com q vazio)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void load(query, 0, false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const selectUser = async (u: UserAccessRow) => {
     setSelected(u);
     try {
       setRoleIds(new Set(await getUserRoleIds(u.id)));
@@ -59,10 +67,21 @@ export function AccessManagementPage() {
     }
   };
 
+  const back = () => {
+    if (selected) {
+      const updated = roles
+        .filter((r) => roleIds.has(r.id))
+        .map((r) => ({ id: r.id, label: r.label }));
+      setRows((prev) =>
+        prev.map((row) => (row.id === selected.id ? { ...row, roles: updated } : row))
+      );
+    }
+    setSelected(null);
+  };
+
   const toggle = async (role: AssignableRole) => {
     if (!selected) return;
     const has = roleIds.has(role.id);
-    // otimista
     setRoleIds((prev) => {
       const next = new Set(prev);
       if (has) next.delete(role.id);
@@ -79,7 +98,6 @@ export function AccessManagementPage() {
       else await assignRole(selected.id, role.id);
       toast.success('Acesso atualizado.');
     } catch (err) {
-      // reverte
       setRoleIds((prev) => {
         const next = new Set(prev);
         if (has) next.add(role.id);
@@ -107,42 +125,65 @@ export function AccessManagementPage() {
         Gerenciar acessos
       </h1>
 
-      <form onSubmit={doSearch} className="mb-4 flex gap-2">
-        <label htmlFor="user-search" className="sr-only">
-          Buscar usuário por nome ou e-mail
-        </label>
-        <input
-          id="user-search"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nome ou e-mail"
-          className="min-h-[44px] flex-1 rounded-lg border border-border bg-background px-3 text-sm"
-        />
-        <Button type="submit" className="min-h-[44px]" disabled={searching}>
-          Buscar
-        </Button>
-      </form>
+      {!selected && (
+        <>
+          <label htmlFor="user-search" className="sr-only">
+            Buscar usuário por nome ou e-mail
+          </label>
+          <input
+            id="user-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nome ou e-mail"
+            className="mb-4 min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
+          />
 
-      {searched && !selected && results.length === 0 && (
-        <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
-      )}
+          {!loading && rows.length === 0 && (
+            <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
+          )}
 
-      {results.length > 0 && !selected && (
-        <ul className="mb-4 space-y-2">
-          {results.map((u) => (
-            <li key={u.id}>
-              <button
-                type="button"
-                onClick={() => selectUser(u)}
-                className="flex min-h-[44px] w-full items-center justify-between rounded-lg border border-border px-3 text-left text-sm hover:bg-accent"
-              >
-                <span className="font-medium">{u.displayName}</span>
-                {u.unitLabel && <span className="text-muted-foreground">{u.unitLabel}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
+          <ul className="space-y-2">
+            {rows.map((u) => (
+              <li key={u.id}>
+                <button
+                  type="button"
+                  onClick={() => selectUser(u)}
+                  className="flex min-h-[44px] w-full flex-col items-start gap-1 rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-accent"
+                >
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <span className="font-medium">{u.displayName}</span>
+                    {u.unitLabel && <span className="text-muted-foreground">{u.unitLabel}</span>}
+                  </span>
+                  {u.roles.length > 0 && (
+                    <span className="flex flex-wrap gap-1">
+                      {u.roles.map((r) => (
+                        <span
+                          key={r.id}
+                          className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+                        >
+                          {r.label}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {!last && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4 min-h-[44px] w-full"
+              disabled={loading}
+              onClick={() => void load(query, page + 1, true)}
+            >
+              Carregar mais
+            </Button>
+          )}
+        </>
       )}
 
       {selected && (
@@ -167,12 +208,7 @@ export function AccessManagementPage() {
                 <span>{role.label}</span>
               </label>
             ))}
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-[44px]"
-              onClick={() => setSelected(null)}
-            >
+            <Button type="button" variant="outline" className="min-h-[44px]" onClick={back}>
               Voltar à busca
             </Button>
           </CardContent>

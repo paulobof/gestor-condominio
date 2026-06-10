@@ -55,13 +55,18 @@ describe('Sidebar', () => {
 
   it('usa cor de texto adaptável (não brand-ink fixo) nos ícones neutros, para contraste no dark', () => {
     renderSidebar();
-    // "Privacidade" é item neutro (brand ink) e sempre visível
-    const link = screen.getAllByRole('link', { name: /privacidade/i })[0];
+    // "Início" é item neutro (brand ink) e sempre visível
+    const link = screen.getAllByRole('link', { name: /início/i })[0];
     const icon = link.querySelector('svg');
     expect(icon).toBeTruthy();
     const style = icon!.getAttribute('style') ?? '';
     expect(style).toContain('--foreground');
     expect(style).not.toContain('--brand-ink');
+  });
+
+  it('não mostra "Privacidade" no menu', () => {
+    renderSidebar(['REGISTRATION_VIEW', 'ROLE_ASSIGN']);
+    expect(screen.queryByRole('link', { name: /privacidade/i })).not.toBeInTheDocument();
   });
 
   it('esconde "Gerenciar acessos" sem ROLE_ASSIGN', () => {

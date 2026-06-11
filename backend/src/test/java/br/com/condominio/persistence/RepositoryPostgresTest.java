@@ -65,11 +65,10 @@ class RepositoryPostgresTest {
   @Test
   void findActivePage_allAndByTerm_runAgainstPostgres() {
     // Pega o bug do 500: ":term IS NULL" com bind nulo não-tipado contra citext.
-    assertThatCode(() -> accessUsers.findActivePageAll(PageRequest.of(0, 20)))
-        .doesNotThrowAnyException();
     assertThatCode(() -> accessUsers.findActivePageByTerm("ana", PageRequest.of(0, 20)))
         .doesNotThrowAnyException();
-    assertThat(accessUsers.findActivePageAll(PageRequest.of(0, 20))).isNotNull();
+    var all = accessUsers.findActivePageAll(PageRequest.of(0, 20));
+    assertThat(all.getContent()).isEmpty(); // sem usuários no seed do container
   }
 
   @Test

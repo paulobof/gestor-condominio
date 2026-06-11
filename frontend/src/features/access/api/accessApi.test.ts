@@ -15,6 +15,8 @@ import {
   createUser,
   deleteUser,
   lookupUnit,
+  getUser,
+  updateUser,
 } from './accessApi';
 
 const get = vi.mocked(api.get);
@@ -93,5 +95,28 @@ describe('accessApi — contrato com o backend', () => {
     const out = await lookupUnit('101A');
     expect(get).toHaveBeenCalledWith('/units/lookup', { params: { code: '101A' } });
     expect(out.id).toBe('unit1');
+  });
+
+  it('getUser faz GET em /access/users/:id', async () => {
+    get.mockResolvedValue({ data: { id: 'u1', fullName: 'Ana', email: 'ana@x.com' } });
+    const out = await getUser('u1');
+    expect(get).toHaveBeenCalledWith('/access/users/u1');
+    expect(out.email).toBe('ana@x.com');
+  });
+
+  it('updateUser faz PUT em /access/users/:id com o payload', async () => {
+    const put = vi.mocked(api.put);
+    put.mockResolvedValue({ data: undefined });
+    const payload = {
+      fullName: 'Ana',
+      greetingName: 'Ana',
+      phone: '+5511999999999',
+      unitId: null,
+      email: 'ana@x.com',
+      gender: 'FEMALE',
+      birthDate: '1990-01-02',
+    };
+    await updateUser('u1', payload);
+    expect(put).toHaveBeenCalledWith('/access/users/u1', payload);
   });
 });

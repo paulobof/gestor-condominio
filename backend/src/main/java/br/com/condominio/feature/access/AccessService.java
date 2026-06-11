@@ -62,12 +62,9 @@ public class AccessService {
   }
 
   private Set<Short> creatableRoleIds() {
-    Set<Short> ids =
-        roleRepo.findByAssignableTrue().stream()
-            .map(Role::getId)
-            .collect(Collectors.toCollection(HashSet::new));
-    roleRepo.findByName(RoleName.RESIDENT).ifPresent(r -> ids.add(r.getId()));
-    return ids;
+    return creatableRoles().stream()
+        .map(AssignableRoleView::id)
+        .collect(Collectors.toCollection(HashSet::new));
   }
 
   @Transactional(readOnly = true)

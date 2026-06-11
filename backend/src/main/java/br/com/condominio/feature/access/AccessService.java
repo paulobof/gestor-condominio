@@ -5,6 +5,7 @@ import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
@@ -12,6 +13,8 @@ import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
@@ -54,6 +57,7 @@ public class AccessService {
   private final UserEmailRepository emailRepo;
   private final PasswordEncoder encoder;
   private final ProvisionalPasswordGenerator passwordGenerator;
+  private final UnitRepository unitRepo;
 
   @Transactional(readOnly = true)
   public List<AssignableRoleView> assignableRoles() {
@@ -205,6 +209,34 @@ public class AccessService {
     emailRepo.findByUserId(targetUserId).forEach(emailRepo::delete);
     userRepo.delete(user);
     log.info("Admin {} excluiu (soft) usuário {}", actorId, targetUserId);
+  }
+
+  @Transactional(readOnly = true)
+  public UserDetail getUserDetail(UUID id) {
+    User u =
+        userRepo
+            .findById(id)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    String email =
+        emailRepo.findByUserId(id).stream()
+            .filter(UserEmail::isPrimary)
+            .findFirst()
+            .map(UserEmail::getEmail)
+            .orElse(null);
+    String unitCode =
+        u.getUnitId() == null
+            ? null
+            : unitRepo.findById(u.getUnitId()).map(Unit::getCode).orElse(null);
+    return new UserDetail(
+        u.getId(),
+        u.getFullName(),
+        u.getGreetingName(),
+        u.getPhone(),
+        u.getUnitId(),
+        unitCode,
+        email,
+        u.getGender() == null ? null : u.getGender().name(),
+        u.getBirthDate());
   }
 
   private Role requireAssignableRole(short roleId) {

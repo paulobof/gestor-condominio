@@ -17,6 +17,7 @@ import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.RestAuthenticationEntryPoint;
@@ -248,5 +249,33 @@ class AccessControllerWebTest {
     mvc.perform(delete("/api/access/users/{id}", UID).with(MockAuth.user(UID, MANAGE)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("CANNOT_DELETE_SELF"));
+  }
+
+  @Test
+  void userDetail_withUserManage_returns200() throws Exception {
+    when(service.getUserDetail(TARGET))
+        .thenReturn(
+            new UserDetail(
+                TARGET,
+                "Ana Lima",
+                "Ana",
+                "+5511999999999",
+                null,
+                null,
+                "ana@x.com",
+                "FEMALE",
+                null));
+
+    mvc.perform(get("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("ana@x.com"))
+        .andExpect(jsonPath("$.fullName").value("Ana Lima"));
+  }
+
+  @Test
+  void userDetail_withoutUserManage_returns403() throws Exception {
+    mvc.perform(get("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).getUserDetail(any());
   }
 }

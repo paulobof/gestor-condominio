@@ -4,6 +4,7 @@ import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -49,6 +50,12 @@ public class AccessController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     return service.listUsers(q, PageRequest.of(page, Math.min(size, 100)));
+  }
+
+  @GetMapping("/users/{id}")
+  @PreAuthorize("hasAuthority('USER_MANAGE')")
+  public UserDetail userDetail(@PathVariable UUID id) {
+    return service.getUserDetail(id);
   }
 
   @GetMapping("/users/{id}/roles")

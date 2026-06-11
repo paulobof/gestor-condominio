@@ -152,4 +152,14 @@ class AccessControllerWebTest {
 
     verify(service).listUsers("", PageRequest.of(0, 100));
   }
+
+  @Test
+  void creatableRoles_withRoleAssign_returns200() throws Exception {
+    when(service.creatableRoles())
+        .thenReturn(List.of(new AssignableRoleView((short) 4, "RESIDENT", "Morador")));
+
+    mvc.perform(get("/api/access/creatable-roles").with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].label").value("Morador"));
+  }
 }

@@ -10,10 +10,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
@@ -217,5 +219,21 @@ class AccessServiceTest {
                     new UserRoleId(TARGET, (short) 6), null, null))); // MURAL_EDITOR, assignable
 
     assertThat(service.userRoleIds(TARGET)).containsExactly((short) 6);
+  }
+
+  @Test
+  void creatableRoles_areAssignablePlusResident() {
+    Role council = role((short) 2, "Conselheiro", (short) 3, true);
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    doReturn(br.com.condominio.feature.role.RoleName.COUNCIL).when(council).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of(council));
+    when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(resident));
+
+    List<AssignableRoleView> out = service.creatableRoles();
+
+    assertThat(out)
+        .extracting(AssignableRoleView::id)
+        .containsExactlyInAnyOrder((short) 2, (short) 4);
   }
 }

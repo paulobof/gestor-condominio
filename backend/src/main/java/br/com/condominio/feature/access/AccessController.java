@@ -32,6 +32,12 @@ public class AccessController {
     return service.assignableRoles();
   }
 
+  @GetMapping("/creatable-roles")
+  @PreAuthorize("hasAuthority('ROLE_ASSIGN')")
+  public List<AssignableRoleView> creatableRoles() {
+    return service.creatableRoles();
+  }
+
   @GetMapping("/users")
   @PreAuthorize("hasAuthority('ROLE_ASSIGN')")
   public Page<UserAccessRow> users(

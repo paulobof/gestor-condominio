@@ -5,6 +5,7 @@ import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
@@ -16,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +49,25 @@ public class AccessService {
     return roleRepo.findByAssignableTrue().stream()
         .map(r -> new AssignableRoleView(r.getId(), r.getName().name(), r.getLabel()))
         .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<AssignableRoleView> creatableRoles() {
+    List<Role> roles = new ArrayList<>(roleRepo.findByAssignableTrue());
+    roleRepo.findByName(RoleName.RESIDENT).ifPresent(roles::add);
+    return roles.stream()
+        .sorted(Comparator.comparing(Role::getId))
+        .map(r -> new AssignableRoleView(r.getId(), r.getName().name(), r.getLabel()))
+        .toList();
+  }
+
+  private Set<Short> creatableRoleIds() {
+    Set<Short> ids =
+        roleRepo.findByAssignableTrue().stream()
+            .map(Role::getId)
+            .collect(Collectors.toCollection(HashSet::new));
+    roleRepo.findByName(RoleName.RESIDENT).ifPresent(r -> ids.add(r.getId()));
+    return ids;
   }
 
   @Transactional(readOnly = true)

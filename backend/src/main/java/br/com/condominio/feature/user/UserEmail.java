@@ -56,4 +56,9 @@ public class UserEmail {
     e.isPrimary = true;
     return e;
   }
+
+  /** Troca o endereço de e-mail (login). Unicidade é validada no service. */
+  public void changeEmail(String email) {
+    this.email = email;
+  }
 }

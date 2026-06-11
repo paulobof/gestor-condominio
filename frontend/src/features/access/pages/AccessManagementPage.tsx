@@ -375,7 +375,7 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
         <CardTitle className="text-base">Adicionar usuário</CardTitle>
       </CardHeader>
       <CardContent>
-        <form className="space-y-3" onSubmit={submit}>
+        <form className="space-y-3" onSubmit={(e) => void submit(e)}>
           <div className="space-y-1">
             <label htmlFor="nu-name" className="text-sm font-medium">
               Nome

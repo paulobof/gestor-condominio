@@ -22,17 +22,20 @@ import {
   listAssignableRoles,
   getUserRoleIds,
   assignRole,
+  removeRole,
   getCreatableRoles,
   createUser,
   deleteUser,
   type UserAccessRow,
 } from '../api/accessApi';
 import { useAuth } from '@/features/auth/useAuth';
+import { toast } from 'sonner';
 
 const listMock = vi.mocked(listUsers);
 const rolesMock = vi.mocked(listAssignableRoles);
 const userRolesMock = vi.mocked(getUserRoleIds);
 const assignMock = vi.mocked(assignRole);
+const removeMock = vi.mocked(removeRole);
 const creatableMock = vi.mocked(getCreatableRoles);
 const createMock = vi.mocked(createUser);
 const deleteMock = vi.mocked(deleteUser);
@@ -73,6 +76,7 @@ beforeEach(() => {
   );
   userRolesMock.mockResolvedValue([6]);
   assignMock.mockResolvedValue(undefined);
+  removeMock.mockResolvedValue(undefined);
   deleteMock.mockResolvedValue(undefined);
   createMock.mockResolvedValue({ id: 'u9', fullName: 'Novo User', password: 'Abc123!xyZ09__a' });
 });
@@ -124,5 +128,59 @@ describe('AccessManagementPage', () => {
     await screen.findByText('Ana Lima');
     expect(screen.queryByRole('button', { name: /adicionar usuário/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /excluir ana lima/i })).not.toBeInTheDocument();
+  });
+
+  it('desmarcar uma role chama removeRole', async () => {
+    userRolesMock.mockResolvedValue([6]); // já tem a role
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await user.click(await screen.findByRole('button', { name: /^ana lima/i }));
+    const checkbox = await screen.findByLabelText('Editor do Mural');
+    expect(checkbox).toBeChecked();
+    await user.click(checkbox);
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith('u1', 6));
+  });
+
+  it('erro ao atribuir reverte o toggle e mostra a mensagem do servidor', async () => {
+    userRolesMock.mockResolvedValue([]); // não tem a role
+    assignMock.mockRejectedValue({ response: { data: { message: 'Limite atingido' } } });
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await user.click(await screen.findByRole('button', { name: /^ana lima/i }));
+    const checkbox = await screen.findByLabelText('Editor do Mural');
+    await user.click(checkbox);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Limite atingido'));
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('"Carregar mais" busca a próxima página e faz append', async () => {
+    listMock.mockResolvedValueOnce(
+      pageOf(
+        [{ id: 'u1', displayName: 'Ana Lima', unitLabel: 'A-101', phone: null, roles: [] }],
+        false,
+        0
+      )
+    );
+    listMock.mockResolvedValueOnce(
+      pageOf(
+        [{ id: 'u2', displayName: 'Bruno Sá', unitLabel: 'B-202', phone: null, roles: [] }],
+        true,
+        1
+      )
+    );
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.click(screen.getByRole('button', { name: /carregar mais/i }));
+    expect(await screen.findByText('Bruno Sá')).toBeInTheDocument();
+    expect(screen.getByText('Ana Lima')).toBeInTheDocument();
+  });
+
+  it('digitar no filtro recarrega a página 0 com q', async () => {
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.type(screen.getByLabelText(/buscar/i), 'bru');
+    await waitFor(() => expect(listMock).toHaveBeenCalledWith('bru', 0, expect.anything()));
   });
 });

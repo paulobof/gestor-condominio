@@ -42,7 +42,8 @@ public interface AccessUserRepository extends Repository<User, UUID> {
             LEFT JOIN Unit un ON un.id = u.unitId
            WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
              AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
-                  OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%')))
+                  OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%'))
+                  OR LOWER(un.code) LIKE LOWER(CONCAT('%', :term, '%')))
            ORDER BY u.fullName
           """,
       countQuery =
@@ -50,9 +51,11 @@ public interface AccessUserRepository extends Repository<User, UUID> {
           SELECT COUNT(DISTINCT u.id)
             FROM User u
             LEFT JOIN UserEmail ue ON ue.userId = u.id
+            LEFT JOIN Unit un ON un.id = u.unitId
            WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
              AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
-                  OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%')))
+                  OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%'))
+                  OR LOWER(un.code) LIKE LOWER(CONCAT('%', :term, '%')))
           """)
   Page<UserSearchResult> findActivePageByTerm(@Param("term") String term, Pageable pageable);
 }

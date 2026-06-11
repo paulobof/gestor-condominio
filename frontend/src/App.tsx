@@ -1,5 +1,13 @@
 import { Link } from 'react-router-dom';
-import { Home, Megaphone, Lightbulb, ShoppingBag, ClipboardCheck } from 'lucide-react';
+import {
+  Home,
+  Megaphone,
+  Lightbulb,
+  ShoppingBag,
+  ClipboardCheck,
+  Info,
+  UserCog,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -24,6 +32,13 @@ const NAV: NavItem[] = [
     brand: 'red',
   },
   {
+    to: '/informacoes',
+    title: 'Informações',
+    desc: 'Informações gerais do condomínio.',
+    icon: Info,
+    brand: 'blue',
+  },
+  {
     to: '/indicacoes',
     title: 'Indicações',
     desc: 'Serviços recomendados por moradores.',
@@ -44,6 +59,14 @@ const NAV: NavItem[] = [
     icon: ClipboardCheck,
     brand: 'ink',
     requires: 'REGISTRATION_VIEW',
+  },
+  {
+    to: '/admin/acessos',
+    title: 'Gestão de usuários',
+    desc: 'Acessos e dados dos usuários.',
+    icon: UserCog,
+    brand: 'ink',
+    requires: 'ROLE_ASSIGN',
   },
 ];
 

@@ -4,7 +4,9 @@ import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
@@ -12,6 +14,9 @@ import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.Gender;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
@@ -54,6 +59,7 @@ public class AccessService {
   private final UserEmailRepository emailRepo;
   private final PasswordEncoder encoder;
   private final ProvisionalPasswordGenerator passwordGenerator;
+  private final UnitRepository unitRepo;
 
   @Transactional(readOnly = true)
   public List<AssignableRoleView> assignableRoles() {
@@ -205,6 +211,87 @@ public class AccessService {
     emailRepo.findByUserId(targetUserId).forEach(emailRepo::delete);
     userRepo.delete(user);
     log.info("Admin {} excluiu (soft) usuário {}", actorId, targetUserId);
+  }
+
+  @Transactional(readOnly = true)
+  public UserDetail getUserDetail(UUID id) {
+    User u =
+        userRepo
+            .findById(id)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    String email =
+        emailRepo.findByUserId(id).stream()
+            .filter(UserEmail::isPrimary)
+            .findFirst()
+            .map(UserEmail::getEmail)
+            .orElse(null);
+    String unitCode =
+        u.getUnitId() == null
+            ? null
+            : unitRepo.findById(u.getUnitId()).map(Unit::getCode).orElse(null);
+    return new UserDetail(
+        u.getId(),
+        u.getFullName(),
+        u.getGreetingName(),
+        u.getPhone(),
+        u.getUnitId(),
+        unitCode,
+        email,
+        u.getGender() == null ? null : u.getGender().name(),
+        u.getBirthDate());
+  }
+
+  @Transactional
+  public void updateUser(UUID actorId, UUID targetUserId, UpdateUserRequest req) {
+    User user =
+        userRepo
+            .findById(targetUserId)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+
+    String newEmail = req.email().trim();
+    UserEmail primary =
+        emailRepo.findByUserId(targetUserId).stream()
+            .filter(UserEmail::isPrimary)
+            .findFirst()
+            .orElse(null);
+    String currentEmail = primary == null ? null : primary.getEmail();
+    if (currentEmail == null || !currentEmail.equalsIgnoreCase(newEmail)) {
+      emailRepo
+          .findActiveByEmailIgnoreCase(newEmail)
+          .ifPresent(
+              e -> {
+                if (!e.getUserId().equals(targetUserId)) {
+                  throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
+                }
+              });
+      if (primary != null) {
+        primary.changeEmail(newEmail);
+      }
+    }
+
+    user.updateProfile(
+        req.fullName().trim(),
+        trimToNull(req.greetingName()),
+        req.phone().trim(),
+        req.unitId(),
+        parseGender(req.gender()),
+        req.birthDate());
+    log.info("Admin {} atualizou usuário {}", actorId, targetUserId);
+  }
+
+  private static String trimToNull(String s) {
+    return (s == null || s.isBlank()) ? null : s.trim();
+  }
+
+  private static Gender parseGender(String g) {
+    if (g == null || g.isBlank()) {
+      return null;
+    }
+    try {
+      return Gender.valueOf(g);
+    } catch (IllegalArgumentException e) {
+      throw new AccessException("INVALID_GENDER", "Gênero inválido.");
+    }
   }
 
   private Role requireAssignableRole(short roleId) {

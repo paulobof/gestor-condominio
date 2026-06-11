@@ -13,6 +13,8 @@ import {
   createUser,
   deleteUser,
   lookupUnit,
+  getUser,
+  updateUser,
   type AssignableRole,
   type UserAccessRow,
 } from '../api/accessApi';
@@ -24,9 +26,18 @@ function errorMessage(err: unknown, fallback: string): string {
 
 const PAGE_SIZE = 20;
 
+const GENDERS = [
+  { value: '', label: '—' },
+  { value: 'MALE', label: 'Masculino' },
+  { value: 'FEMALE', label: 'Feminino' },
+  { value: 'OTHER', label: 'Outro' },
+  { value: 'NOT_INFORMED', label: 'Não informado' },
+];
+
 export function AccessManagementPage() {
   const { user } = useAuth();
   const canManage = user?.authorities.includes('USER_MANAGE') ?? false;
+  const canAssign = user?.authorities.includes('ROLE_ASSIGN') ?? false;
 
   const [roles, setRoles] = useState<AssignableRole[]>([]);
   const [query, setQuery] = useState('');
@@ -35,6 +46,7 @@ export function AccessManagementPage() {
   const [last, setLast] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<UserAccessRow | null>(null);
+  const [editing, setEditing] = useState<UserAccessRow | null>(null);
   const [roleIds, setRoleIds] = useState<Set<number>>(new Set());
   const [pending, setPending] = useState<Set<number>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -67,16 +79,18 @@ export function AccessManagementPage() {
     return () => clearTimeout(t);
   }, [query, load]);
 
-  const selectUser = async (u: UserAccessRow) => {
+  const openRoles = async (u: UserAccessRow) => {
+    setRoleIds(new Set());
     setSelected(u);
     try {
       setRoleIds(new Set(await getUserRoleIds(u.id)));
     } catch {
       toast.error('Erro ao carregar acessos do usuário.');
+      setSelected(null);
     }
   };
 
-  const back = () => {
+  const backFromRoles = () => {
     if (selected) {
       const updated = roles
         .filter((r) => roleIds.has(r.id))
@@ -131,6 +145,8 @@ export function AccessManagementPage() {
     }
   };
 
+  const showList = !selected && !editing && !adding;
+
   return (
     <main className="mx-auto max-w-2xl p-4">
       <h1 className="mb-4 flex items-center gap-2 text-2xl font-heading font-semibold">
@@ -139,21 +155,21 @@ export function AccessManagementPage() {
           className="inline-block h-6 w-1.5 rounded-full"
           style={{ backgroundColor: 'hsl(var(--brand-ink))' }}
         />
-        Gerenciar acessos
+        Gestão de usuários
       </h1>
 
-      {!selected && !adding && (
+      {showList && (
         <>
           <div className="mb-4 flex gap-2">
             <label htmlFor="user-search" className="sr-only">
-              Buscar usuário por nome ou e-mail
+              Buscar usuário por nome, e-mail ou ap
             </label>
             <input
               id="user-search"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por nome ou e-mail"
+              placeholder="Buscar por nome, e-mail ou ap"
               className="min-h-[44px] flex-1 rounded-lg border border-border bg-background px-3 text-sm"
             />
             {canManage && (
@@ -171,14 +187,10 @@ export function AccessManagementPage() {
             {rows.map((u) => (
               <li
                 key={u.id}
-                className="flex items-center gap-2 rounded-lg border border-border px-2 py-1"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2"
               >
-                <button
-                  type="button"
-                  onClick={() => selectUser(u)}
-                  className="flex min-h-[44px] flex-1 flex-col items-start gap-1 px-1 py-1 text-left text-sm hover:bg-accent"
-                >
-                  <span className="flex w-full flex-wrap items-center gap-x-2">
+                <span className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+                  <span className="flex flex-wrap items-center gap-x-2">
                     <span className="font-medium">{u.displayName}</span>
                     {u.unitLabel && <span className="text-muted-foreground">{u.unitLabel}</span>}
                     {u.phone && <span className="text-muted-foreground">{u.phone}</span>}
@@ -195,38 +207,60 @@ export function AccessManagementPage() {
                       ))}
                     </span>
                   )}
-                </button>
-                {canManage &&
-                  (confirmDelete === u.id ? (
-                    <span className="flex shrink-0 gap-1">
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        className="min-h-[44px]"
-                        onClick={() => void onDelete(u.id)}
-                      >
-                        Confirmar
-                      </Button>
+                </span>
+                <span className="flex shrink-0 flex-wrap gap-1">
+                  {canAssign && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-[44px]"
+                      onClick={() => void openRoles(u)}
+                    >
+                      Acessos
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-[44px]"
+                      onClick={() => setEditing(u)}
+                    >
+                      Dados
+                    </Button>
+                  )}
+                  {canManage &&
+                    (confirmDelete === u.id ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          className="min-h-[44px]"
+                          onClick={() => void onDelete(u.id)}
+                        >
+                          Confirmar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-[44px]"
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         type="button"
                         variant="outline"
                         className="min-h-[44px]"
-                        onClick={() => setConfirmDelete(null)}
+                        aria-label={`Excluir ${u.displayName}`}
+                        onClick={() => setConfirmDelete(u.id)}
                       >
-                        Cancelar
+                        Excluir
                       </Button>
-                    </span>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-[44px] shrink-0"
-                      aria-label={`Excluir ${u.displayName}`}
-                      onClick={() => setConfirmDelete(u.id)}
-                    >
-                      Excluir
-                    </Button>
-                  ))}
+                    ))}
+                </span>
               </li>
             ))}
           </ul>
@@ -249,10 +283,21 @@ export function AccessManagementPage() {
         <AddUserForm
           onDone={() => {
             setAdding(false);
-            void load('', 0, false);
             setQuery('');
+            void load('', 0, false);
           }}
           onCancel={() => setAdding(false)}
+        />
+      )}
+
+      {editing && (
+        <EditUserForm
+          userId={editing.id}
+          onDone={() => {
+            setEditing(null);
+            void load(query, 0, false);
+          }}
+          onCancel={() => setEditing(null)}
         />
       )}
 
@@ -278,7 +323,12 @@ export function AccessManagementPage() {
                 <span>{role.label}</span>
               </label>
             ))}
-            <Button type="button" variant="outline" className="min-h-[44px]" onClick={back}>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px]"
+              onClick={backFromRoles}
+            >
               Voltar à busca
             </Button>
           </CardContent>
@@ -376,55 +426,29 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={(e) => void submit(e)}>
-          <div className="space-y-1">
-            <label htmlFor="nu-name" className="text-sm font-medium">
-              Nome
-            </label>
-            <input
-              id="nu-name"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="nu-email" className="text-sm font-medium">
-              E-mail
-            </label>
-            <input
-              id="nu-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="nu-phone" className="text-sm font-medium">
-              Telefone
-            </label>
-            <input
-              id="nu-phone"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+5511999999999"
-              className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="nu-unit" className="text-sm font-medium">
-              Unidade (código, opcional)
-            </label>
-            <input
-              id="nu-unit"
-              value={unitCode}
-              onChange={(e) => setUnitCode(e.target.value)}
-              className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
-            />
-          </div>
+          <Field id="nu-name" label="Nome" value={fullName} onChange={setFullName} required />
+          <Field
+            id="nu-email"
+            label="E-mail"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            required
+          />
+          <Field
+            id="nu-phone"
+            label="Telefone"
+            value={phone}
+            onChange={setPhone}
+            required
+            placeholder="+5511999999999"
+          />
+          <Field
+            id="nu-unit"
+            label="Unidade (código, opcional)"
+            value={unitCode}
+            onChange={setUnitCode}
+          />
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Perfis</legend>
             {creatable.map((r) => (
@@ -451,5 +475,193 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function EditUserForm({
+  userId,
+  onDone,
+  onCancel,
+}: {
+  userId: string;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [fullName, setFullName] = useState('');
+  const [greetingName, setGreetingName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [unitCode, setUnitCode] = useState('');
+  const [gender, setGender] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getUser(userId)
+      .then((d) => {
+        setFullName(d.fullName ?? '');
+        setGreetingName(d.greetingName ?? '');
+        setEmail(d.email ?? '');
+        setPhone(d.phone ?? '');
+        setUnitCode(d.unitCode ?? '');
+        setGender(d.gender ?? '');
+        setBirthDate(d.birthDate ?? '');
+        setLoaded(true);
+      })
+      .catch(() => {
+        toast.error('Erro ao carregar o usuário.');
+        onCancel();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let unitId: string | null = null;
+      if (unitCode.trim()) {
+        try {
+          unitId = (await lookupUnit(unitCode.trim())).id;
+        } catch {
+          toast.error('Unidade não encontrada.');
+          setSaving(false);
+          return;
+        }
+      }
+      await updateUser(userId, {
+        fullName: fullName.trim(),
+        greetingName: greetingName.trim() || null,
+        phone: phone.trim(),
+        unitId,
+        email: email.trim(),
+        gender: gender || null,
+        birthDate: birthDate || null,
+      });
+      toast.success('Dados atualizados.');
+      onDone();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao atualizar os dados.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Editar dados</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!loaded ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : (
+          <form className="space-y-3" onSubmit={(e) => void submit(e)}>
+            <Field id="eu-name" label="Nome" value={fullName} onChange={setFullName} required />
+            <Field
+              id="eu-greeting"
+              label="Como chamar (opcional)"
+              value={greetingName}
+              onChange={setGreetingName}
+            />
+            <Field
+              id="eu-email"
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              required
+            />
+            <Field
+              id="eu-phone"
+              label="Telefone"
+              value={phone}
+              onChange={setPhone}
+              required
+              placeholder="+5511999999999"
+            />
+            <Field
+              id="eu-unit"
+              label="Unidade (código, opcional)"
+              value={unitCode}
+              onChange={setUnitCode}
+            />
+            <div className="space-y-1">
+              <label htmlFor="eu-gender" className="text-sm font-medium">
+                Gênero
+              </label>
+              <select
+                id="eu-gender"
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                {GENDERS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="eu-birth" className="text-sm font-medium">
+                Data de nascimento
+              </label>
+              <input
+                id="eu-birth"
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" className="min-h-[44px]" disabled={saving}>
+                Salvar
+              </Button>
+              <Button type="button" variant="outline" className="min-h-[44px]" onClick={onCancel}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  required = false,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        required={required}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
+      />
+    </div>
   );
 }

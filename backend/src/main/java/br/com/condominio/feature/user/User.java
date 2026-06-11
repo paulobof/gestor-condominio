@@ -133,6 +133,22 @@ public class User {
 
   // ===== Métodos de domínio =====
 
+  /** Atualiza os dados editáveis do usuário (admin). E-mail é tratado fora (UserEmail). */
+  public void updateProfile(
+      String fullName,
+      String greetingName,
+      String phone,
+      UUID unitId,
+      Gender gender,
+      java.time.LocalDate birthDate) {
+    this.fullName = fullName;
+    this.greetingName = greetingName;
+    this.phone = phone;
+    this.unitId = unitId;
+    this.gender = gender;
+    this.birthDate = birthDate;
+  }
+
   /**
    * Cria usuário ACTIVE pelo admin (qualquer unidade), com troca de senha obrigatória no 1º login.
    */

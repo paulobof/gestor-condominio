@@ -81,3 +81,34 @@ export async function lookupUnit(code: string) {
   const r = await api.get('/units/lookup', { params: { code } });
   return r.data as { id: string; code: string };
 }
+
+export interface UserDetail {
+  id: string;
+  fullName: string;
+  greetingName: string | null;
+  phone: string | null;
+  unitId: string | null;
+  unitCode: string | null;
+  email: string | null;
+  gender: string | null;
+  birthDate: string | null;
+}
+
+export interface UpdateUserPayload {
+  fullName: string;
+  greetingName: string | null;
+  phone: string;
+  unitId: string | null;
+  email: string;
+  gender: string | null;
+  birthDate: string | null;
+}
+
+export async function getUser(id: string) {
+  const r = await api.get(`/access/users/${id}`);
+  return r.data as UserDetail;
+}
+
+export async function updateUser(id: string, payload: UpdateUserPayload) {
+  await api.put(`/access/users/${id}`, payload);
+}

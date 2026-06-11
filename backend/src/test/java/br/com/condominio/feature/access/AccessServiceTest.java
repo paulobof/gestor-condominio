@@ -3,6 +3,7 @@ package br.com.condominio.feature.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,7 +15,9 @@ import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
+import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
@@ -22,12 +25,16 @@ import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.Gender;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,6 +62,7 @@ class AccessServiceTest {
   @Mock private UserEmailRepository emailRepo;
   @Mock private PasswordEncoder encoder;
   @Mock private ProvisionalPasswordGenerator passwordGenerator;
+  @Mock private UnitRepository unitRepo;
 
   @InjectMocks private AccessService service;
 
@@ -333,5 +341,109 @@ class AccessServiceTest {
         .isInstanceOf(AccessException.class)
         .extracting("code")
         .isEqualTo("USER_NOT_FOUND");
+  }
+
+  @Test
+  void updateUser_happyPath_updatesProfileAndEmail() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    when(emailRepo.findActiveByEmailIgnoreCase("new@x.com")).thenReturn(Optional.empty());
+
+    UpdateUserRequest req =
+        new UpdateUserRequest(
+            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", "FEMALE", null);
+    service.updateUser(ACTOR, TARGET, req);
+
+    verify(primary).changeEmail("new@x.com");
+    verify(u)
+        .updateProfile(
+            eq("Ana Nova"),
+            eq("Ana"),
+            eq("+5511999999999"),
+            eq(null),
+            eq(br.com.condominio.feature.user.Gender.FEMALE),
+            eq(null));
+  }
+
+  @Test
+  void updateUser_emailTakenByOther_throwsConflict() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    UserEmail other = mock(UserEmail.class);
+    when(other.getUserId()).thenReturn(UUID.randomUUID());
+    when(emailRepo.findActiveByEmailIgnoreCase("dup@x.com")).thenReturn(Optional.of(other));
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "dup@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("EMAIL_TAKEN");
+    verify(u, never()).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_sameEmail_skipsUniquenessAndKeepsEmail() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("ana@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ANA@x.com", null, null);
+    service.updateUser(ACTOR, TARGET, req);
+
+    verify(primary, never()).changeEmail(any());
+    verify(u).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_notFound_throws() {
+    when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ana@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_FOUND");
+  }
+
+  @Test
+  void getUserDetail_returnsFieldsAndEmailAndUnitCode() {
+    UUID unitId = UUID.randomUUID();
+    User u = mock(User.class);
+    when(u.getId()).thenReturn(TARGET);
+    when(u.getFullName()).thenReturn("Ana Lima");
+    when(u.getGreetingName()).thenReturn("Ana");
+    when(u.getPhone()).thenReturn("+5511999999999");
+    when(u.getUnitId()).thenReturn(unitId);
+    when(u.getGender()).thenReturn(Gender.FEMALE);
+    when(u.getBirthDate()).thenReturn(LocalDate.of(1990, 1, 2));
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail e = mock(UserEmail.class);
+    when(e.isPrimary()).thenReturn(true);
+    when(e.getEmail()).thenReturn("ana@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(e));
+    Unit unit = mock(Unit.class);
+    when(unit.getCode()).thenReturn("101A");
+    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+
+    UserDetail d = service.getUserDetail(TARGET);
+
+    assertThat(d.fullName()).isEqualTo("Ana Lima");
+    assertThat(d.email()).isEqualTo("ana@x.com");
+    assertThat(d.unitCode()).isEqualTo("101A");
+    assertThat(d.gender()).isEqualTo("FEMALE");
+    assertThat(d.birthDate()).isEqualTo(LocalDate.of(1990, 1, 2));
   }
 }

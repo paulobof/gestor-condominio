@@ -69,14 +69,14 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: /privacidade/i })).not.toBeInTheDocument();
   });
 
-  it('esconde "Gerenciar acessos" sem ROLE_ASSIGN', () => {
+  it('esconde "Gestão de usuários" sem ROLE_ASSIGN', () => {
     renderSidebar([]);
-    expect(screen.queryByRole('link', { name: /gerenciar acessos/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /gestão de usuários/i })).not.toBeInTheDocument();
   });
 
-  it('mostra "Gerenciar acessos" com ROLE_ASSIGN', () => {
+  it('mostra "Gestão de usuários" com ROLE_ASSIGN', () => {
     renderSidebar(['ROLE_ASSIGN']);
-    expect(screen.getAllByRole('link', { name: /gerenciar acessos/i })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: /gestão de usuários/i })[0]).toHaveAttribute(
       'href',
       '/admin/acessos'
     );

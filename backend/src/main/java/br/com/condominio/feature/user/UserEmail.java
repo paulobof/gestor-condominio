@@ -47,4 +47,13 @@ public class UserEmail {
 
   @Column(name = "deleted_at")
   private Instant deletedAt;
+
+  /** Cria o e-mail primário de um usuário. */
+  public static UserEmail primary(UUID userId, String email) {
+    UserEmail e = new UserEmail();
+    e.userId = userId;
+    e.email = email;
+    e.isPrimary = true;
+    return e;
+  }
 }

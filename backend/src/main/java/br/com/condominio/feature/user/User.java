@@ -133,6 +133,24 @@ public class User {
 
   // ===== Métodos de domínio =====
 
+  /**
+   * Cria usuário ACTIVE pelo admin (qualquer unidade), com troca de senha obrigatória no 1º login.
+   */
+  public static User newActiveByAdmin(
+      UUID unitId, String fullName, String phone, String passwordHash, short pepperVersion) {
+    User u = new User();
+    u.unitId = unitId;
+    u.isUnitMaster = false;
+    u.fullName = fullName;
+    u.phone = phone;
+    u.passwordHash = passwordHash;
+    u.passwordPepperVersion = pepperVersion;
+    u.mustChangePassword = true;
+    u.status = UserStatus.ACTIVE;
+    u.whatsappOptIn = false;
+    return u;
+  }
+
   /** Trocar senha (já hash gerado externamente). Limpa flag must_change_password. */
   public void changePassword(String newHash, short pepperVersion) {
     this.passwordHash = newHash;

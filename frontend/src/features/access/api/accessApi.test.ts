@@ -11,6 +11,10 @@ import {
   getUserRoleIds,
   assignRole,
   removeRole,
+  getCreatableRoles,
+  createUser,
+  deleteUser,
+  lookupUnit,
 } from './accessApi';
 
 const get = vi.mocked(api.get);
@@ -51,5 +55,43 @@ describe('accessApi — contrato com o backend', () => {
     del.mockResolvedValue({ data: undefined });
     await removeRole('u1', 6);
     expect(del).toHaveBeenCalledWith('/access/users/u1/roles/6');
+  });
+
+  it('getCreatableRoles faz GET em /access/creatable-roles', async () => {
+    get.mockResolvedValue({ data: [] });
+    await getCreatableRoles();
+    expect(get).toHaveBeenCalledWith('/access/creatable-roles');
+  });
+
+  it('createUser faz POST em /access/users com o payload', async () => {
+    post.mockResolvedValue({ data: { id: 'u9', fullName: 'Ana', password: 'X1y!aaaa' } });
+    const out = await createUser({
+      fullName: 'Ana',
+      email: 'ana@x.com',
+      phone: '+5511999999999',
+      unitId: null,
+      roleIds: [4],
+    });
+    expect(post).toHaveBeenCalledWith('/access/users', {
+      fullName: 'Ana',
+      email: 'ana@x.com',
+      phone: '+5511999999999',
+      unitId: null,
+      roleIds: [4],
+    });
+    expect(out.password).toBe('X1y!aaaa');
+  });
+
+  it('deleteUser faz DELETE no path do usuário', async () => {
+    del.mockResolvedValue({ data: undefined });
+    await deleteUser('u9');
+    expect(del).toHaveBeenCalledWith('/access/users/u9');
+  });
+
+  it('lookupUnit faz GET em /units/lookup com o code', async () => {
+    get.mockResolvedValue({ data: { id: 'unit1', code: '101A' } });
+    const out = await lookupUnit('101A');
+    expect(get).toHaveBeenCalledWith('/units/lookup', { params: { code: '101A' } });
+    expect(out.id).toBe('unit1');
   });
 });

@@ -12,20 +12,36 @@ import org.springframework.data.repository.query.Param;
 /** Listagem de usuários ativos restrita ao contexto de gestão de acessos. */
 public interface AccessUserRepository extends Repository<User, UUID> {
 
-  // :term nunca é passado diretamente a LOWER(); é só concatenado via CONCAT('%', :term, '%'),
-  // e o guard ":term IS NULL" curto-circuita antes. Por isso não precisa de cast(:term as string)
-  // (diferente de RecommendationRepository, que aplica LOWER(:param) direto).
+  // Duas queries em vez de um guard ":term IS NULL": com termo nulo o Postgres não consegue
+  // determinar o tipo do bind parameter no PREPARE (agravado por email citext) e estoura 500.
   @Query(
       value =
           """
           SELECT DISTINCT new br.com.condominio.feature.access.dto.UserSearchResult(
-                 u.id, u.fullName, un.code)
+                 u.id, u.fullName, un.code, u.phone)
+            FROM User u
+            LEFT JOIN Unit un ON un.id = u.unitId
+           WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
+           ORDER BY u.fullName
+          """,
+      countQuery =
+          """
+          SELECT COUNT(u.id)
+            FROM User u
+           WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
+          """)
+  Page<UserSearchResult> findActivePageAll(Pageable pageable);
+
+  @Query(
+      value =
+          """
+          SELECT DISTINCT new br.com.condominio.feature.access.dto.UserSearchResult(
+                 u.id, u.fullName, un.code, u.phone)
             FROM User u
             LEFT JOIN UserEmail ue ON ue.userId = u.id
             LEFT JOIN Unit un ON un.id = u.unitId
            WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
-             AND (:term IS NULL
-                  OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
+             AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
                   OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%')))
            ORDER BY u.fullName
           """,
@@ -35,9 +51,8 @@ public interface AccessUserRepository extends Repository<User, UUID> {
             FROM User u
             LEFT JOIN UserEmail ue ON ue.userId = u.id
            WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE
-             AND (:term IS NULL
-                  OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
+             AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :term, '%'))
                   OR LOWER(ue.email) LIKE LOWER(CONCAT('%', :term, '%')))
           """)
-  Page<UserSearchResult> findActivePage(@Param("term") String term, Pageable pageable);
+  Page<UserSearchResult> findActivePageByTerm(@Param("term") String term, Pageable pageable);
 }

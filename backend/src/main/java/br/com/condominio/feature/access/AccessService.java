@@ -1,29 +1,38 @@
 package br.com.condominio.feature.access;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.CreateUserRequest;
+import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserEmail;
+import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
+import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccessService {
 
   private final RoleRepository roleRepo;
@@ -41,6 +51,9 @@ public class AccessService {
   private final RoleAssignmentLogRepository logRepo;
   private final AccessUserRepository userSearchRepo;
   private final UserRepository userRepo;
+  private final UserEmailRepository emailRepo;
+  private final PasswordEncoder encoder;
+  private final ProvisionalPasswordGenerator passwordGenerator;
 
   @Transactional(readOnly = true)
   public List<AssignableRoleView> assignableRoles() {
@@ -50,9 +63,28 @@ public class AccessService {
   }
 
   @Transactional(readOnly = true)
+  public List<AssignableRoleView> creatableRoles() {
+    List<Role> roles = new ArrayList<>(roleRepo.findByAssignableTrue());
+    roleRepo.findByName(RoleName.RESIDENT).ifPresent(roles::add);
+    return roles.stream()
+        .sorted(Comparator.comparing(Role::getId))
+        .map(r -> new AssignableRoleView(r.getId(), r.getName().name(), r.getLabel()))
+        .toList();
+  }
+
+  private Set<Short> creatableRoleIds() {
+    return creatableRoles().stream()
+        .map(AssignableRoleView::id)
+        .collect(Collectors.toCollection(HashSet::new));
+  }
+
+  @Transactional(readOnly = true)
   public Page<UserAccessRow> listUsers(String q, Pageable pageable) {
     String term = (q == null || q.isBlank()) ? null : q.trim();
-    Page<UserSearchResult> page = userSearchRepo.findActivePage(term, pageable);
+    Page<UserSearchResult> page =
+        (term == null)
+            ? userSearchRepo.findActivePageAll(pageable)
+            : userSearchRepo.findActivePageByTerm(term, pageable);
     List<UUID> ids = page.getContent().stream().map(UserSearchResult::id).toList();
 
     Map<Short, String> labelById =
@@ -79,6 +111,7 @@ public class AccessService {
                 u.id(),
                 u.displayName(),
                 u.unitLabel(),
+                u.phone(),
                 rolesByUser.getOrDefault(u.id(), List.of())));
   }
 
@@ -127,6 +160,51 @@ public class AccessService {
     }
     userRoleRepo.deleteById(id);
     logRepo.save(RoleAssignmentLog.remove(targetUserId, roleId, actorId));
+  }
+
+  @Transactional
+  public CreatedUserResponse createUser(UUID actorId, CreateUserRequest req) {
+    if (emailRepo.findActiveByEmailIgnoreCase(req.email()).isPresent()) {
+      throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
+    }
+    Set<Short> creatable = creatableRoleIds();
+    for (Short rid : req.roleIds()) {
+      if (!creatable.contains(rid)) {
+        throw new AccessException(
+            "ROLE_NOT_CREATABLE", "Perfil não pode ser atribuído no cadastro.");
+      }
+    }
+    String plain = passwordGenerator.generate();
+    User user =
+        User.newActiveByAdmin(
+            req.unitId(),
+            req.fullName().trim(),
+            req.phone().trim(),
+            encoder.encode(plain),
+            (short) 1);
+    user = userRepo.save(user);
+    emailRepo.save(UserEmail.primary(user.getId(), req.email().trim()));
+    Instant now = Instant.now();
+    for (Short rid : req.roleIds()) {
+      userRoleRepo.save(new UserRole(new UserRoleId(user.getId(), rid), now, actorId));
+      logRepo.save(RoleAssignmentLog.assign(user.getId(), rid, actorId));
+    }
+    log.info("Admin {} criou usuário {}", actorId, user.getId());
+    return new CreatedUserResponse(user.getId(), user.getFullName(), plain);
+  }
+
+  @Transactional
+  public void deleteUser(UUID actorId, UUID targetUserId) {
+    if (actorId.equals(targetUserId)) {
+      throw new AccessException("CANNOT_DELETE_SELF", "Você não pode excluir a si mesmo.");
+    }
+    User user =
+        userRepo
+            .findById(targetUserId)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    emailRepo.findByUserId(targetUserId).forEach(emailRepo::delete);
+    userRepo.delete(user);
+    log.info("Admin {} excluiu (soft) usuário {}", actorId, targetUserId);
   }
 
   private Role requireAssignableRole(short roleId) {

@@ -13,12 +13,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.CreateUserRequest;
+import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
 import br.com.condominio.support.MockAuth;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -43,8 +46,10 @@ class AccessControllerWebTest {
   private static final UUID UID = UUID.randomUUID();
   private static final UUID TARGET = UUID.randomUUID();
   private static final String ASSIGN = "ROLE_ASSIGN";
+  private static final String MANAGE = "USER_MANAGE";
 
   @Autowired private MockMvc mvc;
+  @Autowired private ObjectMapper om;
   @MockBean private AccessService service;
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
 
@@ -75,13 +80,18 @@ class AccessControllerWebTest {
   void users_withRoleAssign_returns200_pagedWithBadges() throws Exception {
     var row =
         new UserAccessRow(
-            TARGET, "Ana Lima", "A-101", List.of(new RoleBadge((short) 6, "Editor do Mural")));
+            TARGET,
+            "Ana Lima",
+            "A-101",
+            "+5511999999999",
+            List.of(new RoleBadge((short) 6, "Editor do Mural")));
     when(service.listUsers("", PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
 
     mvc.perform(get("/api/access/users").with(MockAuth.user(UID, ASSIGN)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].displayName").value("Ana Lima"))
+        .andExpect(jsonPath("$.content[0].phone").value("+5511999999999"))
         .andExpect(jsonPath("$.content[0].roles[0].label").value("Editor do Mural"))
         .andExpect(jsonPath("$.last").value(true));
   }
@@ -146,5 +156,85 @@ class AccessControllerWebTest {
         .andExpect(status().isOk());
 
     verify(service).listUsers("", PageRequest.of(0, 100));
+  }
+
+  @Test
+  void creatableRoles_withRoleAssign_returns200() throws Exception {
+    when(service.creatableRoles())
+        .thenReturn(List.of(new AssignableRoleView((short) 4, "RESIDENT", "Morador")));
+
+    mvc.perform(get("/api/access/creatable-roles").with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].label").value("Morador"));
+  }
+
+  @Test
+  void createUser_withUserManage_returns201_withPassword() throws Exception {
+    when(service.createUser(eq(UID), any(CreateUserRequest.class)))
+        .thenReturn(new CreatedUserResponse(TARGET, "Ana Lima", "Abc123!xYZ09__a"));
+    var body =
+        new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
+
+    mvc.perform(
+            post("/api/access/users")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.password").value("Abc123!xYZ09__a"));
+  }
+
+  @Test
+  void createUser_withoutUserManage_returns403() throws Exception {
+    var body =
+        new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
+    mvc.perform(
+            post("/api/access/users")
+                .with(MockAuth.user(UID, ASSIGN))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).createUser(any(), any());
+  }
+
+  @Test
+  void createUser_emailTaken_returns409() throws Exception {
+    doThrow(new AccessException("EMAIL_TAKEN", "E-mail já cadastrado."))
+        .when(service)
+        .createUser(eq(UID), any(CreateUserRequest.class));
+    var body =
+        new CreateUserRequest("Ana", "dup@x.com", "+5511999999999", null, List.of((short) 4));
+
+    mvc.perform(
+            post("/api/access/users")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+  }
+
+  @Test
+  void deleteUser_withUserManage_returns204() throws Exception {
+    mvc.perform(delete("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isNoContent());
+    verify(service).deleteUser(UID, TARGET);
+  }
+
+  @Test
+  void deleteUser_withoutUserManage_returns403() throws Exception {
+    mvc.perform(delete("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).deleteUser(any(), any());
+  }
+
+  @Test
+  void deleteUser_self_returns409() throws Exception {
+    doThrow(new AccessException("CANNOT_DELETE_SELF", "Você não pode excluir a si mesmo."))
+        .when(service)
+        .deleteUser(eq(UID), eq(UID));
+    mvc.perform(delete("/api/access/users/{id}", UID).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CANNOT_DELETE_SELF"));
   }
 }

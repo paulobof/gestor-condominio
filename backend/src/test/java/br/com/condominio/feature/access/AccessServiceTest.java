@@ -10,17 +10,24 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.CreateUserRequest;
+import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
 import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserEmail;
+import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
+import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AccessServiceTest {
@@ -44,6 +52,9 @@ class AccessServiceTest {
   @Mock private RoleAssignmentLogRepository logRepo;
   @Mock private AccessUserRepository userSearchRepo;
   @Mock private UserRepository userRepo;
+  @Mock private UserEmailRepository emailRepo;
+  @Mock private PasswordEncoder encoder;
+  @Mock private ProvisionalPasswordGenerator passwordGenerator;
 
   @InjectMocks private AccessService service;
 
@@ -162,10 +173,10 @@ class AccessServiceTest {
   }
 
   @Test
-  void listUsers_mapsRolesIntoBadges() {
-    var u1 = new UserSearchResult(TARGET, "Ana Lima", "A-101");
+  void listUsers_mapsRolesIntoBadges_withPhone() {
+    var u1 = new UserSearchResult(TARGET, "Ana Lima", "A-101", "+5511999999999");
     Role muralEditor = role((short) 6, "Editor do Mural", null, true);
-    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+    when(userSearchRepo.findActivePageAll(PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(u1)));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of(muralEditor));
     when(userRoleRepo.findById_UserIdIn(List.of(TARGET)))
@@ -173,17 +184,16 @@ class AccessServiceTest {
 
     Page<UserAccessRow> page = service.listUsers("", PageRequest.of(0, 20));
 
-    assertThat(page.getContent()).hasSize(1);
     UserAccessRow row = page.getContent().get(0);
-    assertThat(row.id()).isEqualTo(TARGET);
     assertThat(row.displayName()).isEqualTo("Ana Lima");
+    assertThat(row.phone()).isEqualTo("+5511999999999");
     assertThat(row.roles()).containsExactly(new RoleBadge((short) 6, "Editor do Mural"));
   }
 
   @Test
-  void listUsers_blankQuery_passesNullTerm_andUserWithoutRoleHasEmptyBadges() {
-    var u1 = new UserSearchResult(TARGET, "Bruno Sá", null);
-    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+  void listUsers_blankQuery_usesFindAll_andUserWithoutRoleHasEmptyBadges() {
+    var u1 = new UserSearchResult(TARGET, "Bruno Sá", null, null);
+    when(userSearchRepo.findActivePageAll(PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(u1)));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
     when(userRoleRepo.findById_UserIdIn(List.of(TARGET))).thenReturn(List.of());
@@ -194,15 +204,14 @@ class AccessServiceTest {
   }
 
   @Test
-  void listUsers_withTerm_trimsAndForwards() {
-    when(userSearchRepo.findActivePage("ana", PageRequest.of(0, 20)))
+  void listUsers_withTerm_trimsAndUsesByTerm() {
+    when(userSearchRepo.findActivePageByTerm("ana", PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of()));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
 
-    // página vazia → ids vazio → findById_UserIdIn não é chamado (por isso não é stubado)
     service.listUsers("  ana  ", PageRequest.of(0, 20));
 
-    verify(userSearchRepo).findActivePage("ana", PageRequest.of(0, 20));
+    verify(userSearchRepo).findActivePageByTerm("ana", PageRequest.of(0, 20));
   }
 
   @Test
@@ -219,5 +228,110 @@ class AccessServiceTest {
                     new UserRoleId(TARGET, (short) 6), null, null))); // MURAL_EDITOR, assignable
 
     assertThat(service.userRoleIds(TARGET)).containsExactly((short) 6);
+  }
+
+  @Test
+  void creatableRoles_areAssignablePlusResident() {
+    Role council = role((short) 2, "Conselheiro", (short) 3, true);
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    doReturn(br.com.condominio.feature.role.RoleName.COUNCIL).when(council).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of(council));
+    when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(resident));
+
+    List<AssignableRoleView> out = service.creatableRoles();
+
+    assertThat(out)
+        .extracting(AssignableRoleView::id)
+        .containsExactlyInAnyOrder((short) 2, (short) 4);
+  }
+
+  @Test
+  void createUser_happyPath_savesUserEmailRolesAndReturnsPassword() {
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+    when(roleRepo.findByName(br.com.condominio.feature.role.RoleName.RESIDENT))
+        .thenReturn(Optional.of(resident));
+    when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
+    when(passwordGenerator.generate()).thenReturn("Abc123!xYZ09__a");
+    when(encoder.encode("Abc123!xYZ09__a")).thenReturn("HASH");
+    User saved = mock(User.class);
+    when(saved.getId()).thenReturn(TARGET);
+    when(saved.getFullName()).thenReturn("Ana Lima");
+    when(userRepo.save(any(User.class))).thenReturn(saved);
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
+    CreatedUserResponse out = service.createUser(ACTOR, req);
+
+    assertThat(out.password()).isEqualTo("Abc123!xYZ09__a");
+    assertThat(out.id()).isEqualTo(TARGET);
+    verify(emailRepo).save(any(UserEmail.class));
+    verify(userRoleRepo).save(any(UserRole.class));
+    verify(logRepo).save(any(RoleAssignmentLog.class));
+  }
+
+  @Test
+  void createUser_emailTaken_throwsConflict() {
+    when(emailRepo.findActiveByEmailIgnoreCase("dup@x.com"))
+        .thenReturn(Optional.of(mock(UserEmail.class)));
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana", "dup@x.com", "+5511999999999", null, List.of((short) 4));
+    assertThatThrownBy(() -> service.createUser(ACTOR, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("EMAIL_TAKEN");
+    verify(userRepo, never()).save(any());
+  }
+
+  @Test
+  void createUser_roleNotCreatable_throws() {
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+    when(roleRepo.findByName(br.com.condominio.feature.role.RoleName.RESIDENT))
+        .thenReturn(Optional.of(resident));
+    when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana", "ana@x.com", "+5511999999999", null, List.of((short) 1));
+    assertThatThrownBy(() -> service.createUser(ACTOR, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("ROLE_NOT_CREATABLE");
+    verify(userRepo, never()).save(any());
+  }
+
+  @Test
+  void deleteUser_softDeletesUserAndEmails() {
+    User target = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(target));
+    UserEmail e = mock(UserEmail.class);
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(e));
+
+    service.deleteUser(ACTOR, TARGET);
+
+    verify(emailRepo).delete(e);
+    verify(userRepo).delete(target);
+  }
+
+  @Test
+  void deleteUser_self_throwsConflict() {
+    assertThatThrownBy(() -> service.deleteUser(ACTOR, ACTOR))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("CANNOT_DELETE_SELF");
+    verify(userRepo, never()).delete(any());
+  }
+
+  @Test
+  void deleteUser_notFound_throws() {
+    when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.deleteUser(ACTOR, TARGET))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_FOUND");
   }
 }

@@ -140,9 +140,10 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleAccess(AccessException ex) {
     HttpStatus status =
         switch (ex.getCode()) {
-          case "ROLE_LIMIT_REACHED" -> HttpStatus.CONFLICT;
+          case "ROLE_LIMIT_REACHED", "EMAIL_TAKEN", "CANNOT_DELETE_SELF" -> HttpStatus.CONFLICT;
           case "ROLE_NOT_FOUND", "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
-          case "ROLE_NOT_ASSIGNABLE", "USER_NOT_ACTIVE" -> HttpStatus.UNPROCESSABLE_ENTITY;
+          case "ROLE_NOT_ASSIGNABLE", "USER_NOT_ACTIVE", "ROLE_NOT_CREATABLE" ->
+              HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

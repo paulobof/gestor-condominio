@@ -19,6 +19,7 @@ import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
+import br.com.condominio.shared.security.RestAuthenticationEntryPoint;
 import br.com.condominio.shared.security.SecurityConfig;
 import br.com.condominio.support.MockAuth;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,7 +41,11 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(
     controllers = AccessController.class,
     properties = "app.feature.accessmanagement.enabled=true")
-@Import({SecurityConfig.class, JwtAuthenticationConverter.class})
+@Import({
+  SecurityConfig.class,
+  JwtAuthenticationConverter.class,
+  RestAuthenticationEntryPoint.class
+})
 class AccessControllerWebTest {
 
   private static final UUID UID = UUID.randomUUID();
@@ -101,6 +106,13 @@ class AccessControllerWebTest {
     mvc.perform(get("/api/access/users").with(MockAuth.user(UID)))
         .andExpect(status().isForbidden());
     verify(service, never()).listUsers(any(), any());
+  }
+
+  @Test
+  void users_withoutToken_returns401() throws Exception {
+    mvc.perform(get("/api/access/users"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
   }
 
   @Test

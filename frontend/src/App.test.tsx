@@ -68,6 +68,27 @@ describe('App', () => {
     );
   });
 
+  it('mostra "Informações" para qualquer autenticado', () => {
+    renderApp(['USER_VIEW']);
+    expect(screen.getByRole('link', { name: /^informações/i })).toHaveAttribute(
+      'href',
+      '/informacoes'
+    );
+  });
+
+  it('esconde "Gestão de usuários" sem ROLE_ASSIGN', () => {
+    renderApp(['USER_VIEW']);
+    expect(screen.queryByRole('link', { name: /gestão de usuários/i })).not.toBeInTheDocument();
+  });
+
+  it('mostra "Gestão de usuários" com ROLE_ASSIGN', () => {
+    renderApp(['ROLE_ASSIGN']);
+    expect(screen.getByRole('link', { name: /gestão de usuários/i })).toHaveAttribute(
+      'href',
+      '/admin/acessos'
+    );
+  });
+
   it('usa cor adaptável (não brand-ink fixo) no card neutro, para contraste no dark', () => {
     renderApp(['REGISTRATION_VIEW']);
     const link = screen.getByRole('link', { name: /cadastros pendentes/i });

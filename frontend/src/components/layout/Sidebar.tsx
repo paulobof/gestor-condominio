@@ -39,7 +39,7 @@ const ITEMS: NavItem[] = [
   },
   {
     to: '/admin/acessos',
-    label: 'Gerenciar acessos',
+    label: 'Gestão de usuários',
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',

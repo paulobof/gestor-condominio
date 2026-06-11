@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.CreateUserRequest;
+import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserSearchResult;
@@ -21,8 +23,11 @@ import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserEmail;
+import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
+import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AccessServiceTest {
@@ -46,6 +52,9 @@ class AccessServiceTest {
   @Mock private RoleAssignmentLogRepository logRepo;
   @Mock private AccessUserRepository userSearchRepo;
   @Mock private UserRepository userRepo;
+  @Mock private UserEmailRepository emailRepo;
+  @Mock private PasswordEncoder encoder;
+  @Mock private ProvisionalPasswordGenerator passwordGenerator;
 
   @InjectMocks private AccessService service;
 
@@ -235,5 +244,63 @@ class AccessServiceTest {
     assertThat(out)
         .extracting(AssignableRoleView::id)
         .containsExactlyInAnyOrder((short) 2, (short) 4);
+  }
+
+  @Test
+  void createUser_happyPath_savesUserEmailRolesAndReturnsPassword() {
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+    when(roleRepo.findByName(br.com.condominio.feature.role.RoleName.RESIDENT))
+        .thenReturn(Optional.of(resident));
+    when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
+    when(passwordGenerator.generate()).thenReturn("Abc123!xYZ09__a");
+    when(encoder.encode("Abc123!xYZ09__a")).thenReturn("HASH");
+    User saved = mock(User.class);
+    when(saved.getId()).thenReturn(TARGET);
+    when(saved.getFullName()).thenReturn("Ana Lima");
+    when(userRepo.save(any(User.class))).thenReturn(saved);
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
+    CreatedUserResponse out = service.createUser(ACTOR, req);
+
+    assertThat(out.password()).isEqualTo("Abc123!xYZ09__a");
+    assertThat(out.id()).isEqualTo(TARGET);
+    verify(emailRepo).save(any(UserEmail.class));
+    verify(userRoleRepo).save(any(UserRole.class));
+    verify(logRepo).save(any(RoleAssignmentLog.class));
+  }
+
+  @Test
+  void createUser_emailTaken_throwsConflict() {
+    when(emailRepo.findActiveByEmailIgnoreCase("dup@x.com"))
+        .thenReturn(Optional.of(mock(UserEmail.class)));
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana", "dup@x.com", "+5511999999999", null, List.of((short) 4));
+    assertThatThrownBy(() -> service.createUser(ACTOR, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("EMAIL_TAKEN");
+    verify(userRepo, never()).save(any());
+  }
+
+  @Test
+  void createUser_roleNotCreatable_throws() {
+    Role resident = role((short) 4, "Morador", null, false);
+    doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
+    when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
+    when(roleRepo.findByName(br.com.condominio.feature.role.RoleName.RESIDENT))
+        .thenReturn(Optional.of(resident));
+    when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana", "ana@x.com", "+5511999999999", null, List.of((short) 1));
+    assertThatThrownBy(() -> service.createUser(ACTOR, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("ROLE_NOT_CREATABLE");
+    verify(userRepo, never()).save(any());
   }
 }

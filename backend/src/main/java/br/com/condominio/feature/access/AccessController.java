@@ -1,14 +1,18 @@
 package br.com.condominio.feature.access;
 
 import br.com.condominio.feature.access.dto.AssignableRoleView;
+import br.com.condominio.feature.access.dto.CreateUserRequest;
+import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -71,5 +75,13 @@ public class AccessController {
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     service.remove(me.userId(), id, roleId);
     return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/users")
+  @PreAuthorize("hasAuthority('USER_MANAGE')")
+  public ResponseEntity<CreatedUserResponse> createUser(
+      @Valid @RequestBody CreateUserRequest req,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(service.createUser(me.userId(), req));
   }
 }

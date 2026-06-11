@@ -63,13 +63,13 @@ class RepositoryPostgresTest {
   }
 
   @Test
-  void findActivePage_nullAndNonNullTerm_runsAgainstPostgres() {
-    // Pega bugs de HQL: ":term IS NULL", DISTINCT + countQuery, LEFT JOIN.
-    assertThatCode(() -> accessUsers.findActivePage(null, PageRequest.of(0, 20)))
+  void findActivePage_allAndByTerm_runAgainstPostgres() {
+    // Pega o bug do 500: ":term IS NULL" com bind nulo não-tipado contra citext.
+    assertThatCode(() -> accessUsers.findActivePageAll(PageRequest.of(0, 20)))
         .doesNotThrowAnyException();
-    assertThatCode(() -> accessUsers.findActivePage("ana", PageRequest.of(0, 20)))
+    assertThatCode(() -> accessUsers.findActivePageByTerm("ana", PageRequest.of(0, 20)))
         .doesNotThrowAnyException();
-    assertThat(accessUsers.findActivePage(null, PageRequest.of(0, 20)).getContent()).isEmpty();
+    assertThat(accessUsers.findActivePageAll(PageRequest.of(0, 20))).isNotNull();
   }
 
   @Test

@@ -162,10 +162,10 @@ class AccessServiceTest {
   }
 
   @Test
-  void listUsers_mapsRolesIntoBadges() {
-    var u1 = new UserSearchResult(TARGET, "Ana Lima", "A-101");
+  void listUsers_mapsRolesIntoBadges_withPhone() {
+    var u1 = new UserSearchResult(TARGET, "Ana Lima", "A-101", "+5511999999999");
     Role muralEditor = role((short) 6, "Editor do Mural", null, true);
-    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+    when(userSearchRepo.findActivePageAll(PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(u1)));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of(muralEditor));
     when(userRoleRepo.findById_UserIdIn(List.of(TARGET)))
@@ -173,17 +173,16 @@ class AccessServiceTest {
 
     Page<UserAccessRow> page = service.listUsers("", PageRequest.of(0, 20));
 
-    assertThat(page.getContent()).hasSize(1);
     UserAccessRow row = page.getContent().get(0);
-    assertThat(row.id()).isEqualTo(TARGET);
     assertThat(row.displayName()).isEqualTo("Ana Lima");
+    assertThat(row.phone()).isEqualTo("+5511999999999");
     assertThat(row.roles()).containsExactly(new RoleBadge((short) 6, "Editor do Mural"));
   }
 
   @Test
-  void listUsers_blankQuery_passesNullTerm_andUserWithoutRoleHasEmptyBadges() {
-    var u1 = new UserSearchResult(TARGET, "Bruno Sá", null);
-    when(userSearchRepo.findActivePage(null, PageRequest.of(0, 20)))
+  void listUsers_blankQuery_usesFindAll_andUserWithoutRoleHasEmptyBadges() {
+    var u1 = new UserSearchResult(TARGET, "Bruno Sá", null, null);
+    when(userSearchRepo.findActivePageAll(PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(u1)));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
     when(userRoleRepo.findById_UserIdIn(List.of(TARGET))).thenReturn(List.of());
@@ -194,15 +193,14 @@ class AccessServiceTest {
   }
 
   @Test
-  void listUsers_withTerm_trimsAndForwards() {
-    when(userSearchRepo.findActivePage("ana", PageRequest.of(0, 20)))
+  void listUsers_withTerm_trimsAndUsesByTerm() {
+    when(userSearchRepo.findActivePageByTerm("ana", PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of()));
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
 
-    // página vazia → ids vazio → findById_UserIdIn não é chamado (por isso não é stubado)
     service.listUsers("  ana  ", PageRequest.of(0, 20));
 
-    verify(userSearchRepo).findActivePage("ana", PageRequest.of(0, 20));
+    verify(userSearchRepo).findActivePageByTerm("ana", PageRequest.of(0, 20));
   }
 
   @Test

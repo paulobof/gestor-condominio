@@ -52,7 +52,10 @@ public class AccessService {
   @Transactional(readOnly = true)
   public Page<UserAccessRow> listUsers(String q, Pageable pageable) {
     String term = (q == null || q.isBlank()) ? null : q.trim();
-    Page<UserSearchResult> page = userSearchRepo.findActivePage(term, pageable);
+    Page<UserSearchResult> page =
+        (term == null)
+            ? userSearchRepo.findActivePageAll(pageable)
+            : userSearchRepo.findActivePageByTerm(term, pageable);
     List<UUID> ids = page.getContent().stream().map(UserSearchResult::id).toList();
 
     Map<Short, String> labelById =
@@ -79,6 +82,7 @@ public class AccessService {
                 u.id(),
                 u.displayName(),
                 u.unitLabel(),
+                u.phone(),
                 rolesByUser.getOrDefault(u.id(), List.of())));
   }
 

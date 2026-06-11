@@ -75,13 +75,18 @@ class AccessControllerWebTest {
   void users_withRoleAssign_returns200_pagedWithBadges() throws Exception {
     var row =
         new UserAccessRow(
-            TARGET, "Ana Lima", "A-101", List.of(new RoleBadge((short) 6, "Editor do Mural")));
+            TARGET,
+            "Ana Lima",
+            "A-101",
+            "+5511999999999",
+            List.of(new RoleBadge((short) 6, "Editor do Mural")));
     when(service.listUsers("", PageRequest.of(0, 20)))
         .thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
 
     mvc.perform(get("/api/access/users").with(MockAuth.user(UID, ASSIGN)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].displayName").value("Ana Lima"))
+        .andExpect(jsonPath("$.content[0].phone").value("+5511999999999"))
         .andExpect(jsonPath("$.content[0].roles[0].label").value("Editor do Mural"))
         .andExpect(jsonPath("$.last").value(true));
   }

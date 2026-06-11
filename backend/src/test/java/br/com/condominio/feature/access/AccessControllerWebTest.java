@@ -213,4 +213,28 @@ class AccessControllerWebTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
   }
+
+  @Test
+  void deleteUser_withUserManage_returns204() throws Exception {
+    mvc.perform(delete("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isNoContent());
+    verify(service).deleteUser(UID, TARGET);
+  }
+
+  @Test
+  void deleteUser_withoutUserManage_returns403() throws Exception {
+    mvc.perform(delete("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, ASSIGN)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).deleteUser(any(), any());
+  }
+
+  @Test
+  void deleteUser_self_returns409() throws Exception {
+    doThrow(new AccessException("CANNOT_DELETE_SELF", "Você não pode excluir a si mesmo."))
+        .when(service)
+        .deleteUser(eq(UID), eq(UID));
+    mvc.perform(delete("/api/access/users/{id}", UID).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CANNOT_DELETE_SELF"));
+  }
 }

@@ -84,4 +84,12 @@ public class AccessController {
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.createUser(me.userId(), req));
   }
+
+  @DeleteMapping("/users/{id}")
+  @PreAuthorize("hasAuthority('USER_MANAGE')")
+  public ResponseEntity<Void> deleteUser(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    service.deleteUser(me.userId(), id);
+    return ResponseEntity.noContent().build();
+  }
 }

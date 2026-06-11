@@ -303,4 +303,35 @@ class AccessServiceTest {
         .isEqualTo("ROLE_NOT_CREATABLE");
     verify(userRepo, never()).save(any());
   }
+
+  @Test
+  void deleteUser_softDeletesUserAndEmails() {
+    User target = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(target));
+    UserEmail e = mock(UserEmail.class);
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(e));
+
+    service.deleteUser(ACTOR, TARGET);
+
+    verify(emailRepo).delete(e);
+    verify(userRepo).delete(target);
+  }
+
+  @Test
+  void deleteUser_self_throwsConflict() {
+    assertThatThrownBy(() -> service.deleteUser(ACTOR, ACTOR))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("CANNOT_DELETE_SELF");
+    verify(userRepo, never()).delete(any());
+  }
+
+  @Test
+  void deleteUser_notFound_throws() {
+    when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.deleteUser(ACTOR, TARGET))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_FOUND");
+  }
 }

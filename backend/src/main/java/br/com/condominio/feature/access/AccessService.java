@@ -193,6 +193,20 @@ public class AccessService {
     return new CreatedUserResponse(user.getId(), user.getFullName(), plain);
   }
 
+  @Transactional
+  public void deleteUser(UUID actorId, UUID targetUserId) {
+    if (actorId.equals(targetUserId)) {
+      throw new AccessException("CANNOT_DELETE_SELF", "Você não pode excluir a si mesmo.");
+    }
+    User user =
+        userRepo
+            .findById(targetUserId)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    emailRepo.findByUserId(targetUserId).forEach(emailRepo::delete);
+    userRepo.delete(user);
+    log.info("Admin {} excluiu (soft) usuário {}", actorId, targetUserId);
+  }
+
   private Role requireAssignableRole(short roleId) {
     Role role =
         roleRepo

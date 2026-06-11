@@ -3,6 +3,7 @@ package br.com.condominio.feature.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,6 +15,7 @@ import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
@@ -336,6 +338,81 @@ class AccessServiceTest {
   void deleteUser_notFound_throws() {
     when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
     assertThatThrownBy(() -> service.deleteUser(ACTOR, TARGET))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_FOUND");
+  }
+
+  @Test
+  void updateUser_happyPath_updatesProfileAndEmail() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    when(emailRepo.findActiveByEmailIgnoreCase("new@x.com")).thenReturn(Optional.empty());
+
+    UpdateUserRequest req =
+        new UpdateUserRequest(
+            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", "FEMALE", null);
+    service.updateUser(ACTOR, TARGET, req);
+
+    verify(primary).changeEmail("new@x.com");
+    verify(u)
+        .updateProfile(
+            eq("Ana Nova"),
+            eq("Ana"),
+            eq("+5511999999999"),
+            eq(null),
+            eq(br.com.condominio.feature.user.Gender.FEMALE),
+            eq(null));
+  }
+
+  @Test
+  void updateUser_emailTakenByOther_throwsConflict() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    UserEmail other = mock(UserEmail.class);
+    when(other.getUserId()).thenReturn(UUID.randomUUID());
+    when(emailRepo.findActiveByEmailIgnoreCase("dup@x.com")).thenReturn(Optional.of(other));
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "dup@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("EMAIL_TAKEN");
+    verify(u, never()).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_sameEmail_skipsUniquenessAndKeepsEmail() {
+    User u = mock(User.class);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.isPrimary()).thenReturn(true);
+    when(primary.getEmail()).thenReturn("ana@x.com");
+    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ANA@x.com", null, null);
+    service.updateUser(ACTOR, TARGET, req);
+
+    verify(primary, never()).changeEmail(any());
+    verify(u).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_notFound_throws() {
+    when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ana@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
         .isInstanceOf(AccessException.class)
         .extracting("code")
         .isEqualTo("USER_NOT_FOUND");

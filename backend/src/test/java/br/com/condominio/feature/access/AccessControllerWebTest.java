@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import br.com.condominio.feature.access.dto.AssignableRoleView;
 import br.com.condominio.feature.access.dto.CreateUserRequest;
 import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.RoleBadge;
+import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
@@ -277,5 +279,46 @@ class AccessControllerWebTest {
     mvc.perform(get("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, ASSIGN)))
         .andExpect(status().isForbidden());
     verify(service, never()).getUserDetail(any());
+  }
+
+  @Test
+  void updateUser_withUserManage_returns204() throws Exception {
+    var body =
+        new UpdateUserRequest(
+            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", "FEMALE", null);
+    mvc.perform(
+            put("/api/access/users/{id}", TARGET)
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isNoContent());
+    verify(service).updateUser(eq(UID), eq(TARGET), any(UpdateUserRequest.class));
+  }
+
+  @Test
+  void updateUser_withoutUserManage_returns403() throws Exception {
+    var body = new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "new@x.com", null, null);
+    mvc.perform(
+            put("/api/access/users/{id}", TARGET)
+                .with(MockAuth.user(UID, ASSIGN))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).updateUser(any(), any(), any());
+  }
+
+  @Test
+  void updateUser_emailTaken_returns409() throws Exception {
+    doThrow(new AccessException("EMAIL_TAKEN", "E-mail já cadastrado."))
+        .when(service)
+        .updateUser(eq(UID), eq(TARGET), any(UpdateUserRequest.class));
+    var body = new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "dup@x.com", null, null);
+    mvc.perform(
+            put("/api/access/users/{id}", TARGET)
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
   }
 }

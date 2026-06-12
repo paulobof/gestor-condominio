@@ -12,7 +12,6 @@ public record UserDetail(
     String fullName,
     String greetingName,
     String phone,
-    UUID unitId,
     String unitCode,
     String email,
     String gender,

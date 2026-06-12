@@ -20,6 +20,7 @@ import br.com.condominio.feature.access.dto.RoleBadge;
 import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
+import br.com.condominio.feature.user.Gender;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -253,15 +254,7 @@ class AccessControllerWebTest {
     when(service.getUserDetail(TARGET))
         .thenReturn(
             new UserDetail(
-                TARGET,
-                "Ana Lima",
-                "Ana",
-                "+5511999999999",
-                null,
-                null,
-                "ana@x.com",
-                "FEMALE",
-                null));
+                TARGET, "Ana Lima", "Ana", "+5511999999999", null, "ana@x.com", "FEMALE", null));
 
     mvc.perform(get("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, MANAGE)))
         .andExpect(status().isOk())
@@ -280,7 +273,7 @@ class AccessControllerWebTest {
   void updateUser_withUserManage_returns204() throws Exception {
     var body =
         new UpdateUserRequest(
-            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", "FEMALE", null);
+            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", Gender.FEMALE, null);
     mvc.perform(
             put("/api/access/users/{id}", TARGET)
                 .with(MockAuth.user(UID, MANAGE))

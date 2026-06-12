@@ -11,5 +11,8 @@ public interface UserEmailRepository extends JpaRepository<UserEmail, UUID> {
   @Query("SELECT ue FROM UserEmail ue WHERE LOWER(ue.email) = LOWER(:email)")
   Optional<UserEmail> findActiveByEmailIgnoreCase(String email);
 
+  @Query("SELECT ue FROM UserEmail ue WHERE ue.userId = :userId AND ue.isPrimary = true")
+  Optional<UserEmail> findPrimaryByUserId(UUID userId);
+
   List<UserEmail> findByUserId(UUID userId);
 }

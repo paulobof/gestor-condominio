@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -295,6 +297,21 @@ class AccessServiceTest {
   }
 
   @Test
+  void createUser_unitNotFound_throws() {
+    UUID unitId = UUID.randomUUID();
+    when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
+    when(unitRepo.findById(unitId)).thenReturn(Optional.empty());
+
+    CreateUserRequest req =
+        new CreateUserRequest("Ana", "ana@x.com", "+5511999999999", unitId, List.of((short) 4));
+    assertThatThrownBy(() -> service.createUser(ACTOR, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("UNIT_NOT_FOUND");
+    verify(userRepo, never()).save(any());
+  }
+
+  @Test
   void createUser_roleNotCreatable_throws() {
     Role resident = role((short) 4, "Morador", null, false);
     doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
@@ -345,17 +362,16 @@ class AccessServiceTest {
 
   @Test
   void updateUser_happyPath_updatesProfileAndEmail() {
-    User u = mock(User.class);
+    User u = activeUser();
     when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
     UserEmail primary = mock(UserEmail.class);
-    when(primary.isPrimary()).thenReturn(true);
     when(primary.getEmail()).thenReturn("old@x.com");
-    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.of(primary));
     when(emailRepo.findActiveByEmailIgnoreCase("new@x.com")).thenReturn(Optional.empty());
 
     UpdateUserRequest req =
         new UpdateUserRequest(
-            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", "FEMALE", null);
+            "Ana Nova", "Ana", "+5511999999999", null, "new@x.com", Gender.FEMALE, null);
     service.updateUser(ACTOR, TARGET, req);
 
     verify(primary).changeEmail("new@x.com");
@@ -371,12 +387,11 @@ class AccessServiceTest {
 
   @Test
   void updateUser_emailTakenByOther_throwsConflict() {
-    User u = mock(User.class);
+    User u = activeUser();
     when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
     UserEmail primary = mock(UserEmail.class);
-    when(primary.isPrimary()).thenReturn(true);
     when(primary.getEmail()).thenReturn("old@x.com");
-    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.of(primary));
     UserEmail other = mock(UserEmail.class);
     when(other.getUserId()).thenReturn(UUID.randomUUID());
     when(emailRepo.findActiveByEmailIgnoreCase("dup@x.com")).thenReturn(Optional.of(other));
@@ -392,12 +407,11 @@ class AccessServiceTest {
 
   @Test
   void updateUser_sameEmail_skipsUniquenessAndKeepsEmail() {
-    User u = mock(User.class);
+    User u = activeUser();
     when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
     UserEmail primary = mock(UserEmail.class);
-    when(primary.isPrimary()).thenReturn(true);
     when(primary.getEmail()).thenReturn("ana@x.com");
-    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(primary));
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.of(primary));
 
     UpdateUserRequest req =
         new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ANA@x.com", null, null);
@@ -405,6 +419,70 @@ class AccessServiceTest {
 
     verify(primary, never()).changeEmail(any());
     verify(u).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_userNotActive_throws() {
+    User disabled = mock(User.class);
+    when(disabled.getStatus()).thenReturn(UserStatus.DISABLED);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(disabled));
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "ana@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_ACTIVE");
+    verify(disabled, never()).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_noPrimaryEmail_createsPrimary() {
+    User u = activeUser();
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.empty());
+    when(emailRepo.findActiveByEmailIgnoreCase("new@x.com")).thenReturn(Optional.empty());
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "new@x.com", null, null);
+    service.updateUser(ACTOR, TARGET, req);
+
+    verify(emailRepo).save(any(UserEmail.class));
+    verify(u).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_emailCollisionOnFlush_throwsConflict() {
+    User u = activeUser();
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    UserEmail primary = mock(UserEmail.class);
+    when(primary.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.of(primary));
+    when(emailRepo.findActiveByEmailIgnoreCase("new@x.com")).thenReturn(Optional.empty());
+    doThrow(new DataIntegrityViolationException("dup")).when(emailRepo).flush();
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", null, "new@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("EMAIL_TAKEN");
+    verify(u, never()).updateProfile(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void updateUser_unitNotFound_throws() {
+    UUID unitId = UUID.randomUUID();
+    User u = activeUser();
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+    when(unitRepo.findById(unitId)).thenReturn(Optional.empty());
+
+    UpdateUserRequest req =
+        new UpdateUserRequest("Ana", "Ana", "+5511999999999", unitId, "ana@x.com", null, null);
+    assertThatThrownBy(() -> service.updateUser(ACTOR, TARGET, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("UNIT_NOT_FOUND");
   }
 
   @Test
@@ -429,11 +507,11 @@ class AccessServiceTest {
     when(u.getUnitId()).thenReturn(unitId);
     when(u.getGender()).thenReturn(Gender.FEMALE);
     when(u.getBirthDate()).thenReturn(LocalDate.of(1990, 1, 2));
+    when(u.getStatus()).thenReturn(UserStatus.ACTIVE);
     when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
     UserEmail e = mock(UserEmail.class);
-    when(e.isPrimary()).thenReturn(true);
     when(e.getEmail()).thenReturn("ana@x.com");
-    when(emailRepo.findByUserId(TARGET)).thenReturn(List.of(e));
+    when(emailRepo.findPrimaryByUserId(TARGET)).thenReturn(Optional.of(e));
     Unit unit = mock(Unit.class);
     when(unit.getCode()).thenReturn("101A");
     when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));

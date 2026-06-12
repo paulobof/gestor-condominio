@@ -77,7 +77,6 @@ beforeEach(() => {
     fullName: 'Ana Lima',
     greetingName: 'Ana',
     phone: '+5511988887777',
-    unitId: null,
     unitCode: null,
     email: 'ana@x.com',
     gender: 'FEMALE',
@@ -111,6 +110,27 @@ describe('AccessManagementPage', () => {
     await user.click(screen.getByRole('button', { name: /^salvar$/i }));
     await waitFor(() => expect(updateMock).toHaveBeenCalled());
     expect(updateMock.mock.calls[0][0]).toBe('u1');
+  });
+
+  it('preserva um gênero desconhecido do backend ao salvar (não zera)', async () => {
+    getUserMock.mockResolvedValue({
+      id: 'u1',
+      fullName: 'Ana Lima',
+      greetingName: 'Ana',
+      phone: '+5511988887777',
+      unitCode: null,
+      email: 'ana@x.com',
+      gender: 'CUSTOM_X',
+      birthDate: null,
+    });
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.click(screen.getByRole('button', { name: /^dados$/i }));
+    await screen.findByDisplayValue('ana@x.com');
+    await user.click(screen.getByRole('button', { name: /^salvar$/i }));
+    await waitFor(() => expect(updateMock).toHaveBeenCalled());
+    expect(updateMock.mock.calls[0][1].gender).toBe('CUSTOM_X');
   });
 
   it('abrir "Acessos" com erro no fetch fecha o painel e avisa', async () => {

@@ -24,6 +24,13 @@ function errorMessage(err: unknown, fallback: string): string {
   return maybe?.response?.data?.message ?? fallback;
 }
 
+/** Resolve o código de unidade em id (vazio → null). Lança se o código não existir. */
+async function resolveUnitId(unitCode: string): Promise<string | null> {
+  const code = unitCode.trim();
+  if (!code) return null;
+  return (await lookupUnit(code)).id;
+}
+
 const PAGE_SIZE = 20;
 
 const GENDERS = [
@@ -374,15 +381,13 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
     }
     setSaving(true);
     try {
-      let unitId: string | null = null;
-      if (unitCode.trim()) {
-        try {
-          unitId = (await lookupUnit(unitCode.trim())).id;
-        } catch {
-          toast.error('Unidade não encontrada.');
-          setSaving(false);
-          return;
-        }
+      let unitId: string | null;
+      try {
+        unitId = await resolveUnitId(unitCode);
+      } catch {
+        toast.error('Unidade não encontrada.');
+        setSaving(false);
+        return;
       }
       const out = await createUser({
         fullName: fullName.trim(),
@@ -520,15 +525,13 @@ function EditUserForm({
     e.preventDefault();
     setSaving(true);
     try {
-      let unitId: string | null = null;
-      if (unitCode.trim()) {
-        try {
-          unitId = (await lookupUnit(unitCode.trim())).id;
-        } catch {
-          toast.error('Unidade não encontrada.');
-          setSaving(false);
-          return;
-        }
+      let unitId: string | null;
+      try {
+        unitId = await resolveUnitId(unitCode);
+      } catch {
+        toast.error('Unidade não encontrada.');
+        setSaving(false);
+        return;
       }
       await updateUser(userId, {
         fullName: fullName.trim(),
@@ -547,6 +550,12 @@ function EditUserForm({
       setSaving(false);
     }
   };
+
+  // Preserva um gênero vindo do backend que não esteja na lista, p/ não zerá-lo silenciosamente ao salvar.
+  const genderOptions =
+    gender && !GENDERS.some((g) => g.value === gender)
+      ? [...GENDERS, { value: gender, label: gender }]
+      : GENDERS;
 
   return (
     <Card>
@@ -597,7 +606,7 @@ function EditUserForm({
                 onChange={(e) => setGender(e.target.value)}
                 className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
               >
-                {GENDERS.map((g) => (
+                {genderOptions.map((g) => (
                   <option key={g.value} value={g.value}>
                     {g.label}
                   </option>

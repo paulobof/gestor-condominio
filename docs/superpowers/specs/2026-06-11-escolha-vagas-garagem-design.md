@@ -161,7 +161,7 @@ Quem tem **`PARKING_MANAGE`** cria uma **campanha** (DRAFT) informando **nome** 
 
 - **`drawOrder(queueRef)`** — por fila (ou "sortear todas"): o sistema embaralha as unidades elegíveis e grava `order_index`. Se `pcd_first`, as unidades **PCD** (do cadastro) vão ao topo e o sorteio só ordena **entre elas**; o restante é sorteado depois.
 - **Preview + re-sortear** enquanto a campanha está em DRAFT. Cada sorteio é registrado em `parking_order_draw_log` (auditoria).
-- **Moto:** o sistema **não decide ganhador**. A lista de ganhadores da moto é **importada** (mesmo numa campanha `INTERNAL`); o sistema, no máximo, **sorteia a ordem** entre os ganhadores informados.
+- **Moto (vale para qualquer modo):** **sempre importada com a ordem já inclusa** — o sistema **nunca sorteia a moto**. Mesmo numa campanha `INTERNAL`, a fila de moto só fica pronta após o import da lista de ganhadores **já ordenada**.
 
 ### Caso B — Sem sorteio (`EXTERNAL`)
 
@@ -217,5 +217,3 @@ Feature grande → **decompor em sub-PRs** ≤400 linhas (override consciente se
 2. **Vagas de moto não são presas a torre** (pool único "todas"). Confirmar pelas plantas; se forem por torre, vira fila de moto por torre.
 3. **Momento exato de liberar vagas PCD** = no `closeRound`. Confirmar se há fase de "sobras" antes do encerramento.
 4. **Unidade pulada volta para o fim da mesma fila** (vs. lista de pendências). Confirmado "fim da fila"; rever se o síndico prefere uma aba de pendências.
-5. **Template externo por fila vem pré-preenchido** (carro) — assumido para reduzir erro; confirmar se o operador prefere modelo em branco.
-6. **Moto em campanha `INTERNAL`**: o sistema sorteia apenas a **ordem** entre ganhadores informados (a lista de ganhadores é importada). Confirmar se nesse modo a moto deve ser totalmente importada (ordem inclusa).

@@ -111,10 +111,11 @@ public class UnitOwnership {
     if (this.status != OwnershipStatus.PENDING) {
       throw new IllegalStateException("Ownership not PENDING (current=" + this.status + ")");
     }
+    Instant now = Instant.now();
     this.status = OwnershipStatus.APPROVED;
     this.approvedByUserId = approverId;
-    this.approvedAt = Instant.now();
-    this.proofVerifiedAt = Instant.now();
+    this.approvedAt = now;
+    this.proofVerifiedAt = now;
   }
 
   /** Rejeita a posse pendente, registrando o motivo. */

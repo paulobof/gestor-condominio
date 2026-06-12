@@ -60,5 +60,16 @@ class UnitOwnershipTest {
     assertThat(o.getStatus()).isEqualTo(OwnershipStatus.REJECTED);
     assertThat(o.getApprovedByUserId()).isEqualTo(approver);
     assertThat(o.getRejectionReason()).isEqualTo("comprovante ilegível");
+    assertThat(o.getApprovedAt()).isNull();
+  }
+
+  @Test
+  void reject_notPending_throws() {
+    UnitOwnership o =
+        UnitOwnership.pending(UUID.randomUUID(), UUID.randomUUID(), "k", "f", "application/pdf");
+    o.approve(UUID.randomUUID());
+
+    assertThatThrownBy(() -> o.reject(UUID.randomUUID(), "motivo"))
+        .isInstanceOf(IllegalStateException.class);
   }
 }

@@ -87,7 +87,6 @@ export interface UserDetail {
   fullName: string;
   greetingName: string | null;
   phone: string | null;
-  unitId: string | null;
   unitCode: string | null;
   email: string | null;
   gender: string | null;

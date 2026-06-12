@@ -16,7 +16,6 @@ import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitRepository;
-import br.com.condominio.feature.user.Gender;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
@@ -30,11 +29,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -134,13 +135,7 @@ public class AccessService {
   @Transactional
   public void assign(UUID actorId, UUID targetUserId, short roleId) {
     Role role = requireAssignableRole(roleId);
-    User target =
-        userRepo
-            .findById(targetUserId)
-            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
-    if (target.getStatus() != UserStatus.ACTIVE) {
-      throw new AccessException("USER_NOT_ACTIVE", "Usuário não está ativo.");
-    }
+    requireActiveUser(targetUserId);
     UserRoleId id = new UserRoleId(targetUserId, roleId);
     if (userRoleRepo.existsById(id)) {
       return; // idempotente: já tem a role
@@ -173,6 +168,7 @@ public class AccessService {
     if (emailRepo.findActiveByEmailIgnoreCase(req.email()).isPresent()) {
       throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
     }
+    requireUnitExists(req.unitId());
     Set<Short> creatable = creatableRoleIds();
     for (Short rid : req.roleIds()) {
       if (!creatable.contains(rid)) {
@@ -215,16 +211,8 @@ public class AccessService {
 
   @Transactional(readOnly = true)
   public UserDetail getUserDetail(UUID id) {
-    User u =
-        userRepo
-            .findById(id)
-            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
-    String email =
-        emailRepo.findByUserId(id).stream()
-            .filter(UserEmail::isPrimary)
-            .findFirst()
-            .map(UserEmail::getEmail)
-            .orElse(null);
+    User u = requireActiveUser(id);
+    String email = emailRepo.findPrimaryByUserId(id).map(UserEmail::getEmail).orElse(null);
     String unitCode =
         u.getUnitId() == null
             ? null
@@ -234,7 +222,6 @@ public class AccessService {
         u.getFullName(),
         u.getGreetingName(),
         u.getPhone(),
-        u.getUnitId(),
         unitCode,
         email,
         u.getGender() == null ? null : u.getGender().name(),
@@ -243,18 +230,12 @@ public class AccessService {
 
   @Transactional
   public void updateUser(UUID actorId, UUID targetUserId, UpdateUserRequest req) {
-    User user =
-        userRepo
-            .findById(targetUserId)
-            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    User user = requireActiveUser(targetUserId);
+    requireUnitExists(req.unitId());
 
     String newEmail = req.email().trim();
-    UserEmail primary =
-        emailRepo.findByUserId(targetUserId).stream()
-            .filter(UserEmail::isPrimary)
-            .findFirst()
-            .orElse(null);
-    String currentEmail = primary == null ? null : primary.getEmail();
+    Optional<UserEmail> primary = emailRepo.findPrimaryByUserId(targetUserId);
+    String currentEmail = primary.map(UserEmail::getEmail).orElse(null);
     if (currentEmail == null || !currentEmail.equalsIgnoreCase(newEmail)) {
       emailRepo
           .findActiveByEmailIgnoreCase(newEmail)
@@ -264,8 +245,15 @@ public class AccessService {
                   throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
                 }
               });
-      if (primary != null) {
-        primary.changeEmail(newEmail);
+      // Cria o e-mail primário se ausente (não descarta silenciosamente o e-mail informado).
+      primary.ifPresentOrElse(
+          p -> p.changeEmail(newEmail),
+          () -> emailRepo.save(UserEmail.primary(targetUserId, newEmail)));
+      // Força a constraint única (ux_user_email_email_active) agora: corrida/colisão vira 409.
+      try {
+        emailRepo.flush();
+      } catch (DataIntegrityViolationException ex) {
+        throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
       }
     }
 
@@ -274,7 +262,7 @@ public class AccessService {
         trimToNull(req.greetingName()),
         req.phone().trim(),
         req.unitId(),
-        parseGender(req.gender()),
+        req.gender(),
         req.birthDate());
     log.info("Admin {} atualizou usuário {}", actorId, targetUserId);
   }
@@ -283,14 +271,22 @@ public class AccessService {
     return (s == null || s.isBlank()) ? null : s.trim();
   }
 
-  private static Gender parseGender(String g) {
-    if (g == null || g.isBlank()) {
-      return null;
+  /** Carrega o usuário garantindo que existe e está ACTIVE (não editar DISABLED/ANONYMIZED). */
+  private User requireActiveUser(UUID id) {
+    User u =
+        userRepo
+            .findById(id)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    if (u.getStatus() != UserStatus.ACTIVE) {
+      throw new AccessException("USER_NOT_ACTIVE", "Usuário não está ativo.");
     }
-    try {
-      return Gender.valueOf(g);
-    } catch (IllegalArgumentException e) {
-      throw new AccessException("INVALID_GENDER", "Gênero inválido.");
+    return u;
+  }
+
+  /** Valida que a unidade informada existe (quando não-nula); evita unitId órfão. */
+  private void requireUnitExists(UUID unitId) {
+    if (unitId != null && unitRepo.findById(unitId).isEmpty()) {
+      throw new AccessException("UNIT_NOT_FOUND", "Unidade não encontrada.");
     }
   }
 

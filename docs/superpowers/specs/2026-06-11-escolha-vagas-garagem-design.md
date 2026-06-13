@@ -17,13 +17,13 @@ Hoje a escolha de vagas seria feita presencialmente/manualmente, com risco de er
 
 - **3 torres**: A, B, C. Na planta da garagem aparecem como **TORRE 1 = A, TORRE 2 = B, TORRE 3 = C**.
 - **4 pisos**: **−1, 0, 1, 2**.
-- **Rótulos (confirmado nas plantas REV 05, com texto extraível):** vaga de carro = `T{torre} {torre}{categoria}{seq}` (ex.: `T2 2263` = torre 2, categoria **2**, seq 63); posição/tamanho = `{G|M|P}{num}{A|B}` (ex.: `G364A`/`G364B`); moto = `MOTO ###`; PCD = `PNE ####`. Tamanho ∈ **P/M/G**; vaga **coberta ou descoberta**.
+- **Rótulos (confirmado nas plantas REV 05, com texto extraível):** vaga de carro = `T{torre} {torre}{categoria}{seq}` (ex.: `T2 2263` = torre 2, categoria **2**, seq 63); posição/tamanho = `{G|M|P}{num}{A|B}` (ex.: `G364A`/`G364B`); moto = `MOTO ###`; PCD = `PNE ####`. Tamanho ∈ **P/M/G**. **Não há distinção coberta/descoberta** (as áreas "VAGAS DESCOBERTAS" na planta não viram regra).
 - **3 categorias de carro** (legenda dos pisos +1/+2): **1 vaga**, **2 vagas** e **3 vagas**, coloridas por torre (tom claro→escuro).
 - **Vaga múltipla**: um único número atende **N posições** (ex.: `T2 2232` = `190A` + `190B`). Unidade de **2 vagas** escolhe **uma vaga dupla**; de **3 vagas**, **uma vaga tripla**; de **1 vaga**, uma simples. Nunca posições avulsas.
 - **Vagas de moto**: **pool comum** (não preso a torre — `MOTO ###`), em número **limitado** → processo/sorteio **separado**.
-- **Vagas PCD**: demarcadas (`PNE ####`); ficam **reservadas só para unidades PCD** durante a campanha e **liberam como comuns ao encerrar**.
+- **Vagas PCD**: demarcadas (`PNE ####`); ficam **reservadas só para unidades PCD** e **liberam como comuns assim que não houver mais unidade PCD aguardando** na fila.
 
-> **Entitlement** = **regra do final** (`unit.position`): finais 1,2,5,6 → 2 vagas; 3,4 → 1 vaga; **+ exceções de 3 vagas** (coberturas), via override por unidade — a regra do final **não** cobre as de 3 vagas.
+> **Entitlement** = **regra do final** (`unit.position`): finais 1,2,5,6 → 2 vagas; 3,4 → 1 vaga; **+ exceções de 3 vagas** = coberturas **3201 e 3202 das torres A, B e C** (6 unidades), via override por unidade — a regra do final **não** cobre as de 3 vagas.
 
 ## As filas (até 10)
 
@@ -44,8 +44,8 @@ Uma unidade está em **exatamente uma fila de carro** (definida por torre + cate
 - **Restrição de escolha (carro):** a unidade só enxerga/escolhe vagas onde `spot.tower == unit.tower` **E** `spot.category` casa com sua entitlement **E** `status = AVAILABLE` **E** (`spot.pcd == false` **OU** `unit.pcd == true`).
 - **Restrição de escolha (moto):** na fila de moto a torre **não** se aplica (`spot.tower` é null / pool comum). Filtro: `spot.kind == MOTO` **E** `status = AVAILABLE` **E** (`spot.pcd == false` **OU** `unit.pcd == true`). A unidade escolhe **1 vaga de moto**.
 - **1 vaga = vaga simples · 2 vagas = vaga dupla · 3 vagas = vaga tripla** (sempre uma única vaga múltipla por unidade, nunca posições avulsas).
-- **PCD:** atributo persistente no **cadastro da unidade** (`unit.pcd`). A **prioridade na ordem** é resolvida **pelo operador** (modo externo, posiciona os PCDs no arquivo) **ou pelo sistema** (modo interno, toggle `pcd_first` põe PCDs no topo do sorteio). O software também mantém a regra de **vaga PCD reservada** (só unidade PCD seleciona vaga PCD até o encerramento da campanha).
-- **Vez não atendida:** a fila **fica parada** na unidade da vez até ela escolher. Só o **síndico pula** manualmente; a unidade pulada vai para o **fim da fila** e é reavisada quando chegar a vez de novo. **Sem timeout automático.**
+- **PCD:** atributo persistente no **cadastro da unidade** (`unit.pcd`). A **prioridade na ordem** é resolvida **pelo operador** (modo externo, posiciona os PCDs no arquivo) **ou pelo sistema** (modo interno, toggle `pcd_first` põe PCDs no topo do sorteio). O software mantém a regra de **vaga PCD reservada** (só unidade PCD seleciona vaga PCD) e **libera essas vagas como comuns assim que a fila não tiver mais unidade PCD aguardando** (não espera o encerramento).
+- **Vez não atendida:** a fila **fica parada** na unidade da vez até ela escolher. O **síndico pula** manualmente; a unidade pulada vai para o **fim da fila** e é reavisada — **até 3 vezes** (`skip_count`). No **3º pulo**, a unidade sai do rodízio (`PARKED`) e **só o síndico escolhe** por ela (`assignManually`). **Sem timeout automático.**
 - **Avanço da fila:** **automático no envio** (Abordagem 1). Ao submeter, a próxima unidade vira "da vez" e o WhatsApp dispara sozinho.
 - **Moto:** fila separada, **arquivo de ordem próprio**, **iniciada manualmente** pelo síndico (tipicamente após as filas de carro).
 - **Mapa fiel à planta (overlay):** a imagem da planta de cada piso é o **fundo**, e cada vaga clicável fica **posicionada na coordenada real**. Estados de cor:
@@ -65,7 +65,7 @@ A digitalização **não é feita no software**. A partir dos **4 PDFs** das pla
 ### Dados (novas tabelas, soft delete via `@SQLDelete` + `@SQLRestriction`)
 
 **`parking_spot`** — catálogo (1 linha por vaga selecionável; uma vaga múltipla — dupla/tripla — = 1 linha):
-`id`, `version`, `floor` (smallint −1/0/1/2), `code` (ex.: `T2 2263`), `tower` (A/B/C, null p/ moto), `category` (`ONE`/`TWO`/`THREE`, null p/ moto), `kind` (`CAR`/`MOTO`), `size` (varchar P/M/G), `covered` (bool), `pcd` (bool), `capacity` (smallint 1/2/3 — nº de posições), `sub_positions` (varchar, ex.: `"190A,190B"`), geometria `img_x,img_y,img_w,img_h` (relativo à imagem do piso), `status` (`AVAILABLE`/`TAKEN`/`BLOCKED`), `assigned_unit_id` (uuid null) + colunas de auditoria/soft-delete.
+`id`, `version`, `floor` (smallint −1/0/1/2), `code` (ex.: `T2 2263`), `tower` (A/B/C, null p/ moto), `category` (`ONE`/`TWO`/`THREE`, null p/ moto), `kind` (`CAR`/`MOTO`), `size` (varchar P/M/G), `pcd` (bool), `capacity` (smallint 1/2/3 — nº de posições), `sub_positions` (varchar, ex.: `"190A,190B"`), geometria `img_x,img_y,img_w,img_h` (relativo à imagem do piso), `status` (`AVAILABLE`/`TAKEN`/`BLOCKED`), `assigned_unit_id` (uuid null) + colunas de auditoria/soft-delete.
 
 **`parking_round`** — a **campanha** de escolha: `id`, `name` (nome da campanha), `draw_mode` (`INTERNAL` = sistema sorteia / `EXTERNAL` = ordem importada), `pcd_first` (bool, default true — só aplica em `INTERNAL`), `status` (`DRAFT`/`OPEN`/`CLOSED`), `created_by_user_id`, timestamps.
 
@@ -73,7 +73,7 @@ A digitalização **não é feita no software**. A partir dos **4 PDFs** das pla
 
 **`parking_queue`** — uma fila (até 10), por campanha: `id`, `round_id`, `tower` (null p/ moto), `category` (`ONE`/`TWO`/`THREE`, null p/ moto), `kind` (`CAR`/`MOTO`), `status` (`PENDING` = criada, sem ordem ou aguardando abrir / `OPEN` / `PAUSED` / `DONE`).
 
-**`parking_queue_entry`** — unidade na fila: `id`, `queue_id`, `unit_id`, `order_index`, `state` (`WAITING`/`CURRENT`/`DONE`/`SKIPPED`), `notified_at`, `chosen_at`.
+**`parking_queue_entry`** — unidade na fila: `id`, `queue_id`, `unit_id`, `order_index`, `state` (`WAITING`/`CURRENT`/`DONE`/`PARKED`), `skip_count` (smallint, default 0), `pcd` (bool — snapshot da unidade no momento), `notified_at`, `chosen_at`. `PARKED` = pulada 3× → sai do rodízio, aguardando o síndico atribuir.
 
 **`parking_assignment`** — resultado: `id`, `round_id`, `unit_id`, `spot_id`, `chosen_by_user_id`, `chosen_at`.
 
@@ -106,9 +106,10 @@ A digitalização **não é feita no software**. A partir dos **4 PDFs** das pla
 - `generateTemplates(roundId)` — modo `EXTERNAL`: gera um CSV por fila (carro pré-preenchido, moto em branco).
 - `importOrder(queueRef, csv)` — importa/valida a ordem de uma fila (ver validações na seção da campanha). Substitui enquanto DRAFT.
 - `openRound` / `openQueue` / `pauseQueue` / `reopenQueue`.
-- `skipCurrent(queueId)` → entry `SKIPPED`, recoloca no fim (`order_index = max+1`, `WAITING`), avança.
-- `assignManually(queueId, unitId, spotId)` — atribui por uma unidade (cobre sem-proprietário).
-- `closeRound()` → libera vagas PCD não usadas (`pcd → false` nas livres), congela resultado.
+- `skipCurrent(queueId)` → incrementa `skip_count`; se `< 3`, recoloca no fim (`order_index = max+1`, `WAITING`) e avança; se `== 3`, marca `PARKED` (sai do rodízio) e avança.
+- `assignManually(queueId, unitId, spotId)` — atribui por uma unidade (cobre `PARKED` e sem-proprietário).
+- `releasePcdSpots(queueId)` — chamado automaticamente quando a fila não tem mais entry PCD aguardando (`WAITING`/`CURRENT`): `pcd → false` nas vagas PCD ainda `AVAILABLE` daquele pool, tornando-as comuns.
+- `closeRound()` → encerra a campanha e **congela** o resultado.
 - Histórico/auditoria de **pulos e atribuições manuais** (quem, quando, qual unidade/vaga).
 
 **`ParkingNotificationRenderer`** — texto renderizado **no backend** (`WhatsAppMessageRenderer`), com **link profundo** para a tela de seleção. Envio via **outbox** existente (`WhatsAppOutboxService` / retry). Telefone normalizado (`PhoneNumberNormalizer`). Sem PII em log.
@@ -141,12 +142,12 @@ Endpoints com `@PreAuthorize("hasAuthority('PARKING_SELECT')")` / `('PARKING_MAN
   - **Criar campanha** (wizard): nome + modo (**com sorteio** / **sem sorteio**) + toggle "PCD primeiro" (modo interno).
   - **Definir ordem**: modo interno → **Sortear** por fila / todas, com **preview** e **re-sortear**; modo externo → **baixar os templates** (um por fila), preencher e **importar fila a fila** (com feedback de validação).
   - **Abrir campanha** (habilita só com todas as filas prontas).
-  - **Painel das filas** (progresso, unidade da vez, alerta de espera longa), **Pular/Atribuir**, abrir fila de moto, painel **PCD** (reservadas/liberar ao encerrar), **relatório**.
+  - **Painel das filas** (progresso, unidade da vez, alerta de espera longa, contador de pulos), **Pular/Atribuir**, lista de unidades **`PARKED`** (3 pulos) para atribuir, abrir fila de moto, painel **PCD** (reservadas; liberam sozinhas quando acabam os PCDs), **relatório**.
 - Overlay renderizado com as 4 imagens de planta como asset; vagas desenhadas por coordenada (`img_x/y/w/h`), cor por estado.
 
 ### Motor de filas (Abordagem 1)
 
-Abrir fila → menor `order_index` vira `CURRENT` → WhatsApp. Submit válido → assignment + vaga `TAKEN` + entry `DONE` → próxima `CURRENT` + WhatsApp. Síndico pula → `SKIPPED` para o fim + avança. Concorrência tratada por **trava otimista na vaga** e pela invariante de **uma única `CURRENT` por fila**.
+Abrir fila → menor `order_index` vira `CURRENT` → WhatsApp. Submit válido → assignment + vaga `TAKEN` + entry `DONE` → próxima `CURRENT` + WhatsApp. Síndico pula → `skip_count++`: para o fim (`WAITING`) se `< 3`, senão `PARKED`; avança. Quando a fila fica sem PCD aguardando → `releasePcdSpots`. Concorrência tratada por **trava otimista na vaga** e pela invariante de **uma única `CURRENT` por fila**.
 
 ## Campanha e modos de sorteio (início + input)
 
@@ -189,7 +190,7 @@ Quem tem **`PARKING_MANAGE`** cria uma **campanha** (DRAFT) informando **nome** 
 
 **Backend**
 - `ParkingSelectionServiceTest`: vez certa/errada, filtro de selecionabilidade (torre/categoria/PCD; moto ignora torre), simples/dupla/tripla/moto, entitlement por `position` vs `parking_spots_override` (3 vagas), corrida de vaga (trava otimista), avanço de fila + evento de notificação, unidade `CURRENT` sem proprietário/telefone (não avança nem notifica, sinaliza).
-- `ParkingAdminServiceTest`: criar campanha (deriva as filas, até 10; omite vazias), sorteio interno (PCD no topo com `pcd_first`, re-sortear, log de auditoria), gerar templates (carro pré-preenchido/moto em branco), import (válido/duplicado/torre errada/buraco na ordem), abrir só com todas as filas prontas (abre carro, moto fica `PENDING`), bloquear segunda campanha `OPEN`, skip-para-o-fim, assign manual, close libera PCD, reopen.
+- `ParkingAdminServiceTest`: criar campanha (deriva as filas, até 10; omite vazias), sorteio interno (PCD no topo com `pcd_first`, re-sortear, log de auditoria), gerar templates (carro pré-preenchido/moto em branco), import (válido/duplicado/torre errada/buraco na ordem), abrir só com todas as filas prontas (abre carro, moto fica `PENDING`), bloquear segunda campanha `OPEN`, skip (fim até 3×, depois `PARKED`), assign manual (inclusive `PARKED`), liberação automática de PCD quando some o último PCD aguardando, reopen.
 - `ParkingControllerWebTest`: `PARKING_SELECT` vs `PARKING_MANAGE` (403 sem); contratos dos endpoints (200/409/422); flag off → 404.
 - `RepositoryPostgresTest`: consultas do mapa e do progresso contra Postgres real.
 
@@ -220,11 +221,11 @@ Feature grande → **decompor em sub-PRs** ≤400 linhas (override consciente se
 - ✅ **4 pisos em REV 05 vetorial** (−1, 0, +1, +2), com texto extraível — base do catálogo.
 - ✅ **Moto = pool comum** (não preso a torre) — rótulos `MOTO ###`.
 - ✅ **Existem 3 categorias** de carro (1/2/3 vagas) → modelo com `category` ONE/TWO/THREE e até 10 filas; entitlement de 3 vagas via `unit.parking_spots_override`.
-- ✅ **PCD demarcada** (`PNE ####`).
+- ✅ **PCD demarcada** (`PNE ####`); **liberam quando acaba o PCD na fila** (não no encerramento).
+- ✅ **Sem distinção coberta/descoberta** (campo `covered` removido).
+- ✅ **Unidades de 3 vagas:** `3201` e `3202` das torres **A, B, C** (6 coberturas) → `parking_spots_override = 3`.
+- ✅ **Pular:** fim da fila até **3×**; no 3º vira `PARKED` e só o síndico atribui.
 
 ### Ainda a confirmar (no plano/implementação)
 
 1. **Estrutura da vaga múltipla:** 2 vagas = dupla (`A/B`); confirmar que **3 vagas = tripla** (um número, 3 posições) e não 3 spots — validar na extração REV 05.
-2. **Momento exato de liberar vagas PCD** = no `closeRound`. Confirmar se há fase de "sobras" antes do encerramento.
-3. **Unidade pulada volta para o fim da mesma fila** (vs. lista de pendências). Confirmado "fim da fila"; rever se o síndico prefere uma aba de pendências.
-4. **Quais unidades têm 3 vagas** (lista das coberturas) para popular `parking_spots_override`.

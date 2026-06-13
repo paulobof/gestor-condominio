@@ -11,11 +11,13 @@ import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
+import br.com.condominio.feature.user.event.MemberEmailChangedEvent;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ public class UnitMemberService {
   private final UserRoleRepository userRoleRepo;
   private final RoleRepository roleRepo;
   private final UserProvisioning provisioning;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
@@ -79,6 +82,13 @@ public class UnitMemberService {
     UUID unitId = requireMaster(masterUserId).getUnitId();
     User member = requireMemberInUnit(memberId, unitId);
 
+    // Detecta mudança de e-mail ANTES de aplicar (comparação case-insensitive).
+    // changePrimaryEmail é no-op se igual — então detectamos aqui para não notificar em vão.
+    String currentEmail =
+        emailRepo.findPrimaryByUserId(memberId).map(UserEmail::getEmail).orElse(null);
+    boolean emailChanged =
+        currentEmail == null || !currentEmail.equalsIgnoreCase(req.email().trim());
+
     provisioning.changePrimaryEmail(memberId, req.email());
     member.updateProfile(
         req.fullName().trim(),
@@ -88,6 +98,11 @@ public class UnitMemberService {
         req.gender(),
         req.birthDate());
     log.info("Master {} atualizou morador {}", masterUserId, memberId);
+
+    if (emailChanged) {
+      eventPublisher.publishEvent(
+          new MemberEmailChangedEvent(memberId, member.getPhone(), member.getGreetingName()));
+    }
   }
 
   @Transactional

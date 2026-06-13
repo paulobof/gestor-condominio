@@ -19,16 +19,19 @@ import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
+import br.com.condominio.feature.user.event.MemberEmailChangedEvent;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -43,6 +46,7 @@ class UnitMemberServiceTest {
   @Mock private UserRoleRepository userRoleRepo;
   @Mock private RoleRepository roleRepo;
   @Mock private UserProvisioning provisioning;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private UnitMemberService service;
 
@@ -274,5 +278,63 @@ class UnitMemberServiceTest {
         .isInstanceOf(UnitMemberException.class)
         .extracting("code")
         .isEqualTo("MASTER_HAS_NO_UNIT");
+  }
+
+  // ===== Notificação WhatsApp ao alterar e-mail do morador =====
+
+  private User memberInUnit() {
+    User m = mock(User.class);
+    when(m.getUnitId()).thenReturn(UNIT);
+    when(m.isUnitMaster()).thenReturn(false);
+    when(m.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(m.getPhone()).thenReturn("11999998888");
+    when(m.getGreetingName()).thenReturn("Carlos");
+    return m;
+  }
+
+  @Test
+  void updateMember_emailDiferente_publicaEventoMemberEmailChanged() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = memberInUnit();
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    // e-mail atual do morador
+    UserEmail currentEmail = mock(UserEmail.class);
+    when(currentEmail.getEmail()).thenReturn("old@x.com");
+    when(emailRepo.findPrimaryByUserId(MEMBER)).thenReturn(Optional.of(currentEmail));
+
+    UpdateUnitMemberRequest req =
+        new UpdateUnitMemberRequest(
+            "Carlos Silva", "Carlos", "11999998888", "new@x.com", null, null);
+    service.updateMember(MASTER, MEMBER, req);
+
+    ArgumentCaptor<MemberEmailChangedEvent> captor =
+        ArgumentCaptor.forClass(MemberEmailChangedEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
+    MemberEmailChangedEvent event = captor.getValue();
+    assertThat(event.memberUserId()).isEqualTo(MEMBER);
+    assertThat(event.phone()).isEqualTo("11999998888");
+    assertThat(event.greetingName()).isEqualTo("Carlos");
+  }
+
+  @Test
+  void updateMember_mesmoEmail_naoPublicaEvento() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = memberInUnit();
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    // e-mail atual igual ao novo (case-insensitive)
+    UserEmail currentEmail = mock(UserEmail.class);
+    when(currentEmail.getEmail()).thenReturn("same@x.com");
+    when(emailRepo.findPrimaryByUserId(MEMBER)).thenReturn(Optional.of(currentEmail));
+
+    UpdateUnitMemberRequest req =
+        new UpdateUnitMemberRequest(
+            "Carlos Silva", "Carlos", "11999998888", "Same@x.com", null, null);
+    service.updateMember(MASTER, MEMBER, req);
+
+    verify(eventPublisher, never()).publishEvent(any());
   }
 }

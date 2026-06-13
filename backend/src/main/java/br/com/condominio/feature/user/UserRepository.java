@@ -28,4 +28,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           + "  AND u.residenceProofObjectKey IS NOT NULL "
           + "  AND u.approvedAt < :cutoff")
   List<User> findApprovedWithProofBefore(@Param("cutoff") Instant cutoff);
+
+  /**
+   * Moradores de uma unidade: não-master, em qualquer status exceto o informado (ex.: ANONYMIZED).
+   * Soft-deleted já é filtrado pelo {@code @SQLRestriction} da entidade {@code User}.
+   */
+  List<User> findByUnitIdAndStatusNotAndIsUnitMasterFalse(UUID unitId, UserStatus status);
 }

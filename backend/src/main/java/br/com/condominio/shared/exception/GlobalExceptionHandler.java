@@ -9,6 +9,7 @@ import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.recommendation.RecommendationException;
 import br.com.condominio.feature.registration.RegistrationException;
+import br.com.condominio.feature.user.UnitMemberException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -144,6 +145,25 @@ public class GlobalExceptionHandler {
           case "ROLE_NOT_FOUND", "USER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
           case "ROLE_NOT_ASSIGNABLE", "USER_NOT_ACTIVE", "ROLE_NOT_CREATABLE" ->
               HttpStatus.UNPROCESSABLE_ENTITY;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(UnitMemberException.class)
+  public ResponseEntity<ApiError> handleUnitMember(UnitMemberException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "MEMBER_NOT_IN_UNIT" -> HttpStatus.FORBIDDEN;
+          case "NOT_A_MASTER" -> HttpStatus.FORBIDDEN;
+          case "MASTER_HAS_NO_UNIT" -> HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

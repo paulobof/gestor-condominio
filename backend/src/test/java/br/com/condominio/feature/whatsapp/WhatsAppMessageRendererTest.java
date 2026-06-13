@@ -69,4 +69,17 @@ class WhatsAppMessageRendererTest {
     assertThatThrownBy(() -> renderer.render(WhatsAppTemplate.PASSWORD_CHANGED, null))
         .isInstanceOf(WhatsAppSendException.class);
   }
+
+  @Test
+  void renderizaMemberEmailChanged() {
+    String msg =
+        renderer.render(WhatsAppTemplate.MEMBER_EMAIL_CHANGED, Map.of("greetingName", "Carlos"));
+    assertThat(msg).contains("Carlos").contains("e-mail de acesso").contains("HELBOR TRILOGY HOME");
+  }
+
+  @Test
+  void memberEmailChanged_aceitaGreetingNameVazio() {
+    String msg = renderer.render(WhatsAppTemplate.MEMBER_EMAIL_CHANGED, Map.of("greetingName", ""));
+    assertThat(msg).contains("e-mail de acesso").contains("HELBOR TRILOGY HOME");
+  }
 }

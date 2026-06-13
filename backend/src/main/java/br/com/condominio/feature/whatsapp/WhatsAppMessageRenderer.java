@@ -49,6 +49,14 @@ public class WhatsAppMessageRenderer {
               + " será anonimizada em "
               + req(d, "daysLeft", template)
               + " dias por inatividade (LGPD). Faça login para mantê-la ativa.";
+      case MEMBER_EMAIL_CHANGED ->
+          "Olá, "
+              + req(d, "greetingName", template)
+              + "! ℹ️\n\n"
+              + "O e-mail de acesso da sua conta no "
+              + CONDO
+              + " foi atualizado pelo responsável da sua unidade.\n\n"
+              + "Não reconhece esta alteração? Fale com a administração imediatamente.";
     };
   }
 

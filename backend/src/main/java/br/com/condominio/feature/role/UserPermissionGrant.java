@@ -33,6 +33,14 @@ public class UserPermissionGrant {
   @Column(name = "revoked_by_user_id")
   private UUID revokedByUserId;
 
+  public static UserPermissionGrant grant(UUID userId, Short permissionId, UUID grantedByUserId) {
+    UserPermissionGrant g = new UserPermissionGrant();
+    g.userId = userId;
+    g.permissionId = permissionId;
+    g.grantedByUserId = grantedByUserId;
+    return g;
+  }
+
   public boolean isActive() {
     return revokedAt == null;
   }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -18,6 +19,7 @@ import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +39,8 @@ class RegistrationServiceTest {
   private MagicBytesValidator magicBytes;
   private PasswordEncoder encoder;
   private MinioProperties props;
+  private PermissionRepository permissionRepo;
+  private UserPermissionGrantRepository grantRepo;
   private RegistrationService service;
 
   @BeforeEach
@@ -52,6 +56,8 @@ class RegistrationServiceTest {
     encoder = mock(PasswordEncoder.class);
     props = new MinioProperties();
     props.setBucketProofs("residence-proofs");
+    permissionRepo = mock(PermissionRepository.class);
+    grantRepo = mock(UserPermissionGrantRepository.class);
     service =
         new RegistrationService(
             unitRepo,
@@ -63,7 +69,9 @@ class RegistrationServiceTest {
             storage,
             magicBytes,
             encoder,
-            props);
+            props,
+            permissionRepo,
+            grantRepo);
   }
 
   @Test
@@ -185,6 +193,37 @@ class RegistrationServiceTest {
     assertThatThrownBy(() -> service.registerMaster(req, file, "127.0.0.1"))
         .isInstanceOf(RegistrationException.class)
         .hasMessageContaining("comprovante");
+  }
+
+  @Test
+  void approve_grantsResidentManageToMaster() {
+    UUID masterUserId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UUID unitId = UUID.randomUUID();
+
+    User user = mock(User.class);
+    when(user.getId()).thenReturn(masterUserId);
+    when(user.getUnitId()).thenReturn(unitId);
+    when(userRepo.findById(masterUserId)).thenReturn(Optional.of(user));
+
+    Unit unit = mock(Unit.class);
+    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+
+    Permission perm = newInstance(Permission.class);
+    setField(perm, "id", (short) 17);
+    setField(perm, "code", PermissionCode.RESIDENT_MANAGE);
+    when(permissionRepo.findByCode(PermissionCode.RESIDENT_MANAGE)).thenReturn(Optional.of(perm));
+    when(grantRepo.findByUserIdAndRevokedAtIsNull(masterUserId)).thenReturn(List.of());
+
+    service.approve(masterUserId, approverId);
+
+    verify(grantRepo)
+        .save(
+            argThat(
+                g ->
+                    g.getUserId().equals(masterUserId)
+                        && g.getPermissionId().equals((short) 17)
+                        && approverId.equals(g.getGrantedByUserId())));
   }
 
   private RegisterMasterRequest baseReq() {

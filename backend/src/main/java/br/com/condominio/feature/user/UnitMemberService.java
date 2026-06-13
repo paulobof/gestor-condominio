@@ -1,16 +1,28 @@
 package br.com.condominio.feature.user;
 
-import br.com.condominio.feature.role.*;
-import br.com.condominio.feature.user.dto.*;
-import jakarta.transaction.Transactional;
+import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
+import br.com.condominio.feature.role.RoleRepository;
+import br.com.condominio.feature.role.UserRole;
+import br.com.condominio.feature.role.UserRoleId;
+import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
+import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitMemberResponse;
+import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Gestão de moradores pelo morador master da unidade. Autorização ({@code RESIDENT_MANAGE}) é feita
+ * no controller; o escopo (alvo na unidade do master, não-master) é garantido aqui. Reusa a
+ * mecânica comum de provisionamento ({@link UserProvisioning}).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -20,112 +32,106 @@ public class UnitMemberService {
   private final UserEmailRepository emailRepo;
   private final UserRoleRepository userRoleRepo;
   private final RoleRepository roleRepo;
-  private final PasswordEncoder encoder;
+  private final UserProvisioning provisioning;
 
-  @Transactional
+  @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
-    User master =
-        userRepo
-            .findById(masterUserId)
-            .orElseThrow(() -> new IllegalStateException("master missing"));
-    UUID unitId = master.getUnitId();
-    if (unitId == null) return List.of();
-    return userRepo.findAll().stream()
-        .filter(u -> unitId.equals(u.getUnitId()) && !u.getId().equals(masterUserId))
+    UUID unitId = requireMaster(masterUserId).getUnitId();
+    if (unitId == null) {
+      return List.of();
+    }
+    return userRepo
+        .findByUnitIdAndStatusNotAndIsUnitMasterFalse(unitId, UserStatus.ANONYMIZED)
+        .stream()
         .map(this::toResponse)
         .toList();
   }
 
   @Transactional
-  public UnitMemberResponse createMember(UUID masterUserId, CreateUnitMemberRequest req) {
-    User master = userRepo.findById(masterUserId).orElseThrow();
-    if (!master.isUnitMaster()) {
-      throw new IllegalStateException("Only masters can create members.");
+  public CreatedUnitMemberResponse createMember(UUID masterUserId, CreateUnitMemberRequest req) {
+    UUID unitId = requireMaster(masterUserId).getUnitId();
+    if (unitId == null) {
+      throw new UnitMemberException("MASTER_HAS_NO_UNIT", "Você não está vinculado a uma unidade.");
     }
-    if (emailRepo.findActiveByEmailIgnoreCase(req.email()).isPresent()) {
-      throw new IllegalStateException("E-mail já cadastrado.");
-    }
-
     Role residentRole = roleRepo.findByName(RoleName.RESIDENT).orElseThrow();
 
-    User member = new User();
-    try {
-      setField(member, "unitId", master.getUnitId());
-      setField(member, "isUnitMaster", false);
-      setField(member, "fullName", req.fullName());
-      setField(member, "greetingName", req.greetingName());
-      setField(member, "phone", req.phone());
-      if (req.gender() != null && !req.gender().isBlank()) {
-        setField(member, "gender", Gender.valueOf(req.gender()));
-      }
-      setField(member, "birthDate", req.birthDate());
-      setField(member, "passwordHash", encoder.encode(req.password()));
-      setField(member, "passwordPepperVersion", (short) 1);
-      setField(member, "mustChangePassword", true);
-      setField(member, "status", UserStatus.ACTIVE);
-      setField(member, "whatsappOptIn", req.whatsappOptIn());
-      if (req.whatsappOptIn()) setField(member, "whatsappOptInAt", Instant.now());
-    } catch (Exception e) {
-      throw new IllegalStateException(e);
-    }
-    member = userRepo.save(member);
+    UserProvisioning.Provisioned provisioned =
+        provisioning.createActiveUser(unitId, req.fullName(), req.phone(), req.email());
+    User member = provisioned.user();
+    member.updateProfile(
+        req.fullName().trim(),
+        trimToNull(req.greetingName()),
+        req.phone().trim(),
+        unitId,
+        req.gender(),
+        req.birthDate());
+    member.setWhatsappOptIn(req.whatsappOptIn());
 
-    UserEmail e = new UserEmail();
-    try {
-      setField(e, "userId", member.getId());
-      setField(e, "email", req.email());
-      setField(e, "isPrimary", true);
-    } catch (Exception ex) {
-      throw new IllegalStateException(ex);
-    }
-    emailRepo.save(e);
-
-    UserRole ur =
+    userRoleRepo.save(
         new UserRole(
-            new UserRoleId(member.getId(), residentRole.getId()), Instant.now(), masterUserId);
-    userRoleRepo.save(ur);
+            new UserRoleId(member.getId(), residentRole.getId()), Instant.now(), masterUserId));
 
-    log.info("Master {} created member {}", masterUserId, member.getId());
-    return toResponse(member);
+    log.info("Master {} criou morador {}", masterUserId, member.getId());
+    return new CreatedUnitMemberResponse(
+        member.getId(), member.getFullName(), provisioned.provisionalPassword());
   }
 
   @Transactional
-  public void disableMember(UUID masterUserId, UUID memberId) {
-    User master = userRepo.findById(masterUserId).orElseThrow();
-    User member = userRepo.findById(memberId).orElseThrow();
-    if (!member.getUnitId().equals(master.getUnitId())) {
-      throw new IllegalStateException("Member not in your unit.");
+  public void updateMember(UUID masterUserId, UUID memberId, UpdateUnitMemberRequest req) {
+    UUID unitId = requireMaster(masterUserId).getUnitId();
+    User member = requireMemberInUnit(memberId, unitId);
+
+    provisioning.changePrimaryEmail(memberId, req.email());
+    member.updateProfile(
+        req.fullName().trim(),
+        trimToNull(req.greetingName()),
+        req.phone().trim(),
+        unitId,
+        req.gender(),
+        req.birthDate());
+    log.info("Master {} atualizou morador {}", masterUserId, memberId);
+  }
+
+  @Transactional
+  public void deleteMember(UUID masterUserId, UUID memberId) {
+    UUID unitId = requireMaster(masterUserId).getUnitId();
+    User member = requireMemberInUnit(memberId, unitId);
+    provisioning.softDelete(member, memberId);
+    log.info("Master {} excluiu (soft) morador {}", masterUserId, memberId);
+  }
+
+  // ===== helpers de escopo =====
+
+  private User requireMaster(UUID masterUserId) {
+    return userRepo
+        .findById(masterUserId)
+        .orElseThrow(() -> new UnitMemberException("MEMBER_NOT_IN_UNIT", "Master não encontrado."));
+  }
+
+  /** Garante que o alvo existe, está na unidade do master, é não-master e está ACTIVE. */
+  private User requireMemberInUnit(UUID memberId, UUID masterUnitId) {
+    User member =
+        userRepo
+            .findById(memberId)
+            .orElseThrow(
+                () -> new UnitMemberException("MEMBER_NOT_IN_UNIT", "Morador não encontrado."));
+    if (masterUnitId == null || !masterUnitId.equals(member.getUnitId()) || member.isUnitMaster()) {
+      throw new UnitMemberException(
+          "MEMBER_NOT_IN_UNIT", "Este morador não pertence à sua unidade.");
     }
-    if (member.isUnitMaster()) {
-      throw new IllegalStateException("Cannot disable master via this endpoint.");
+    if (member.getStatus() != UserStatus.ACTIVE) {
+      throw new UnitMemberException("MEMBER_NOT_IN_UNIT", "Morador não está ativo.");
     }
-    member.disable();
-    log.info("Master {} disabled member {}", masterUserId, memberId);
+    return member;
   }
 
   private UnitMemberResponse toResponse(User u) {
-    String email =
-        emailRepo.findByUserId(u.getId()).stream()
-            .filter(UserEmail::isPrimary)
-            .findFirst()
-            .map(UserEmail::getEmail)
-            .orElse(null);
+    String email = emailRepo.findPrimaryByUserId(u.getId()).map(UserEmail::getEmail).orElse(null);
     return new UnitMemberResponse(
         u.getId(), u.getFullName(), u.getGreetingName(), email, u.getPhone(), u.getStatus().name());
   }
 
-  private static void setField(Object target, String name, Object value) throws Exception {
-    Class<?> c = target.getClass();
-    while (c != null) {
-      try {
-        var f = c.getDeclaredField(name);
-        f.setAccessible(true);
-        f.set(target, value);
-        return;
-      } catch (NoSuchFieldException ex) {
-        c = c.getSuperclass();
-      }
-    }
-    throw new NoSuchFieldException(name);
+  private static String trimToNull(String s) {
+    return (s == null || s.isBlank()) ? null : s.trim();
   }
 }

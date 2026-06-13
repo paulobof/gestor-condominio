@@ -17,6 +17,7 @@ import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
 import br.com.condominio.feature.user.event.MemberEmailChangedEvent;
@@ -336,5 +337,46 @@ class UnitMemberServiceTest {
     service.updateMember(MASTER, MEMBER, req);
 
     verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void getMemberDetail_inMyUnit_returnsDetail() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = mock(User.class);
+    when(member.getId()).thenReturn(MEMBER);
+    when(member.getFullName()).thenReturn("Bia Souza");
+    when(member.getGreetingName()).thenReturn("Bia");
+    when(member.getPhone()).thenReturn("+5511988887777");
+    when(member.getGender()).thenReturn(Gender.FEMALE);
+    when(member.getBirthDate()).thenReturn(java.time.LocalDate.of(1990, 1, 2));
+    when(member.getUnitId()).thenReturn(UNIT);
+    when(member.isUnitMaster()).thenReturn(false);
+    when(member.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+    UserEmail email = mock(UserEmail.class);
+    when(email.getEmail()).thenReturn("bia@x.com");
+    when(emailRepo.findPrimaryByUserId(MEMBER)).thenReturn(Optional.of(email));
+
+    UnitMemberDetail detail = service.getMemberDetail(MASTER, MEMBER);
+
+    assertThat(detail.fullName()).isEqualTo("Bia Souza");
+    assertThat(detail.email()).isEqualTo("bia@x.com");
+    assertThat(detail.gender()).isEqualTo("FEMALE");
+    assertThat(detail.birthDate()).isEqualTo(java.time.LocalDate.of(1990, 1, 2));
+  }
+
+  @Test
+  void getMemberDetail_otherUnit_throwsMemberNotInUnit() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = mock(User.class);
+    when(member.getUnitId()).thenReturn(UUID.randomUUID()); // outra unidade
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    assertThatThrownBy(() -> service.getMemberDetail(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("MEMBER_NOT_IN_UNIT");
   }
 }

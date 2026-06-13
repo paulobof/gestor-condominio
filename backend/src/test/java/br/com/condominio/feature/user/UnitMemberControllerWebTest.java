@@ -13,10 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
 import br.com.condominio.support.MockAuth;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -137,5 +139,32 @@ class UnitMemberControllerWebTest {
     mvc.perform(delete("/api/units/me/members/{id}", UUID.randomUUID()).with(MockAuth.user(UID)))
         .andExpect(status().isForbidden());
     verify(service, never()).deleteMember(any(), any());
+  }
+
+  @Test
+  void getDetail_withPermission_returns200WithGenderAndBirthDate() throws Exception {
+    UUID memberId = UUID.randomUUID();
+    when(service.getMemberDetail(UID, memberId))
+        .thenReturn(
+            new UnitMemberDetail(
+                memberId,
+                "Bia Souza",
+                "Bia",
+                "+5511988887777",
+                "bia@test.com",
+                "FEMALE",
+                LocalDate.of(1990, 1, 2)));
+
+    mvc.perform(get("/api/units/me/members/{id}", memberId).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.gender").value("FEMALE"))
+        .andExpect(jsonPath("$.birthDate").value("1990-01-02"));
+  }
+
+  @Test
+  void getDetail_withoutPermission_returns403() throws Exception {
+    mvc.perform(get("/api/units/me/members/{id}", UUID.randomUUID()).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).getMemberDetail(any(), any());
   }
 }

@@ -2,6 +2,7 @@ package br.com.condominio.feature.user;
 
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
@@ -30,6 +31,13 @@ public class UnitMemberController {
   @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
   public List<UnitMemberResponse> listMy(@AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return service.listMyUnitMembers(me.userId());
+  }
+
+  @GetMapping("/{id}")
+  @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
+  public UnitMemberDetail getMemberDetail(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.getMemberDetail(me.userId(), id);
   }
 
   @PostMapping

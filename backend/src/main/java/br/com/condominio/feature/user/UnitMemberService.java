@@ -9,6 +9,7 @@ import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
 import br.com.condominio.feature.user.event.MemberEmailChangedEvent;
@@ -49,6 +50,21 @@ public class UnitMemberService {
         .stream()
         .map(this::toResponse)
         .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public UnitMemberDetail getMemberDetail(UUID masterUserId, UUID memberId) {
+    UUID unitId = requireMaster(masterUserId).getUnitId();
+    User member = requireMemberInUnit(memberId, unitId);
+    String email = emailRepo.findPrimaryByUserId(memberId).map(UserEmail::getEmail).orElse(null);
+    return new UnitMemberDetail(
+        member.getId(),
+        member.getFullName(),
+        member.getGreetingName(),
+        member.getPhone(),
+        email,
+        member.getGender() == null ? null : member.getGender().name(),
+        member.getBirthDate());
   }
 
   @Transactional

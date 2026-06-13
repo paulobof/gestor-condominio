@@ -220,7 +220,10 @@ class RegistrationServiceTest {
     verify(grantRepo)
         .save(
             argThat(
-                g -> g.getUserId().equals(masterUserId) && g.getPermissionId().equals((short) 17)));
+                g ->
+                    g.getUserId().equals(masterUserId)
+                        && g.getPermissionId().equals((short) 17)
+                        && approverId.equals(g.getGrantedByUserId())));
   }
 
   private RegisterMasterRequest baseReq() {

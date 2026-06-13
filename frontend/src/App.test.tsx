@@ -76,6 +76,14 @@ describe('App', () => {
     );
   });
 
+  it('mostra "Perguntas Frequentes" para qualquer autenticado', () => {
+    renderApp(['USER_VIEW']);
+    expect(screen.getByRole('link', { name: /^perguntas frequentes/i })).toHaveAttribute(
+      'href',
+      '/faq'
+    );
+  });
+
   it('esconde "Gestão de usuários" sem ROLE_ASSIGN', () => {
     renderApp(['USER_VIEW']);
     expect(screen.queryByRole('link', { name: /gestão de usuários/i })).not.toBeInTheDocument();

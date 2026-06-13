@@ -1,12 +1,22 @@
 # Design: Convidado (guest)
 
 **Data:** 2026-06-12
-**Status:** RASCUNHO — para brainstorm. NÃO aprovado.
-**Autor:** rascunho gerado por agente, a revisar com o Paulo.
+**Status:** RASCUNHO — decisões-chave fechadas pelo Paulo (abaixo); falta só revisão final + virar plano.
+**Autor:** rascunho gerado por agente, decisões anexadas pelo orquestrador.
 
-> Documento de design para a feature **Convidado**. Termina com uma seção de
-> **Perguntas em aberto para o Paulo** com as decisões pendentes. Não implementar
-> antes de resolver essas perguntas.
+---
+
+## 0. Decisões do Paulo (2026-06-12) — fechadas
+
+Estas resolvem as principais perguntas em aberto; o resto do doc deve ser lido sob estas decisões:
+
+1. **Entrada do cadastro:** há uma **tela de escolha "Convidado" vs "Morador principal"**. "Morador principal" = o fluxo de master atual (`isUnitMaster`, com comprovante + aprovação); "Convidado" = o fluxo novo sem comprovante. A `RegisterMasterPage` passa a ser alcançada *depois* dessa escolha; `RegisterGuestPage` é a outra ramificação.
+2. **Sem aprovação:** convidado entra **ACTIVE direto** (sem fila do síndico).
+3. **Somente leitura:** convidado **vê** Indicações e Classificados mas **NÃO cria** conteúdo. Implicação: os **endpoints de criação** de indicação/classificado (hoje abertos a qualquer autenticado) passam a exigir uma permission que o GUEST **não** tem (ex.: `CONTENT_CREATE`, concedida a todas as roles menos GUEST). Ver = aberto; criar = gated.
+4. **Anti-abuso já nesta feature:** **rate-limit** no `register-guest` (usar o `RateLimitFilter` existente) + **captcha** no formulário. E-mail-verification fica como opção secundária (conflita com "ACTIVE direto").
+5. **Modelo aprovado:** role nova **`GUEST`** + permission **`GENERAL_AREAS_VIEW`** (concedida a todas as roles existentes, **não** ao GUEST) para barrar Avisos/Informações/FAQ. Indicações/Classificados seguem abertos para leitura. (Restringir = barrar o resto, não só liberar.)
+
+Pendência menor: telefone do convidado é obrigatório? (a confirmar)
 
 ---
 

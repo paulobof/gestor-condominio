@@ -5,13 +5,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.condominio.feature.user.dto.UnitMemberResponse;
+import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -27,14 +28,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Contrato HTTP do {@link UnitMemberController}: gestão de membros é restrita ao master da unidade
- * ({@code isUnitMaster}); não-master autenticado recebe 403 em todas as operações.
+ * Contrato HTTP do {@link UnitMemberController}: toda a superfície exige a permission {@code
+ * RESIDENT_MANAGE}; sem ela (morador comum) recebe 403; payload inválido → 400.
  */
 @WebMvcTest(controllers = UnitMemberController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class UnitMemberControllerWebTest {
 
   private static final UUID UID = UUID.randomUUID();
+  private static final String MANAGE = "RESIDENT_MANAGE";
 
   @Autowired private MockMvc mvc;
   @MockBean private UnitMemberService service;
@@ -42,48 +44,43 @@ class UnitMemberControllerWebTest {
 
   private static final String VALID_BODY =
       "{\"fullName\":\"Maria Silva\",\"greetingName\":\"Maria\",\"email\":\"maria@test.com\","
-          + "\"phone\":\"11999998888\",\"password\":\"Senha@1234\",\"whatsappOptIn\":true}";
+          + "\"phone\":\"11999998888\",\"whatsappOptIn\":true}";
 
-  private static final String WEAK_PASSWORD_BODY =
+  private static final String INVALID_PHONE_BODY =
       "{\"fullName\":\"Maria Silva\",\"greetingName\":\"Maria\",\"email\":\"maria@test.com\","
-          + "\"phone\":\"11999998888\",\"password\":\"senha12345\",\"whatsappOptIn\":true}";
+          + "\"phone\":\"abc\",\"whatsappOptIn\":true}";
 
   @Test
-  void listMy_asMaster_returns200() throws Exception {
+  void listMy_withPermission_returns200() throws Exception {
     when(service.listMyUnitMembers(UID)).thenReturn(List.of());
-    mvc.perform(get("/api/units/me/members").with(MockAuth.master(UID))).andExpect(status().isOk());
+    mvc.perform(get("/api/units/me/members").with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk());
   }
 
   @Test
-  void listMy_asNonMaster_returns403() throws Exception {
+  void listMy_withoutPermission_returns403() throws Exception {
     mvc.perform(get("/api/units/me/members").with(MockAuth.user(UID)))
         .andExpect(status().isForbidden());
     verify(service, never()).listMyUnitMembers(any());
   }
 
   @Test
-  void create_asMaster_returns201() throws Exception {
+  void create_withPermission_returns201_andShowsProvisionalPassword() throws Exception {
     when(service.createMember(eq(UID), any()))
         .thenReturn(
-            new UnitMemberResponse(
-                UUID.randomUUID(),
-                "Maria Silva",
-                "Maria",
-                "maria@test.com",
-                "11999998888",
-                "ACTIVE"));
+            new CreatedUnitMemberResponse(UUID.randomUUID(), "Maria Silva", "Prov!1234abcd"));
 
     mvc.perform(
             post("/api/units/me/members")
-                .with(MockAuth.master(UID))
+                .with(MockAuth.user(UID, MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_BODY))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.email").value("maria@test.com"));
+        .andExpect(jsonPath("$.password").value("Prov!1234abcd"));
   }
 
   @Test
-  void create_asNonMaster_returns403() throws Exception {
+  void create_withoutPermission_returns403() throws Exception {
     mvc.perform(
             post("/api/units/me/members")
                 .with(MockAuth.user(UID))
@@ -94,29 +91,51 @@ class UnitMemberControllerWebTest {
   }
 
   @Test
-  void create_weakPassword_returns400() throws Exception {
+  void create_invalidPhone_returns400() throws Exception {
     mvc.perform(
             post("/api/units/me/members")
-                .with(MockAuth.master(UID))
+                .with(MockAuth.user(UID, MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(WEAK_PASSWORD_BODY))
+                .content(INVALID_PHONE_BODY))
         .andExpect(status().isBadRequest());
     verify(service, never()).createMember(any(), any());
   }
 
   @Test
-  void disable_asMaster_returns204() throws Exception {
+  void update_withPermission_returns204() throws Exception {
     UUID memberId = UUID.randomUUID();
-    mvc.perform(put("/api/units/me/members/{id}/disable", memberId).with(MockAuth.master(UID)))
+    mvc.perform(
+            put("/api/units/me/members/{id}", memberId)
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
         .andExpect(status().isNoContent());
-    verify(service).disableMember(UID, memberId);
+    verify(service).updateMember(eq(UID), eq(memberId), any());
   }
 
   @Test
-  void disable_asNonMaster_returns403() throws Exception {
+  void update_withoutPermission_returns403() throws Exception {
     mvc.perform(
-            put("/api/units/me/members/{id}/disable", UUID.randomUUID()).with(MockAuth.user(UID)))
+            put("/api/units/me/members/{id}", UUID.randomUUID())
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
         .andExpect(status().isForbidden());
-    verify(service, never()).disableMember(any(), any());
+    verify(service, never()).updateMember(any(), any(), any());
+  }
+
+  @Test
+  void delete_withPermission_returns204() throws Exception {
+    UUID memberId = UUID.randomUUID();
+    mvc.perform(delete("/api/units/me/members/{id}", memberId).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isNoContent());
+    verify(service).deleteMember(UID, memberId);
+  }
+
+  @Test
+  void delete_withoutPermission_returns403() throws Exception {
+    mvc.perform(delete("/api/units/me/members/{id}", UUID.randomUUID()).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).deleteMember(any(), any());
   }
 }

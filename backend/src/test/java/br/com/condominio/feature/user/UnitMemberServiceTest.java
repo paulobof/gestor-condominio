@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -26,8 +27,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class UnitMemberServiceTest {
 
   private static final UUID MASTER = UUID.randomUUID();
@@ -44,6 +48,8 @@ class UnitMemberServiceTest {
 
   private User masterInUnit() {
     User m = mock(User.class);
+    when(m.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(m.isUnitMaster()).thenReturn(true);
     when(m.getUnitId()).thenReturn(UNIT);
     return m;
   }
@@ -106,6 +112,8 @@ class UnitMemberServiceTest {
   @Test
   void createMember_masterWithoutUnit_throws() {
     User master = mock(User.class);
+    when(master.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(master.isUnitMaster()).thenReturn(true);
     when(master.getUnitId()).thenReturn(null);
     when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
 
@@ -203,5 +211,68 @@ class UnitMemberServiceTest {
         .isInstanceOf(UnitMemberException.class)
         .extracting("code")
         .isEqualTo("MEMBER_NOT_IN_UNIT");
+  }
+
+  // ===== FIX 2 + FIX 3: requireMaster guarda ordenada =====
+
+  @Test
+  void create_masterDisabled_throwsUserNotActive() {
+    User master = mock(User.class);
+    when(master.getStatus()).thenReturn(UserStatus.DISABLED);
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+
+    CreateUnitMemberRequest req =
+        new CreateUnitMemberRequest(
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false);
+    assertThatThrownBy(() -> service.createMember(MASTER, req))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_ACTIVE");
+  }
+
+  @Test
+  void create_masterNotUnitMaster_throwsNotAMaster() {
+    User master = mock(User.class);
+    when(master.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(master.isUnitMaster()).thenReturn(false);
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+
+    CreateUnitMemberRequest req =
+        new CreateUnitMemberRequest(
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false);
+    assertThatThrownBy(() -> service.createMember(MASTER, req))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("NOT_A_MASTER");
+  }
+
+  @Test
+  void update_masterWithoutUnit_throwsMasterHasNoUnit() {
+    User master = mock(User.class);
+    when(master.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(master.isUnitMaster()).thenReturn(true);
+    when(master.getUnitId()).thenReturn(null);
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+
+    UpdateUnitMemberRequest req =
+        new UpdateUnitMemberRequest("Maria", "Maria", "11999998888", "m@x.com", null, null);
+    assertThatThrownBy(() -> service.updateMember(MASTER, MEMBER, req))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("MASTER_HAS_NO_UNIT");
+  }
+
+  @Test
+  void delete_masterWithoutUnit_throwsMasterHasNoUnit() {
+    User master = mock(User.class);
+    when(master.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(master.isUnitMaster()).thenReturn(true);
+    when(master.getUnitId()).thenReturn(null);
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+
+    assertThatThrownBy(() -> service.deleteMember(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("MASTER_HAS_NO_UNIT");
   }
 }

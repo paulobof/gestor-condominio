@@ -1,5 +1,6 @@
 package br.com.condominio.feature.user;
 
+import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -36,7 +37,7 @@ public class UnitMemberService {
 
   @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
-    UUID unitId = requireMaster(masterUserId).getUnitId();
+    UUID unitId = userRepo.findById(masterUserId).map(User::getUnitId).orElse(null);
     if (unitId == null) {
       return List.of();
     }
@@ -50,9 +51,6 @@ public class UnitMemberService {
   @Transactional
   public CreatedUnitMemberResponse createMember(UUID masterUserId, CreateUnitMemberRequest req) {
     UUID unitId = requireMaster(masterUserId).getUnitId();
-    if (unitId == null) {
-      throw new UnitMemberException("MASTER_HAS_NO_UNIT", "Você não está vinculado a uma unidade.");
-    }
     Role residentRole = roleRepo.findByName(RoleName.RESIDENT).orElseThrow();
 
     UserProvisioning.Provisioned provisioned =
@@ -103,9 +101,20 @@ public class UnitMemberService {
   // ===== helpers de escopo =====
 
   private User requireMaster(UUID masterUserId) {
-    return userRepo
-        .findById(masterUserId)
-        .orElseThrow(() -> new UnitMemberException("MEMBER_NOT_IN_UNIT", "Master não encontrado."));
+    User master =
+        userRepo
+            .findById(masterUserId)
+            .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
+    if (master.getStatus() != UserStatus.ACTIVE) {
+      throw new AccessException("USER_NOT_ACTIVE", "Usuário master não está ativo.");
+    }
+    if (!master.isUnitMaster()) {
+      throw new UnitMemberException("NOT_A_MASTER", "Apenas o morador master gere a unidade.");
+    }
+    if (master.getUnitId() == null) {
+      throw new UnitMemberException("MASTER_HAS_NO_UNIT", "Master sem unidade associada.");
+    }
+    return master;
   }
 
   /** Garante que o alvo existe, está na unidade do master, é não-master e está ACTIVE. */

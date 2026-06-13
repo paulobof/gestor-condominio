@@ -11,7 +11,6 @@ import br.com.condominio.feature.user.*;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
-import jakarta.transaction.Transactional;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.UUID;
@@ -21,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -209,7 +209,7 @@ public class RegistrationService {
         grantRepo.findByUserIdAndRevokedAtIsNull(user.getId()).stream()
             .anyMatch(g -> g.getPermissionId().equals(perm.getId()));
     if (!alreadyGranted) {
-      grantRepo.save(new UserPermissionGrant(user.getId(), perm.getId(), approverId));
+      grantRepo.save(UserPermissionGrant.grant(user.getId(), perm.getId(), approverId));
     }
 
     log.info("Master approved userId={} by approverId={}", userId, approverId);

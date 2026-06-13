@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class RateLimitProperties {
   private int loginPerMinPerIp = 5;
   private int refreshPerMinPerIp = 10;
+  private int registerGuestPerMinPerIp = 5;
   private int loginLockoutAttempts = 10;
   private Duration loginLockoutWindow = Duration.ofMinutes(30);
 }

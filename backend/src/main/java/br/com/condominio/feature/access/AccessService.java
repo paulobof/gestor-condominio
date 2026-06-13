@@ -19,6 +19,7 @@ import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
+import br.com.condominio.feature.user.UserProvisioning;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
@@ -29,13 +30,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,6 +60,7 @@ public class AccessService {
   private final PasswordEncoder encoder;
   private final ProvisionalPasswordGenerator passwordGenerator;
   private final UnitRepository unitRepo;
+  private final UserProvisioning provisioning;
 
   @Transactional(readOnly = true)
   public List<AssignableRoleView> assignableRoles() {
@@ -176,23 +176,17 @@ public class AccessService {
             "ROLE_NOT_CREATABLE", "Perfil não pode ser atribuído no cadastro.");
       }
     }
-    String plain = passwordGenerator.generate();
-    User user =
-        User.newActiveByAdmin(
-            req.unitId(),
-            req.fullName().trim(),
-            req.phone().trim(),
-            encoder.encode(plain),
-            (short) 1);
-    user = userRepo.save(user);
-    emailRepo.save(UserEmail.primary(user.getId(), req.email().trim()));
+    UserProvisioning.Provisioned provisioned =
+        provisioning.createActiveUser(req.unitId(), req.fullName(), req.phone(), req.email());
+    User user = provisioned.user();
     Instant now = Instant.now();
     for (Short rid : req.roleIds()) {
       userRoleRepo.save(new UserRole(new UserRoleId(user.getId(), rid), now, actorId));
       logRepo.save(RoleAssignmentLog.assign(user.getId(), rid, actorId));
     }
     log.info("Admin {} criou usuário {}", actorId, user.getId());
-    return new CreatedUserResponse(user.getId(), user.getFullName(), plain);
+    return new CreatedUserResponse(
+        user.getId(), user.getFullName(), provisioned.provisionalPassword());
   }
 
   @Transactional
@@ -204,8 +198,7 @@ public class AccessService {
         userRepo
             .findById(targetUserId)
             .orElseThrow(() -> new AccessException("USER_NOT_FOUND", "Usuário não encontrado."));
-    emailRepo.findByUserId(targetUserId).forEach(emailRepo::delete);
-    userRepo.delete(user);
+    provisioning.softDelete(user, targetUserId);
     log.info("Admin {} excluiu (soft) usuário {}", actorId, targetUserId);
   }
 
@@ -233,29 +226,7 @@ public class AccessService {
     User user = requireActiveUser(targetUserId);
     requireUnitExists(req.unitId());
 
-    String newEmail = req.email().trim();
-    Optional<UserEmail> primary = emailRepo.findPrimaryByUserId(targetUserId);
-    String currentEmail = primary.map(UserEmail::getEmail).orElse(null);
-    if (currentEmail == null || !currentEmail.equalsIgnoreCase(newEmail)) {
-      emailRepo
-          .findActiveByEmailIgnoreCase(newEmail)
-          .ifPresent(
-              e -> {
-                if (!e.getUserId().equals(targetUserId)) {
-                  throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
-                }
-              });
-      // Cria o e-mail primário se ausente (não descarta silenciosamente o e-mail informado).
-      primary.ifPresentOrElse(
-          p -> p.changeEmail(newEmail),
-          () -> emailRepo.save(UserEmail.primary(targetUserId, newEmail)));
-      // Força a constraint única (ux_user_email_email_active) agora: corrida/colisão vira 409.
-      try {
-        emailRepo.flush();
-      } catch (DataIntegrityViolationException ex) {
-        throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
-      }
-    }
+    provisioning.changePrimaryEmail(targetUserId, req.email());
 
     user.updateProfile(
         req.fullName().trim(),

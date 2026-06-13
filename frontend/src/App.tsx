@@ -1,3 +1,4 @@
+import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Home,
@@ -6,6 +7,7 @@ import {
   ShoppingBag,
   ClipboardCheck,
   Info,
+  BookOpen,
   UserCog,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +38,13 @@ const NAV: NavItem[] = [
     title: 'Informações',
     desc: 'Informações gerais do condomínio.',
     icon: Info,
+    brand: 'blue',
+  },
+  {
+    to: '/faq',
+    title: 'Perguntas Frequentes',
+    desc: 'Dúvidas comuns do condomínio.',
+    icon: BookOpen,
     brand: 'blue',
   },
   {
@@ -102,8 +111,13 @@ export default function App() {
                   className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Card
-                    className="h-full border-l-4 transition-colors hover:bg-accent/40"
-                    style={{ borderLeftColor: hsl(item.brand) }}
+                    className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
+                    style={
+                      {
+                        borderLeftColor: hsl(item.brand),
+                        '--card-hover': hsl(item.brand, 0.1),
+                      } as CSSProperties
+                    }
                   >
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                       <span

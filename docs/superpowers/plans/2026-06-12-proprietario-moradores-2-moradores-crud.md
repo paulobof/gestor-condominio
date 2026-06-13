@@ -1,26 +1,17 @@
-## ⚠️ Premissas e perguntas em aberto
+## ✅ Decisões fechadas (Paulo, 2026-06-13)
 
-> Decisões que assumi para escrever este plano. **Confirmar com o Paulo antes de executar** — cada uma muda o escopo/contrato.
+1. **Single-unit** — escopo = `User.unitId` do master; **não** consultar `UnitOwnership` (multi-unidade é futuro). Sem `unitId` no POST, sem agrupamento por unidade. ✅
+2. **Substituir `PUT /{id}/disable` por `DELETE /{id}`** (soft delete de `User`+`UserEmail`, libera e-mail). Quebra de contrato OK (tela é PR4). ✅
+3. **Senha provisória gerada e mostrada 1x** — remover `password` do `CreateUnitMemberRequest`; retornar `CreatedUnitMemberResponse(id, fullName, password)`. ✅
+4. **`UserProvisioning` compartilhado + refatorar `AccessService` para delegar**, tudo neste PR (entra no corte **PR-A = tasks 1–4**). ✅
+5. **`MEMBER_NOT_IN_UNIT` → 403 Forbidden** para alvo fora da unidade / master. ✅
+6. **⚠️ MUDANÇA vs rascunho: ao trocar o e-mail (login) do morador, NOTIFICAR o morador por WhatsApp.** Não é silencioso. A task de `updateMember`/`PUT` (PR-B) deve, **quando o e-mail mudar**, enfileirar uma notificação via a infra existente: novo valor em `WhatsAppTemplate`, texto no `WhatsAppMessageRenderer`, envio via `WhatsAppOutboxService` disparado por um `@TransactionalEventListener(phase=AFTER_COMMIT) @Async` (espelhar `PasswordResetEventListener`). Telefone normalizado por `PhoneNumberNormalizer`. **Implementar nesse task do PR-B.**
+7. **Sem limite** de moradores por unidade. ✅
+8. **Master age sobre não-master ACTIVE da própria unidade** (guard: existe, `unitId==me.unitId`, `!isUnitMaster`, ACTIVE). Suficiente. ✅
+9. **Frontend = PR4** (este plano é backend-only). ✅
+10. **`PUT` não troca `unitId`** (mantém fixo na unidade do master). ✅
 
-1. **Escopo = unidade ÚNICA do morador master.** Embora o spec (2026-06-12) descreva multi-unidade via `UnitOwnership`, o briefing fixou que multi-unidade é **futuro**. Este plano escopa o CRUD em **`User.unitId` do master** (a unidade onde ele mora e é master). **Não** consulto `UnitOwnership` para resolver "minhas unidades". Os endpoints/contratos ficam **single-unit** (sem `unitId` no body do POST, sem agrupamento por unidade na listagem). **Confirmar:** ok manter single-unit e adiar o agrupamento por unidade para o PR multi-unidade?
-
-2. **Saneamento mantém os mesmos endpoints, exceto a troca de `PUT /{id}/disable` por `DELETE /{id}`.** O spec §4.1 pede `DELETE` (soft delete que libera e-mail). Hoje existe `PUT /{id}/disable` (apenas muda status para DISABLED, **não** libera e-mail). Vou **substituir** `disable` por `DELETE` (soft delete de `User` + `UserEmail`, como o admin faz). **Confirmar:** pode remover o endpoint `PUT /{id}/disable` (quebra de contrato; nenhum frontend de produção o consome ainda — a tela é PR4)?
-
-3. **Senha provisória gerada e mostrada 1x** (igual ao admin). O `CreateUnitMemberRequest` atual recebe `password` digitada pelo master; o spec §4.1/§9 manda **gerar** e mostrar uma vez. Vou **remover** o campo `password` do request e retornar `CreatedUnitMemberResponse(id, fullName, password)`. **Confirmar:** ok quebrar o contrato do POST (remover `password` do body, mudar o tipo de retorno)?
-
-4. **`UserProvisioning` é um helper de domínio/serviço compartilhado, não um @Service transacional próprio.** Extraio a mecânica comum (criar `User` ACTIVE + `UserEmail` primário único; editar perfil+e-mail com flush→`EMAIL_TAKEN`; soft delete que libera e-mail) para `feature/user/UserProvisioning.java`, injetado em `AccessService` **e** `UnitMemberService`. **`AccessService` é refatorado para delegar** a ele (sem mudança de comportamento; testes existentes do `AccessService` continuam verdes). **Confirmar:** ok tocar no `AccessService` neste PR (aumenta o diff), ou prefere extrair o helper só para o `UnitMemberService` e refatorar o `AccessService` num PR separado?
-
-5. **Erros do morador reusam `AccessException`** (já mapeada no `GlobalExceptionHandler`: `EMAIL_TAKEN`→409, `USER_NOT_FOUND`→404, `USER_NOT_ACTIVE`→422). Acrescento o code **`MEMBER_NOT_IN_UNIT`** (alvo fora da minha unidade ou é master) → mapeado para **403 Forbidden**. **Confirmar:** 403 é o status certo para "morador não pertence à sua unidade" (alternativa: 404 para não vazar existência)? Assumi 403 por consistência com a checagem de escopo.
-
-6. **Edição de e-mail NÃO dispara verificação/notificação.** Igual ao admin (`AccessService.updateUser`): troca o e-mail primário e força unicidade no flush. Sem e-mail de confirmação (projeto não envia e-mail) e **sem** WhatsApp. **Confirmar:** trocar o e-mail de login de um morador silenciosamente é aceitável, ou deve notificar o morador via WhatsApp?
-
-7. **Sem limite de moradores por unidade** neste PR. Não há regra de negócio de teto. **Confirmar:** existe limite (ex.: N moradores por unidade)? Se sim, é fácil adicionar um guard no `createMember`.
-
-8. **Master só age sobre morador `RESIDENT` não-master da sua unidade.** O guard de escopo verifica: alvo existe, `target.unitId == me.unitId`, `!target.isUnitMaster()`, `target.status == ACTIVE`. Não verifico a role `RESIDENT` explicitamente (qualquer não-master da unidade que não seja o próprio master). **Confirmar:** suficiente, ou exigir que o alvo tenha exatamente a role RESIDENT?
-
-9. **Frontend é o PR4 (plano separado).** Este plano é **backend-only**. Nada de React/tela aqui.
-
-10. **`PUT /{id}` permite trocar `unitId`? NÃO.** No spec do admin o `unitId` é editável, mas o master só gere a própria unidade — permitir mover um morador para outra unidade vazaria escopo. O `PUT` do master edita nome/greeting/telefone/e-mail/gênero/nascimento e **mantém** `unitId` fixo na unidade do master. **Confirmar.**
+**Corte em 2 PRs:** **PR-A = tasks 1–4** (finder, exceção+handler, `UserProvisioning`, `AccessService` delega). **PR-B = tasks 5–8** (DTOs, reescrita do `UnitMemberService` incl. **notificação WhatsApp na troca de e-mail**, reescrita do `UnitMemberController`, suíte+sanidade).
 
 ---
 

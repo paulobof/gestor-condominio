@@ -58,7 +58,7 @@ A digitalização **não é feita no software**. A partir dos **4 PDFs** das pla
 - **seed/migração** dos registros de `parking_spot` (incl. coordenadas), e
 - **assets de frontend**: as 4 imagens de planta (fundo do overlay).
 
-**Sobre os fontes:** as plantas **+1 e +2** ("AGRUPAMENTO REV 05") têm **texto vetorial extraível** (rótulos `T2 2263`, `MOTO ###`, `PNE ####`, `G364A/B`…), o que facilita muito a digitalização. As plantas **−1 e 0** entregues até agora são **raster (sem texto)** e a legenda mostra só 2 categorias — **idealmente substituir pelos equivalentes REV 05** (vetoriais, com a categoria "3 vagas"). Fluxo: PDFs → front preparado com as vagas reais → **testado localmente** → sobe. Não há tela admin de "desenhar vagas".
+**Sobre os fontes:** os **4 pisos** estão disponíveis em **"AGRUPAMENTO REV 05"** (−1, 0, +1, +2), todos com **texto vetorial extraível** (rótulos `T2 2263`, `MOTO ###`, `PNE ####`, `G364A/B`…) e as 3 categorias na legenda — base ideal para extrair o catálogo. Anotações a tratar na extração: **`VAGA NÃO EXISTE`** (não cria a vaga) e **`VAGA MENOR COMPRIMENTO`** (registra em `size`/observação). Fluxo: PDFs → front preparado com as vagas reais → **testado localmente** → sobe. Não há tela admin de "desenhar vagas".
 
 ## Arquitetura
 
@@ -215,16 +215,16 @@ Feature grande → **decompor em sub-PRs** ≤400 linhas (override consciente se
 - **Lembretes automáticos** agendados (só reenvio manual).
 - Tela admin de **digitalização** de vagas (feito em dev time a partir dos PDFs).
 
-### Resolvido pelas plantas REV 05 (+1/+2)
+### Resolvido pelas plantas REV 05 (4 pisos)
 
+- ✅ **4 pisos em REV 05 vetorial** (−1, 0, +1, +2), com texto extraível — base do catálogo.
 - ✅ **Moto = pool comum** (não preso a torre) — rótulos `MOTO ###`.
 - ✅ **Existem 3 categorias** de carro (1/2/3 vagas) → modelo com `category` ONE/TWO/THREE e até 10 filas; entitlement de 3 vagas via `unit.parking_spots_override`.
 - ✅ **PCD demarcada** (`PNE ####`).
 
 ### Ainda a confirmar (no plano/implementação)
 
-1. **Estrutura da vaga múltipla:** 2 vagas = dupla (`A/B`); confirmar que **3 vagas = tripla** (um número, 3 posições) e não 3 spots — validar na digitalização REV 05.
-2. **Plantas −1 e 0 em REV 05 (vetorial):** as entregues são raster e só com 2 categorias; obter os equivalentes REV 05 (com "3 vagas" e texto) para digitalizar com precisão e cobrir eventuais 3-vagas nesses pisos.
-3. **Momento exato de liberar vagas PCD** = no `closeRound`. Confirmar se há fase de "sobras" antes do encerramento.
-4. **Unidade pulada volta para o fim da mesma fila** (vs. lista de pendências). Confirmado "fim da fila"; rever se o síndico prefere uma aba de pendências.
-5. **Quais unidades têm 3 vagas** (lista das coberturas) para popular `parking_spots_override`.
+1. **Estrutura da vaga múltipla:** 2 vagas = dupla (`A/B`); confirmar que **3 vagas = tripla** (um número, 3 posições) e não 3 spots — validar na extração REV 05.
+2. **Momento exato de liberar vagas PCD** = no `closeRound`. Confirmar se há fase de "sobras" antes do encerramento.
+3. **Unidade pulada volta para o fim da mesma fila** (vs. lista de pendências). Confirmado "fim da fila"; rever se o síndico prefere uma aba de pendências.
+4. **Quais unidades têm 3 vagas** (lista das coberturas) para popular `parking_spots_override`.

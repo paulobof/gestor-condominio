@@ -22,6 +22,7 @@ import { FaqAdminPage } from '@/features/faq/pages/FaqAdminPage';
 import { InfoPage } from '@/features/generalinfo/pages/InfoPage';
 import { InfoAdminPage } from '@/features/generalinfo/pages/InfoAdminPage';
 import { AccessManagementPage } from '@/features/access/pages/AccessManagementPage';
+import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
       { path: '/faq', element: <FaqPage /> },
       { path: '/faq/gerenciar', element: <FaqAdminPage /> },
       { path: '/admin/acessos', element: <AccessManagementPage /> },
+      { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
     ],
   },
 ]);

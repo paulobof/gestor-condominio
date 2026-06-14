@@ -8,6 +8,7 @@ import {
   BookOpen,
   Info,
   UserCog,
+  Users,
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
@@ -44,6 +45,13 @@ const ITEMS: NavItem[] = [
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
   },
+  {
+    to: '/minha-unidade/moradores',
+    label: 'Moradores',
+    icon: Users,
+    brand: 'ink',
+    requires: 'RESIDENT_MANAGE',
+  },
 ];
 
 // 'ink' é a cor neutra dos itens de sistema. Como ícone/texto ele segue
@@ -72,7 +80,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             className={({ isActive }) =>
               [
                 'flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                isActive ? 'font-semibold' : 'text-foreground hover:bg-accent',
+                isActive ? 'font-semibold hover:bg-transparent' : 'text-foreground hover:bg-accent',
               ].join(' ')
             }
             style={({ isActive }) =>
@@ -81,12 +89,12 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : undefined
             }
           >
-            {({ isActive }) => (
+            {() => (
               <>
                 <Icon
                   className="h-5 w-5 shrink-0"
                   aria-hidden="true"
-                  style={isActive ? { color: hsl(item.brand) } : { color: hsl(item.brand) }}
+                  style={{ color: hsl(item.brand) }}
                 />
                 <span>{item.label}</span>
               </>

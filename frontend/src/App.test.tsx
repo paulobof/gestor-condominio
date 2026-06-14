@@ -106,4 +106,17 @@ describe('App', () => {
     expect(style).toContain('--foreground');
     expect(style).not.toContain('--brand-ink');
   });
+
+  it('esconde "Moradores" sem RESIDENT_MANAGE', () => {
+    renderApp(['USER_VIEW']);
+    expect(screen.queryByRole('link', { name: /^moradores/i })).not.toBeInTheDocument();
+  });
+
+  it('mostra "Moradores" com RESIDENT_MANAGE', () => {
+    renderApp(['RESIDENT_MANAGE']);
+    expect(screen.getByRole('link', { name: /^moradores/i })).toHaveAttribute(
+      'href',
+      '/minha-unidade/moradores'
+    );
+  });
 });

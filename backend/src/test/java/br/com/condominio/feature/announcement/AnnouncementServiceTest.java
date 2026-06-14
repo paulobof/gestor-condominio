@@ -35,7 +35,8 @@ class AnnouncementServiceTest {
   }
 
   private Announcement persisted(UUID id, int position) {
-    Announcement a = Announcement.create(author, "Aviso", "corpo", position);
+    Announcement a =
+        Announcement.create(author, "Aviso", "corpo", position, AnnouncementImportance.MEDIUM);
     ReflectionTestUtils.setField(a, "id", id);
     return a;
   }
@@ -45,11 +46,14 @@ class AnnouncementServiceTest {
     when(repo.findMinPosition()).thenReturn(2);
 
     AnnouncementView v =
-        service.create(author, new CreateAnnouncementRequest("Manutenção", "corpo"));
+        service.create(
+            author,
+            new CreateAnnouncementRequest("Manutenção", "corpo", AnnouncementImportance.HIGH));
 
     assertThat(v.title()).isEqualTo("Manutenção");
     assertThat(v.authorUserId()).isEqualTo(author);
     assertThat(v.position()).isEqualTo(1);
+    assertThat(v.importance()).isEqualTo(AnnouncementImportance.HIGH);
     verify(repo).save(any(Announcement.class));
   }
 
@@ -57,9 +61,13 @@ class AnnouncementServiceTest {
   void create_firstAnnouncement_positionZero() {
     when(repo.findMinPosition()).thenReturn(null);
 
-    AnnouncementView v = service.create(author, new CreateAnnouncementRequest("Regras", "corpo"));
+    AnnouncementView v =
+        service.create(
+            author,
+            new CreateAnnouncementRequest("Regras", "corpo", AnnouncementImportance.MEDIUM));
 
     assertThat(v.position()).isZero();
+    assertThat(v.importance()).isEqualTo(AnnouncementImportance.MEDIUM);
   }
 
   @Test
@@ -77,11 +85,14 @@ class AnnouncementServiceTest {
     UUID id = UUID.randomUUID();
     when(repo.findById(id)).thenReturn(Optional.of(persisted(id, 0)));
 
-    AnnouncementView v = service.update(id, new UpdateAnnouncementRequest("Novo", "novo corpo"));
+    AnnouncementView v =
+        service.update(
+            id, new UpdateAnnouncementRequest("Novo", "novo corpo", AnnouncementImportance.LOW));
 
     assertThat(v.title()).isEqualTo("Novo");
     assertThat(v.body()).isEqualTo("novo corpo");
     assertThat(v.position()).isZero();
+    assertThat(v.importance()).isEqualTo(AnnouncementImportance.LOW);
   }
 
   @Test

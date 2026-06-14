@@ -52,23 +52,34 @@ public class Announcement {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 10)
+  private AnnouncementImportance importance;
+
   @PreUpdate
   void onUpdate() {
     updatedAt = Instant.now();
   }
 
-  public static Announcement create(UUID authorUserId, String title, String body, int position) {
+  public static Announcement create(
+      UUID authorUserId,
+      String title,
+      String body,
+      int position,
+      AnnouncementImportance importance) {
     Announcement a = new Announcement();
     a.authorUserId = authorUserId;
     a.title = title;
     a.body = body;
     a.position = position;
+    a.importance = importance;
     return a;
   }
 
-  public void edit(String title, String body) {
+  public void edit(String title, String body, AnnouncementImportance importance) {
     this.title = title;
     this.body = body;
+    this.importance = importance;
   }
 
   public void moveTo(int position) {

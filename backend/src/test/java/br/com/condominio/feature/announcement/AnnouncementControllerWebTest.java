@@ -50,7 +50,15 @@ class AnnouncementControllerWebTest {
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
 
   private AnnouncementView view() {
-    return new AnnouncementView(AID, "Manutenção", "corpo", 0, Instant.now(), UID, Instant.now());
+    return new AnnouncementView(
+        AID,
+        "Manutenção",
+        "corpo",
+        0,
+        Instant.now(),
+        UID,
+        Instant.now(),
+        AnnouncementImportance.MEDIUM);
   }
 
   @Test
@@ -60,7 +68,8 @@ class AnnouncementControllerWebTest {
     mvc.perform(get("/api/announcements").with(MockAuth.user(UID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].title").value("Manutenção"))
-        .andExpect(jsonPath("$.content[0].position").value(0));
+        .andExpect(jsonPath("$.content[0].position").value(0))
+        .andExpect(jsonPath("$.content[0].importance").value("MEDIUM"));
   }
 
   @Test
@@ -77,9 +86,22 @@ class AnnouncementControllerWebTest {
             post("/api/announcements")
                 .with(MockAuth.user(UID, MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\"}"))
+                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\",\"importance\":\"MEDIUM\"}"))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.title").value("Manutenção"));
+        .andExpect(jsonPath("$.title").value("Manutenção"))
+        .andExpect(jsonPath("$.importance").value("MEDIUM"));
+  }
+
+  @Test
+  void create_nullImportance_returns400() throws Exception {
+    mvc.perform(
+            post("/api/announcements")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    verify(service, never()).create(any(), any());
   }
 
   @Test
@@ -88,7 +110,7 @@ class AnnouncementControllerWebTest {
             post("/api/announcements")
                 .with(MockAuth.user(UID))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\"}"))
+                .content("{\"title\":\"Manutenção\",\"body\":\"corpo\",\"importance\":\"MEDIUM\"}"))
         .andExpect(status().isForbidden());
     verify(service, never()).create(any(), any());
   }
@@ -99,7 +121,7 @@ class AnnouncementControllerWebTest {
             post("/api/announcements")
                 .with(MockAuth.user(UID, MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"\",\"body\":\"corpo\"}"))
+                .content("{\"title\":\"\",\"body\":\"corpo\",\"importance\":\"HIGH\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     verify(service, never()).create(any(), any());

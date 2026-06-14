@@ -37,14 +37,15 @@ public class AnnouncementService {
   public AnnouncementView create(UUID authorId, CreateAnnouncementRequest body) {
     Integer min = repo.findMinPosition();
     int top = (min == null ? 0 : min - 1);
-    Announcement a = Announcement.create(authorId, body.title(), body.body(), top);
+    Announcement a =
+        Announcement.create(authorId, body.title(), body.body(), top, body.importance());
     return AnnouncementView.of(repo.save(a));
   }
 
   @Transactional
   public AnnouncementView update(UUID id, UpdateAnnouncementRequest body) {
     Announcement a = find(id);
-    a.edit(body.title(), body.body());
+    a.edit(body.title(), body.body(), body.importance());
     return AnnouncementView.of(a);
   }
 

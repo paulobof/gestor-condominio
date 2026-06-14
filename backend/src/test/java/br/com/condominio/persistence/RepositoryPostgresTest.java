@@ -73,7 +73,9 @@ class RepositoryPostgresTest {
     assertThatCode(() -> accessUsers.findActivePageByTerm("101", PageRequest.of(0, 20)))
         .doesNotThrowAnyException();
     var all = accessUsers.findActivePageAll(PageRequest.of(0, 20));
-    assertThat(all.getContent()).isEmpty(); // sem usuários no seed do container
+    // O seed V8 cria o admin, então a página o traz. O foco do teste é a query EXECUTAR
+    // contra Postgres sem o 500 do bind citext nulo (não a contagem exata).
+    assertThat(all.getContent()).isNotEmpty();
   }
 
   @Test

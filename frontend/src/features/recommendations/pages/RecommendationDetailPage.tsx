@@ -4,11 +4,11 @@ import { toast } from 'sonner';
 import {
   ArrowLeft,
   BookOpen,
+  Camera,
   EyeOff,
-  Facebook,
-  Instagram,
   MessageCircle,
   Pencil,
+  ThumbsUp,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -181,7 +181,7 @@ export function RecommendationDetailPage() {
               className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
               aria-label="Instagram"
             >
-              <Instagram className="h-4 w-4" aria-hidden="true" />
+              <Camera className="h-4 w-4" aria-hidden="true" />
               Instagram
             </a>
           )}
@@ -193,7 +193,7 @@ export function RecommendationDetailPage() {
               className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
               aria-label="Facebook"
             >
-              <Facebook className="h-4 w-4" aria-hidden="true" />
+              <ThumbsUp className="h-4 w-4" aria-hidden="true" />
               Facebook
             </a>
           )}

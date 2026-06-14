@@ -4,6 +4,7 @@ import { LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 import { Sidebar } from './Sidebar';
 
 /**
@@ -78,8 +79,13 @@ export function Shell() {
 
       <div className="flex">
         <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
-        <main className="min-w-0 flex-1">
-          <Outlet />
+        <main className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <footer className="border-t border-border px-4 py-4">
+            <DeveloperCredit />
+          </footer>
         </main>
       </div>
     </div>

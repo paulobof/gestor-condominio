@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
-echo "[pre-push] rodando testes backend + frontend..."
-npm run test:backend && npm run test:frontend
+echo "[pre-push] testes backend + frontend..."
+npm run test:backend && npm run test:frontend || exit 1
+echo "[pre-push] build de produção do frontend (tsc + vite)..."
+npm run build:frontend || exit 1
+echo "[pre-push] e2e (Playwright, API mockada)..."
+npm run test:e2e || exit 1

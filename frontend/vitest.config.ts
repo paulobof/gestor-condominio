@@ -12,5 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     css: true,
+    // Testes unitários vivem em src/. Os specs de e2e/ rodam pelo Playwright.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 });

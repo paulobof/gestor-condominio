@@ -7,6 +7,8 @@
     "prepare": "husky",
     "test:backend": "cd backend && ./mvnw test -q",
     "test:frontend": "cd frontend && npm test -- --run --passWithNoTests",
+    "build:frontend": "cd frontend && npm run build",
+    "test:e2e": "cd frontend && npm run test:e2e",
     "lint:backend": "cd backend && ./mvnw -q spotless:check",
     "lint:frontend": "cd frontend && npm run lint",
     "format:backend": "cd backend && ./mvnw -q spotless:apply"

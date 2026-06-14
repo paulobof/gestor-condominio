@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
+import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
 
@@ -194,19 +195,24 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const can = (requires?: string) => !requires || (user?.authorities.includes(requires) ?? false);
 
   return (
-    <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
-      {ENTRIES.map((entry) => {
-        if (entry.kind === 'item') {
-          if (!can(entry.requires)) return null;
-          return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
-        }
-        const children = entry.children.filter((c) => can(c.requires));
-        if (children.length === 0) return null;
-        return (
-          <GroupNav key={entry.label} group={{ ...entry, children }} onNavigate={onNavigate} />
-        );
-      })}
-    </nav>
+    <div className="flex h-full flex-1 flex-col">
+      <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
+        {ENTRIES.map((entry) => {
+          if (entry.kind === 'item') {
+            if (!can(entry.requires)) return null;
+            return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
+          }
+          const children = entry.children.filter((c) => can(c.requires));
+          if (children.length === 0) return null;
+          return (
+            <GroupNav key={entry.label} group={{ ...entry, children }} onNavigate={onNavigate} />
+          );
+        })}
+      </nav>
+      <div className="mt-auto border-t border-border p-3">
+        <DeveloperCredit />
+      </div>
+    </div>
   );
 }
 

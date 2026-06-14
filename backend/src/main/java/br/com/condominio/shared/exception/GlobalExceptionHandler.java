@@ -5,6 +5,7 @@ import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
 import br.com.condominio.feature.faq.FaqException;
 import br.com.condominio.feature.info.InfoException;
+import br.com.condominio.feature.parkingrental.ParkingRentalException;
 import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.recommendation.RecommendationException;
@@ -61,6 +62,24 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(ClassifiedException.class)
   public ResponseEntity<ApiError> handleClassified(ClassifiedException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(ParkingRentalException.class)
+  public ResponseEntity<ApiError> handleParkingRental(ParkingRentalException ex) {
     HttpStatus status =
         switch (ex.getCode()) {
           case "NOT_FOUND" -> HttpStatus.NOT_FOUND;

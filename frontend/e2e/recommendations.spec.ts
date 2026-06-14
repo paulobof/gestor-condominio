@@ -32,14 +32,39 @@ test.describe('Indicações — links sociais no detalhe', () => {
 
     await expect(page.getByRole('heading', { name: 'Encanador Zé' })).toBeVisible();
 
-    const instagram = page.getByRole('link', { name: 'Instagram' });
+    // exact: true para não casar o rodapé global (aria-label "WhatsApp da Wizortech" etc.)
+    const instagram = page.getByRole('link', { name: 'Instagram', exact: true });
     await expect(instagram).toHaveAttribute('href', 'https://instagram.com/encanadorze');
 
-    const facebook = page.getByRole('link', { name: 'Facebook' });
+    const facebook = page.getByRole('link', { name: 'Facebook', exact: true });
     await expect(facebook).toHaveAttribute('href', 'https://facebook.com/encanadorze');
 
-    const whatsapp = page.getByRole('link', { name: 'WhatsApp' });
+    const whatsapp = page.getByRole('link', { name: 'WhatsApp', exact: true });
     await expect(whatsapp).toHaveAttribute('href', 'https://wa.me/5511999990000');
+  });
+
+  test('admin (sem unidade) cria indicação de morador enviando residentUserId', async ({
+    page,
+    mock,
+  }) => {
+    mock.user({ unitId: null, isUnitMaster: false }); // admin: não é morador logado
+    mock.post('/recommendations', { ...REC, id: 'new-rec' });
+    await page.goto('/indicacoes/nova');
+
+    await page.getByLabel('Serviço').fill('Eletricista do bloco');
+    await page.getByRole('checkbox', { name: /é morador/i }).check();
+    await page.getByLabel('UUID do morador indicado').fill('11111111-1111-1111-1111-111111111111');
+
+    const createReq = page.waitForRequest(
+      (r) => r.method() === 'POST' && r.url().endsWith('/api/recommendations')
+    );
+    await page.getByRole('button', { name: /criar indicação/i }).click();
+    const body = (await createReq).postDataJSON();
+
+    expect(body).toMatchObject({
+      isResident: true,
+      residentUserId: '11111111-1111-1111-1111-111111111111',
+    });
   });
 
   test('omite links sociais ausentes', async ({ page, mock }) => {
@@ -53,7 +78,7 @@ test.describe('Indicações — links sociais no detalhe', () => {
     await page.goto('/indicacoes/rec-2');
 
     await expect(page.getByRole('heading', { name: 'Encanador Zé' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Instagram' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'WhatsApp' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Instagram', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'WhatsApp', exact: true })).toHaveCount(0);
   });
 });

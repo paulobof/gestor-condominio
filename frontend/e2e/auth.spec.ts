@@ -13,7 +13,7 @@ test.describe('Autenticação', () => {
     mock.loginAs({}); // /auth/login responde 200 com o usuário padrão
     await page.goto('/login');
 
-    await page.getByLabel('E-mail').fill('sindico@example.com');
+    await page.getByLabel('E-mail', { exact: true }).fill('sindico@example.com');
     await page.getByLabel('Senha', { exact: true }).fill('senha-correta');
     await page.getByRole('button', { name: 'Entrar' }).click();
 
@@ -26,7 +26,7 @@ test.describe('Autenticação', () => {
     mock.loginAs(null); // /auth/login → 401
     await page.goto('/login');
 
-    await page.getByLabel('E-mail').fill('sindico@example.com');
+    await page.getByLabel('E-mail', { exact: true }).fill('sindico@example.com');
     await page.getByLabel('Senha', { exact: true }).fill('senha-errada');
     await page.getByRole('button', { name: 'Entrar' }).click();
 

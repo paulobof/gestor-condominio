@@ -34,4 +34,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * Soft-deleted já é filtrado pelo {@code @SQLRestriction} da entidade {@code User}.
    */
   List<User> findByUnitIdAndStatusNotAndIsUnitMasterFalse(UUID unitId, UserStatus status);
+
+  @Query("SELECT u.unitId FROM User u WHERE u.id = :id")
+  Optional<UUID> findUnitIdById(@Param("id") UUID id);
 }

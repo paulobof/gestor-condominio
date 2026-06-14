@@ -52,6 +52,24 @@ public class Recommendation {
   @Column(columnDefinition = "text")
   private String comment;
 
+  @Column(name = "instagram_url", length = 255)
+  private String instagramUrl;
+
+  @Column(name = "facebook_url", length = 255)
+  private String facebookUrl;
+
+  @Column(name = "whatsapp_url", length = 255)
+  private String whatsappUrl;
+
+  @Column(name = "catalog_url", length = 500)
+  private String catalogUrl;
+
+  @Column(name = "owner_unit_id", updatable = false)
+  private UUID ownerUnitId;
+
+  @Column(name = "owner_unit_code", length = 10, updatable = false)
+  private String ownerUnitCode;
+
   @Column(name = "recommended_by_user_id", nullable = false, updatable = false)
   private UUID recommendedByUserId;
 
@@ -90,10 +108,13 @@ public class Recommendation {
       String addressLine,
       String priceRange,
       Integer rating,
-      String comment) {
-    if (resident && residentUserId == null) {
-      throw new IllegalArgumentException("Indicação de morador exige residentUserId.");
-    }
+      String comment,
+      String instagramUrl,
+      String facebookUrl,
+      String whatsappUrl,
+      String catalogUrl,
+      UUID ownerUnitId,
+      String ownerUnitCode) {
     Recommendation r = new Recommendation();
     r.recommendedByUserId = recommendedByUserId;
     r.serviceName = serviceName;
@@ -105,6 +126,12 @@ public class Recommendation {
     r.priceRange = priceRange;
     r.rating = rating == null ? null : rating.shortValue();
     r.comment = comment;
+    r.instagramUrl = instagramUrl;
+    r.facebookUrl = facebookUrl;
+    r.whatsappUrl = whatsappUrl;
+    r.catalogUrl = catalogUrl;
+    r.ownerUnitId = ownerUnitId;
+    r.ownerUnitCode = ownerUnitCode;
     r.status = RecommendationStatus.ACTIVE;
     return r;
   }
@@ -116,7 +143,11 @@ public class Recommendation {
       String addressLine,
       String priceRange,
       Integer rating,
-      String comment) {
+      String comment,
+      String instagramUrl,
+      String facebookUrl,
+      String whatsappUrl,
+      String catalogUrl) {
     this.serviceName = serviceName;
     this.professionalName = professionalName;
     this.phone = phone;
@@ -124,6 +155,10 @@ public class Recommendation {
     this.priceRange = priceRange;
     this.rating = rating == null ? null : rating.shortValue();
     this.comment = comment;
+    this.instagramUrl = instagramUrl;
+    this.facebookUrl = facebookUrl;
+    this.whatsappUrl = whatsappUrl;
+    this.catalogUrl = catalogUrl;
   }
 
   public void replaceTags(Set<Tag> newTags) {

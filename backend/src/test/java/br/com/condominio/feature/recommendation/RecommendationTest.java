@@ -19,7 +19,13 @@ class RecommendationTest {
         "Rua X",
         "R$80/h",
         5,
-        "ótimo");
+        "ótimo",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private Recommendation resident(UUID residentId) {
@@ -33,7 +39,13 @@ class RecommendationTest {
         "Apto 101",
         "R$80/h",
         5,
-        "ótimo");
+        "ótimo",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   @Test
@@ -48,21 +60,29 @@ class RecommendationTest {
   }
 
   @Test
-  void create_resident_withoutResidentId_throws() {
-    assertThatThrownBy(
-            () ->
-                Recommendation.create(
-                    UUID.randomUUID(),
-                    "Pintor",
-                    "João",
-                    "11999990000",
-                    true,
-                    null,
-                    "Apto",
-                    "R$80/h",
-                    5,
-                    "ok"))
-        .isInstanceOf(IllegalArgumentException.class);
+  void create_resident_souEu_nullResidentId_isActive() {
+    // "sou eu" path: resident=true com residentId=null é válido na entidade;
+    // a guarda de negócio (usuário sem unidade) fica no Service.
+    Recommendation r =
+        Recommendation.create(
+            UUID.randomUUID(),
+            "Pintor",
+            "João",
+            "11999990000",
+            true,
+            null,
+            "Apto",
+            "R$80/h",
+            5,
+            "ok",
+            null,
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            "T1-A-101");
+    assertThat(r.getStatus()).isEqualTo(RecommendationStatus.ACTIVE);
+    assertThat(r.getOwnerUnitCode()).isEqualTo("T1-A-101");
   }
 
   @Test
@@ -82,15 +102,27 @@ class RecommendationTest {
   @Test
   void edit_updatesFields_andNarrowsRating() {
     Recommendation r = external();
-    r.edit("Eletricista", "Maria", "11888887777", "Rua Y", "R$120/h", 4, "boa");
+    r.edit(
+        "Eletricista",
+        "Maria",
+        "11888887777",
+        "Rua Y",
+        "R$120/h",
+        4,
+        "boa",
+        "https://instagram.com/maria",
+        null,
+        null,
+        null);
     assertThat(r.getServiceName()).isEqualTo("Eletricista");
     assertThat(r.getRating()).isEqualTo((short) 4);
+    assertThat(r.getInstagramUrl()).isEqualTo("https://instagram.com/maria");
   }
 
   @Test
   void edit_withNullRating_keepsNull() {
     Recommendation r = external();
-    r.edit("Pintor", "João", "11999990000", "Rua X", "R$80/h", null, "ok");
+    r.edit("Pintor", "João", "11999990000", "Rua X", "R$80/h", null, "ok", null, null, null, null);
     assertThat(r.getRating()).isNull();
   }
 }

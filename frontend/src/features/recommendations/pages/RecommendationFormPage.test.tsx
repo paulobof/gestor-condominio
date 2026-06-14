@@ -20,15 +20,28 @@ vi.mock('../api/recommendationsApi', () => ({
 }));
 vi.mock('../api/tagsApi', () => ({ searchTags: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 
 import { RecommendationFormPage } from './RecommendationFormPage';
 import { createRecommendation } from '../api/recommendationsApi';
 import { searchTags } from '../api/tagsApi';
 import { toast } from 'sonner';
+import { useAuth } from '@/features/auth/useAuth';
 
 const createMock = vi.mocked(createRecommendation);
 const searchTagsMock = vi.mocked(searchTags);
 const toastError = vi.mocked(toast.error);
+const useAuthMock = vi.mocked(useAuth);
+
+/** Usuário sem unidade (admin ou externo) */
+function setUserNoUnit() {
+  useAuthMock.mockReturnValue({ user: { id: 'u1', authorities: [], unitId: null } } as never);
+}
+
+/** Usuário morador (tem unitId) */
+function setUserWithUnit() {
+  useAuthMock.mockReturnValue({ user: { id: 'u1', authorities: [], unitId: 'unit-1' } } as never);
+}
 
 function renderPage() {
   return render(
@@ -44,6 +57,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   searchTagsMock.mockResolvedValue([]);
   createMock.mockResolvedValue({ id: 'new-1' } as never);
+  setUserNoUnit(); // padrão: usuário sem unidade
 });
 
 describe('RecommendationFormPage (criação)', () => {
@@ -73,7 +87,9 @@ describe('RecommendationFormPage (criação)', () => {
     );
   });
 
-  it('morador sem UUID bloqueia o submit', async () => {
+  it('admin: morador sem UUID bloqueia o submit', async () => {
+    // Usuário sem unidade vê campo UUID diretamente ao marcar "é morador"
+    setUserNoUnit();
     renderPage();
     await userEvent.type(screen.getByLabelText('Serviço'), 'Encanador Zé');
     await userEvent.click(screen.getByRole('checkbox', { name: /é morador/i }));
@@ -83,7 +99,8 @@ describe('RecommendationFormPage (criação)', () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it('morador com UUID cria como isResident com residentUserId', async () => {
+  it('admin: morador com UUID cria como isResident com residentUserId', async () => {
+    setUserNoUnit();
     renderPage();
     await userEvent.type(screen.getByLabelText('Serviço'), 'Encanador Zé');
     await userEvent.click(screen.getByRole('checkbox', { name: /é morador/i }));
@@ -98,6 +115,56 @@ describe('RecommendationFormPage (criação)', () => {
       expect.objectContaining({
         isResident: true,
         residentUserId: '11111111-1111-1111-1111-111111111111',
+      })
+    );
+  });
+
+  it('morador: "esta indicação é minha" envia residentUserId=null', async () => {
+    setUserWithUnit();
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Pintor João');
+    // Marca "é morador"
+    await userEvent.click(screen.getByRole('checkbox', { name: /é morador/i }));
+    // O checkbox "esta indicação é minha" deve aparecer e estar marcado por default
+    const souEuCheckbox = screen.getByRole('checkbox', {
+      name: /esta indicação é minha/i,
+    });
+    expect(souEuCheckbox).toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isResident: true,
+        residentUserId: null, // "sou eu" → null → backend resolve pelo JWT
+      })
+    );
+  });
+
+  it('envia instagramUrl normalizado a partir de @handle', async () => {
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Pintor João');
+    await userEvent.type(screen.getByLabelText('Instagram'), '@joaopintor');
+    await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instagramUrl: 'https://instagram.com/joaopintor',
+      })
+    );
+  });
+
+  it('envia whatsappUrl normalizado a partir de número', async () => {
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Pintor João');
+    await userEvent.type(screen.getByLabelText('WhatsApp'), '+55 11 99999-0000');
+    await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        whatsappUrl: 'https://wa.me/5511999990000',
       })
     );
   });

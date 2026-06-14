@@ -33,6 +33,12 @@ export interface Recommendation {
   tags: Tag[];
   openingHours: OpeningHours[];
   photos: RecommendationPhoto[];
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  whatsappUrl: string | null;
+  catalogUrl: string | null;
+  ownerUnitId: string | null;
+  ownerUnitCode: string | null;
 }
 
 export interface RecommendationPage {
@@ -72,6 +78,10 @@ export interface RecommendationBody {
   comment?: string;
   tagSlugs: string[];
   openingHours: OpeningHours[];
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  whatsappUrl?: string | null;
+  catalogUrl?: string | null;
 }
 
 export async function createRecommendation(body: RecommendationBody) {

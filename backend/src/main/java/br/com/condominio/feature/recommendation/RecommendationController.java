@@ -53,7 +53,8 @@ public class RecommendationController {
   public ResponseEntity<RecommendationView> create(
       @Valid @RequestBody CreateRecommendationRequest body,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(service.create(me.userId(), body));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.create(me.userId(), me.unitId(), me.unitId() != null, body));
   }
 
   @PutMapping("/{id}")

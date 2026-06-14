@@ -15,9 +15,12 @@ public record ClassifiedView(
     ClassifiedStatus status,
     UUID authorUserId,
     Instant createdAt,
-    List<ClassifiedPhotoView> photos) {
+    List<ClassifiedPhotoView> photos,
+    String contactName,
+    String contactPhone) {
 
-  public static ClassifiedView of(Classified c, List<ClassifiedPhotoView> photos) {
+  public static ClassifiedView of(
+      Classified c, List<ClassifiedPhotoView> photos, String contactName, String contactPhone) {
     return new ClassifiedView(
         c.getId(),
         c.getTitle(),
@@ -26,6 +29,8 @@ public record ClassifiedView(
         c.getStatus(),
         c.getAuthorUserId(),
         c.getCreatedAt(),
-        photos);
+        photos,
+        contactName,
+        contactPhone);
   }
 }

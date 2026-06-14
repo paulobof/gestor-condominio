@@ -4,6 +4,8 @@ import br.com.condominio.feature.classified.dto.ClassifiedPhotoView;
 import br.com.condominio.feature.classified.dto.ClassifiedView;
 import br.com.condominio.feature.classified.dto.CreateClassifiedRequest;
 import br.com.condominio.feature.classified.dto.UpdateClassifiedRequest;
+import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -12,7 +14,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +33,7 @@ public class ClassifiedService {
 
   private final ClassifiedRepository repo;
   private final ClassifiedPhotoRepository photoRepo;
+  private final UserRepository userRepo;
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
@@ -47,7 +54,21 @@ public class ClassifiedService {
         status == null
             ? repo.findByStatus(ClassifiedStatus.ACTIVE, pageable)
             : repo.findByStatus(status, pageable);
-    return page.map(this::view);
+
+    // Resolve autores em lote: 1 query para toda a página (sem N+1)
+    Set<UUID> authorIds =
+        page.getContent().stream().map(Classified::getAuthorUserId).collect(Collectors.toSet());
+    Map<UUID, User> userIndex =
+        userRepo.findAllById(authorIds).stream()
+            .collect(Collectors.toMap(User::getId, Function.identity()));
+
+    return page.map(
+        c -> {
+          User u = userIndex.get(c.getAuthorUserId());
+          List<ClassifiedPhotoView> photos = photosOf(c.getId());
+          return ClassifiedView.of(
+              c, photos, u != null ? u.getFullName() : null, u != null ? u.getPhone() : null);
+        });
   }
 
   @Transactional
@@ -148,11 +169,21 @@ public class ClassifiedService {
     return c;
   }
 
+  /** Constrói ClassifiedView resolvendo o autor via userRepo (1 query por chamada de view). */
   private ClassifiedView view(Classified c) {
-    List<ClassifiedPhotoView> photos =
-        photoRepo.findByClassifiedIdOrderByOrdering(c.getId()).stream()
-            .map(p -> new ClassifiedPhotoView(p.getId(), p.getOrdering(), p.getContentType()))
-            .toList();
-    return ClassifiedView.of(c, photos);
+    List<ClassifiedPhotoView> photos = photosOf(c.getId());
+    User author =
+        userRepo.findAllById(List.of(c.getAuthorUserId())).stream().findFirst().orElse(null);
+    return ClassifiedView.of(
+        c,
+        photos,
+        author != null ? author.getFullName() : null,
+        author != null ? author.getPhone() : null);
+  }
+
+  private List<ClassifiedPhotoView> photosOf(UUID classifiedId) {
+    return photoRepo.findByClassifiedIdOrderByOrdering(classifiedId).stream()
+        .map(p -> new ClassifiedPhotoView(p.getId(), p.getOrdering(), p.getContentType()))
+        .toList();
   }
 }

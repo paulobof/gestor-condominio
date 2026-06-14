@@ -63,7 +63,9 @@ class ClassifiedControllerWebTest {
         ClassifiedStatus.ACTIVE,
         UID,
         Instant.now(),
-        List.of());
+        List.of(),
+        "Ana Vendedora",
+        "+5511999990000");
   }
 
   @Test

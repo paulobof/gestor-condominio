@@ -35,6 +35,8 @@ function classified(over: Record<string, unknown> = {}) {
     authorUserId: 'u1',
     createdAt: '2026-06-06T00:00:00Z',
     photos: [],
+    contactName: null,
+    contactPhone: null,
     ...over,
   } as never;
 }
@@ -118,5 +120,38 @@ describe('ClassifiedDetailPage', () => {
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith('/classificados', { replace: true })
     );
+  });
+
+  it('mostra nome e telefone do anunciante quando presentes', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(
+      classified({ contactName: 'Ana Costa', contactPhone: '+5511999990000' })
+    );
+    renderPage();
+    await screen.findByRole('heading', { name: 'Sofá 3 lugares' });
+
+    expect(screen.getByText('Ana Costa')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: '+5511999990000' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', 'tel:+5511999990000');
+  });
+
+  it('não mostra bloco de contato quando contactName é null', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(classified({ contactName: null, contactPhone: null }));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Sofá 3 lugares' });
+
+    expect(screen.queryByText('Contato')).not.toBeInTheDocument();
+  });
+
+  it('mostra contato sem telefone quando só o nome está presente', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(classified({ contactName: 'Sem Fone', contactPhone: null }));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Sofá 3 lugares' });
+
+    expect(screen.getByText('Sem Fone')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /tel:/i })).not.toBeInTheDocument();
   });
 });

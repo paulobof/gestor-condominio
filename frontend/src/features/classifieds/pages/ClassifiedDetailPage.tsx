@@ -139,6 +139,23 @@ export function ClassifiedDetailPage() {
         <p className="whitespace-pre-line text-sm leading-relaxed">{c.description}</p>
       )}
 
+      {c.contactName && (
+        <div className="rounded-lg border bg-muted/40 p-4 space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Contato
+          </p>
+          <p className="text-sm font-medium">{c.contactName}</p>
+          {c.contactPhone && (
+            <a
+              href={`tel:${c.contactPhone}`}
+              className="text-sm text-primary underline-offset-4 hover:underline min-h-[44px] inline-flex items-center"
+            >
+              {c.contactPhone}
+            </a>
+          )}
+        </div>
+      )}
+
       {isOwnerOrMod && (
         <div className="flex flex-wrap gap-2 pt-2">
           <Button asChild className="min-h-[44px]">

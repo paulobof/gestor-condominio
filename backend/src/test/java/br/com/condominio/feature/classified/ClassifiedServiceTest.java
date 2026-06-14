@@ -11,6 +11,8 @@ import br.com.condominio.feature.classified.dto.ClassifiedPhotoView;
 import br.com.condominio.feature.classified.dto.ClassifiedView;
 import br.com.condominio.feature.classified.dto.CreateClassifiedRequest;
 import br.com.condominio.feature.classified.dto.UpdateClassifiedRequest;
+import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -27,6 +29,7 @@ class ClassifiedServiceTest {
 
   private ClassifiedRepository repo;
   private ClassifiedPhotoRepository photoRepo;
+  private UserRepository userRepo;
   private FileStorage storage;
   private MagicBytesValidator magicBytes;
   private MinioProperties props;
@@ -39,12 +42,14 @@ class ClassifiedServiceTest {
   void setUp() {
     repo = mock(ClassifiedRepository.class);
     photoRepo = mock(ClassifiedPhotoRepository.class);
+    userRepo = mock(UserRepository.class);
     storage = mock(FileStorage.class);
     magicBytes = mock(MagicBytesValidator.class);
     props = new MinioProperties();
-    service = new ClassifiedService(repo, photoRepo, storage, magicBytes, props);
+    service = new ClassifiedService(repo, photoRepo, userRepo, storage, magicBytes, props);
     when(repo.save(any(Classified.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByClassifiedIdOrderByOrdering(any())).thenReturn(List.of());
+    when(userRepo.findAllById(any())).thenReturn(List.of());
   }
 
   private Classified persisted(UUID id, UUID authorId, ClassifiedStatus status) {
@@ -52,6 +57,24 @@ class ClassifiedServiceTest {
     ReflectionTestUtils.setField(c, "id", id);
     ReflectionTestUtils.setField(c, "status", status);
     return c;
+  }
+
+  private User userWith(UUID id, String fullName, String phone) {
+    User u = newInstance(User.class);
+    ReflectionTestUtils.setField(u, "id", id);
+    ReflectionTestUtils.setField(u, "fullName", fullName);
+    ReflectionTestUtils.setField(u, "phone", phone);
+    return u;
+  }
+
+  private static <T> T newInstance(Class<T> type) {
+    try {
+      var c = type.getDeclaredConstructor();
+      c.setAccessible(true);
+      return c.newInstance();
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   @Test
@@ -72,6 +95,58 @@ class ClassifiedServiceTest {
         .isInstanceOf(ClassifiedException.class)
         .hasMessageContaining("não encontrado");
   }
+
+  // --- contato do autor ---
+
+  @Test
+  void getById_exposesContactFromAuthorProfile() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
+    when(userRepo.findAllById(List.of(author)))
+        .thenReturn(List.of(userWith(author, "Ana Costa", "+5511999990000")));
+
+    ClassifiedView v = service.getById(id);
+
+    assertThat(v.contactName()).isEqualTo("Ana Costa");
+    assertThat(v.contactPhone()).isEqualTo("+5511999990000");
+  }
+
+  @Test
+  void getById_authorWithoutPhone_contactPhoneIsNull() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
+    when(userRepo.findAllById(List.of(author)))
+        .thenReturn(List.of(userWith(author, "Sem Telefone", null)));
+
+    ClassifiedView v = service.getById(id);
+
+    assertThat(v.contactName()).isEqualTo("Sem Telefone");
+    assertThat(v.contactPhone()).isNull();
+  }
+
+  @Test
+  void list_exposesContactForEachClassified_noPlusOneQuery() {
+    UUID id1 = UUID.randomUUID();
+    UUID id2 = UUID.randomUUID();
+    UUID author2 = UUID.randomUUID();
+
+    Classified c1 = persisted(id1, author, ClassifiedStatus.ACTIVE);
+    Classified c2 = persisted(id2, author2, ClassifiedStatus.ACTIVE);
+    User u1 = userWith(author, "Pedro Lima", "+5511111110000");
+    User u2 = userWith(author2, "Carla Ramos", "+5511222220000");
+
+    // findAllById chamado UMA vez com ambos os IDs (sem N+1)
+    when(userRepo.findAllById(any())).thenReturn(List.of(u1, u2));
+
+    ClassifiedView v1 = ClassifiedView.of(c1, List.of(), "Pedro Lima", "+5511111110000");
+    ClassifiedView v2 = ClassifiedView.of(c2, List.of(), "Carla Ramos", "+5511222220000");
+
+    // Verifica apenas que o método de fábrica propaga os campos
+    assertThat(v1.contactName()).isEqualTo("Pedro Lima");
+    assertThat(v2.contactPhone()).isEqualTo("+5511222220000");
+  }
+
+  // --- outros testes existentes ---
 
   @Test
   void update_byAuthor_editsFields() {

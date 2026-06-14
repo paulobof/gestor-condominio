@@ -142,8 +142,8 @@ Notas:
 - `tower`, `floor`, `spot_number` são **texto livre** — `floor` é varchar (não
   inteiro) para aceitar `-1`, `Térreo`, etc.
 - `monthly_price` `numeric(12,2)`, igual ao `price` de `classified`.
-- Nome da tabela `app_user` na FK deve casar com a tabela real de usuários do
-  projeto — **verificar na implementação** (ajustar se for outro nome).
+- A FK `author_user_id` referencia a tabela de usuários `"user"` (palavra
+  reservada — sempre entre aspas no SQL), igual a `classified.author_user_id`.
 - Soft delete via colunas; `@SQLRestriction("deleted_at IS NULL")` na entidade.
   Índices parciais filtram `deleted_at IS NULL`.
 
@@ -189,9 +189,12 @@ public void reactivate()  { /* != ACTIVE -> ACTIVE */ }
 | GET | `/api/parking-rentals?status=&page=&size=` | `isAuthenticated()` | Lista paginada (default size 20, máx 100) |
 | GET | `/api/parking-rentals/{id}` | `isAuthenticated()` | Detalhe |
 | POST | `/api/parking-rentals` | `isAuthenticated()` | Cria (autor = logado) |
-| PUT | `/api/parking-rentals/{id}` | dono **ou** `PARKING_RENTAL_MODERATE` | Edita campos |
-| PATCH | `/api/parking-rentals/{id}/status` | dono **ou** moderador | `RENTED`/`ARCHIVED`/`ACTIVE` |
+| PUT | `/api/parking-rentals/{id}` | dono **ou** `PARKING_RENTAL_MODERATE` | Edita campos **e** status (`status` no corpo) |
 | DELETE | `/api/parking-rentals/{id}` | dono **ou** moderador | Soft delete |
+
+> **Mudança de status** segue o padrão de `ClassifiedController`: não há endpoint
+> dedicado — o `status` viaja no corpo do `PUT` (`UpdateParkingRentalRequest`) e o
+> service aplica a transição (`markRented`/`archive`/`reactivate`) se mudou.
 
 Ownership e moderação verificados no **service** (igual `ClassifiedService`):
 o controller passa `me.userId()` e `canModerate(me)`.
@@ -319,8 +322,6 @@ Work Sans — conforme CLAUDE.md.
    ou só adicionar quando a outra spec entregar?
 3. **Telefone do autor exposto** a qualquer morador logado via WhatsApp —
    confirmado no brainstorming; registrado aqui por ser PII.
-4. **Nome da tabela de usuários** para a FK `author_user_id` — confirmar na
-   implementação (`app_user` é suposição).
-5. **PATCH de status vs. ações dedicadas** — `PATCH /status` com corpo único, ou
-   endpoints/verbos separados para alugada/arquivar/reativar? Decidir na
-   implementação seguindo o que `ClassifiedController` faz hoje.
+4. ~~Nome da tabela de usuários~~ — **resolvido:** é `"user"` (igual classifieds).
+5. ~~PATCH de status vs. ações dedicadas~~ — **resolvido:** status via corpo do
+   `PUT`, sem endpoint dedicado, igual `ClassifiedController`.

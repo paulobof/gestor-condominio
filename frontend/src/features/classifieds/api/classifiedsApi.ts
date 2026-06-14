@@ -17,6 +17,8 @@ export interface Classified {
   authorUserId: string;
   createdAt: string;
   photos: ClassifiedPhoto[];
+  contactName: string | null;
+  contactPhone: string | null;
 }
 
 export interface ClassifiedPage {

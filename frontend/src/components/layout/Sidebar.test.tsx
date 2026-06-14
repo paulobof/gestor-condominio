@@ -81,4 +81,17 @@ describe('Sidebar', () => {
       '/admin/acessos'
     );
   });
+
+  it('esconde "Moradores" sem RESIDENT_MANAGE', () => {
+    renderSidebar([]);
+    expect(screen.queryByRole('link', { name: /^moradores$/i })).not.toBeInTheDocument();
+  });
+
+  it('mostra "Moradores" com RESIDENT_MANAGE', () => {
+    renderSidebar(['RESIDENT_MANAGE']);
+    expect(screen.getAllByRole('link', { name: /^moradores$/i })[0]).toHaveAttribute(
+      'href',
+      '/minha-unidade/moradores'
+    );
+  });
 });

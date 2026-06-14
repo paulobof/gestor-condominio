@@ -8,6 +8,7 @@ import {
   BookOpen,
   Info,
   UserCog,
+  Users,
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
@@ -43,6 +44,13 @@ const ITEMS: NavItem[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
+  },
+  {
+    to: '/minha-unidade/moradores',
+    label: 'Moradores',
+    icon: Users,
+    brand: 'ink',
+    requires: 'RESIDENT_MANAGE',
   },
 ];
 

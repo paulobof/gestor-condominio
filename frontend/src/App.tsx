@@ -9,6 +9,7 @@ import {
   Info,
   BookOpen,
   UserCog,
+  Users,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
@@ -76,6 +77,14 @@ const NAV: NavItem[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
+  },
+  {
+    to: '/minha-unidade/moradores',
+    title: 'Moradores',
+    desc: 'Cadastre e gerencie os moradores da sua unidade.',
+    icon: Users,
+    brand: 'ink',
+    requires: 'RESIDENT_MANAGE',
   },
 ];
 

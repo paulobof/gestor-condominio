@@ -9,6 +9,12 @@ describe('DeveloperCredit', () => {
     expect(screen.getByText(/Desenvolvido por/i)).toBeInTheDocument();
   });
 
+  it('mostra o logo da Wizortech', () => {
+    const { container } = render(<DeveloperCredit />);
+    const logo = container.querySelector('img');
+    expect(logo).toHaveAttribute('src', '/wizortech-logo.svg');
+  });
+
   it('linka para site, e-mail e WhatsApp', () => {
     render(<DeveloperCredit />);
 

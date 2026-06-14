@@ -79,8 +79,10 @@ export function Shell() {
 
       <div className="flex">
         <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
-        <main className="min-w-0 flex-1">
-          <Outlet />
+        <main className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
           <footer className="border-t border-border px-4 py-4">
             <DeveloperCredit />
           </footer>

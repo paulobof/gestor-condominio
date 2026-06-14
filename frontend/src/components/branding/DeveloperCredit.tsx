@@ -25,6 +25,14 @@ export function DeveloperCredit({ className }: { className?: string }) {
         className
       )}
     >
+      <img
+        src="/wizortech-logo.svg"
+        alt=""
+        aria-hidden="true"
+        className="h-5 w-5 shrink-0"
+        width={20}
+        height={20}
+      />
       <span>
         Desenvolvido por <span className="font-medium text-foreground">Wizortech</span>
       </span>

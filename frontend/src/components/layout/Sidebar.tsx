@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
+import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
 
@@ -68,41 +69,48 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 
   return (
-    <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              [
-                'flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                isActive ? 'font-semibold hover:bg-transparent' : 'text-foreground hover:bg-accent',
-              ].join(' ')
-            }
-            style={({ isActive }) =>
-              isActive
-                ? { backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) }
-                : undefined
-            }
-          >
-            {() => (
-              <>
-                <Icon
-                  className="h-5 w-5 shrink-0"
-                  aria-hidden="true"
-                  style={{ color: hsl(item.brand) }}
-                />
-                <span>{item.label}</span>
-              </>
-            )}
-          </NavLink>
-        );
-      })}
-    </nav>
+    <div className="flex h-full flex-1 flex-col">
+      <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                [
+                  'flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'font-semibold hover:bg-transparent'
+                    : 'text-foreground hover:bg-accent',
+                ].join(' ')
+              }
+              style={({ isActive }) =>
+                isActive
+                  ? { backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) }
+                  : undefined
+              }
+            >
+              {() => (
+                <>
+                  <Icon
+                    className="h-5 w-5 shrink-0"
+                    aria-hidden="true"
+                    style={{ color: hsl(item.brand) }}
+                  />
+                  <span>{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="mt-auto border-t border-border p-3">
+        <DeveloperCredit />
+      </div>
+    </div>
   );
 }
 

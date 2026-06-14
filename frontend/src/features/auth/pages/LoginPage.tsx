@@ -46,12 +46,12 @@ export function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-dvh flex items-center justify-center bg-background p-4">
+    <main className="relative flex min-h-dvh flex-col bg-background p-4">
       <div className="absolute right-3 top-3">
         <ThemeToggle />
       </div>
-      <div className="flex w-full max-w-md flex-col items-center gap-6">
-        <Card className="w-full">
+      <div className="flex flex-1 items-center justify-center">
+        <Card className="w-full max-w-md">
           <CardHeader className="space-y-3 text-center">
             <div className="flex justify-center">
               <img
@@ -116,8 +116,10 @@ export function LoginPage() {
             </form>
           </CardContent>
         </Card>
-        <DeveloperCredit />
       </div>
+      <footer className="pt-4">
+        <DeveloperCredit />
+      </footer>
     </main>
   );
 }

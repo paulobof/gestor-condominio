@@ -10,6 +10,7 @@ import {
   BookOpen,
   UserCog,
   Users,
+  SquareParking,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
@@ -61,6 +62,13 @@ const NAV: NavItem[] = [
     desc: 'Compra e venda entre moradores.',
     icon: ShoppingBag,
     brand: 'green',
+  },
+  {
+    to: '/vagas/aluguel',
+    title: 'Vagas',
+    desc: 'Aluguel de vagas entre moradores.',
+    icon: SquareParking,
+    brand: 'blue',
   },
   {
     to: '/admin/registrations',

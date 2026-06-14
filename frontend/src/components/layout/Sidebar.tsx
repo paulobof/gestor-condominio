@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home,
   Megaphone,
@@ -9,6 +10,9 @@ import {
   Info,
   UserCog,
   Users,
+  SquareParking,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
@@ -24,14 +28,43 @@ interface NavItem {
   requires?: string;
 }
 
-const ITEMS: NavItem[] = [
-  { to: '/', label: 'Início', icon: Home, brand: 'ink', end: true },
-  { to: '/avisos', label: 'Avisos', icon: Megaphone, brand: 'red' },
-  { to: '/informacoes', label: 'Informações', icon: Info, brand: 'blue' },
-  { to: '/faq', label: 'Perguntas Frequentes', icon: BookOpen, brand: 'blue' },
-  { to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
-  { to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
+interface NavChild {
+  to: string;
+  label: string;
+  requires?: string;
+  /** Sub-item visível porém inativo (feature ainda não entregue). */
+  disabled?: boolean;
+  badge?: string;
+}
+
+interface NavGroup {
+  label: string;
+  icon: typeof Home;
+  brand: Brand;
+  children: NavChild[];
+}
+
+type NavEntry = ({ kind: 'item' } & NavItem) | ({ kind: 'group' } & NavGroup);
+
+const ENTRIES: NavEntry[] = [
+  { kind: 'item', to: '/', label: 'Início', icon: Home, brand: 'ink', end: true },
+  { kind: 'item', to: '/avisos', label: 'Avisos', icon: Megaphone, brand: 'red' },
+  { kind: 'item', to: '/informacoes', label: 'Informações', icon: Info, brand: 'blue' },
+  { kind: 'item', to: '/faq', label: 'Perguntas Frequentes', icon: BookOpen, brand: 'blue' },
+  { kind: 'item', to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
+  { kind: 'item', to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
   {
+    kind: 'group',
+    label: 'Vagas',
+    icon: SquareParking,
+    brand: 'blue',
+    children: [
+      { to: '/vagas/aluguel', label: 'Aluguel de Vagas' },
+      { to: '/vagas/escolha', label: 'Escolha de Vaga', disabled: true, badge: 'Em breve' },
+    ],
+  },
+  {
+    kind: 'item',
     to: '/admin/registrations',
     label: 'Cadastros pendentes',
     icon: ClipboardCheck,
@@ -39,6 +72,7 @@ const ITEMS: NavItem[] = [
     requires: 'REGISTRATION_VIEW',
   },
   {
+    kind: 'item',
     to: '/admin/acessos',
     label: 'Gestão de usuários',
     icon: UserCog,
@@ -46,6 +80,7 @@ const ITEMS: NavItem[] = [
     requires: 'ROLE_ASSIGN',
   },
   {
+    kind: 'item',
     to: '/minha-unidade/moradores',
     label: 'Moradores',
     icon: Users,
@@ -61,45 +96,114 @@ const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
 const hsl = (b: Brand, a?: number) =>
   a == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${a})`;
 
+function ItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        [
+          'flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+          isActive ? 'font-semibold hover:bg-transparent' : 'text-foreground hover:bg-accent',
+        ].join(' ')
+      }
+      style={({ isActive }) =>
+        isActive ? { backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) } : undefined
+      }
+    >
+      {() => (
+        <>
+          <Icon
+            className="h-5 w-5 shrink-0"
+            aria-hidden="true"
+            style={{ color: hsl(item.brand) }}
+          />
+          <span>{item.label}</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+function GroupNav({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
+  const { pathname } = useLocation();
+  const active = group.children.some((c) => pathname.startsWith(c.to));
+  const [open, setOpen] = useState(active);
+  const Icon = group.icon;
+  const Chevron = open ? ChevronDown : ChevronRight;
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+      >
+        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" style={{ color: hsl(group.brand) }} />
+        <span className="flex-1 text-left">{group.label}</span>
+        <Chevron className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="ml-4 flex flex-col gap-1 border-l border-border pl-2">
+          {group.children.map((c) =>
+            c.disabled ? (
+              <span
+                key={c.to}
+                aria-disabled="true"
+                className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground"
+              >
+                {c.label}
+                {c.badge && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{c.badge}</span>
+                )}
+              </span>
+            ) : (
+              <NavLink
+                key={c.to}
+                to={c.to}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  [
+                    'flex min-h-[44px] items-center rounded-lg px-3 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'font-semibold hover:bg-transparent'
+                      : 'text-foreground hover:bg-accent',
+                  ].join(' ')
+                }
+                style={({ isActive }) =>
+                  isActive
+                    ? { backgroundColor: hsl(group.brand, 0.12), color: hsl(group.brand) }
+                    : undefined
+                }
+              >
+                {c.label}
+              </NavLink>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
-  const items = ITEMS.filter(
-    (i) => !i.requires || (user?.authorities.includes(i.requires) ?? false)
-  );
+  const can = (requires?: string) => !requires || (user?.authorities.includes(requires) ?? false);
 
   return (
     <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
-      {items.map((item) => {
-        const Icon = item.icon;
+      {ENTRIES.map((entry) => {
+        if (entry.kind === 'item') {
+          if (!can(entry.requires)) return null;
+          return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
+        }
+        const children = entry.children.filter((c) => can(c.requires));
+        if (children.length === 0) return null;
         return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              [
-                'flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                isActive ? 'font-semibold hover:bg-transparent' : 'text-foreground hover:bg-accent',
-              ].join(' ')
-            }
-            style={({ isActive }) =>
-              isActive
-                ? { backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) }
-                : undefined
-            }
-          >
-            {() => (
-              <>
-                <Icon
-                  className="h-5 w-5 shrink-0"
-                  aria-hidden="true"
-                  style={{ color: hsl(item.brand) }}
-                />
-                <span>{item.label}</span>
-              </>
-            )}
-          </NavLink>
+          <GroupNav key={entry.label} group={{ ...entry, children }} onNavigate={onNavigate} />
         );
       })}
     </nav>

@@ -132,6 +132,8 @@ app:
       enabled: ${APP_FEATURE_FAQ_ENABLED:false}
     generalinfo:
       enabled: ${APP_FEATURE_GENERALINFO_ENABLED:false}
+    parkingrental:
+      enabled: ${APP_FEATURE_PARKINGRENTAL_ENABLED:false}
 
 resilience4j:
   timelimiter:

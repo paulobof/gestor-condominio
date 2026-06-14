@@ -29,6 +29,16 @@ public final class MockAuth {
     return build(userId, true, authorities);
   }
 
+  /** Usuário autenticado com unidade específica. */
+  public static RequestPostProcessor userWithUnit(UUID userId, UUID unitId, String... authorities) {
+    List<String> auths = Arrays.asList(authorities);
+    AuthenticatedUserPrincipal principal =
+        new AuthenticatedUserPrincipal(userId, "Tester", List.of(), auths, unitId, false);
+    List<SimpleGrantedAuthority> granted = auths.stream().map(SimpleGrantedAuthority::new).toList();
+    return SecurityMockMvcRequestPostProcessors.authentication(
+        new UsernamePasswordAuthenticationToken(principal, null, granted));
+  }
+
   private static RequestPostProcessor build(UUID userId, boolean isUnitMaster, String... auths) {
     List<String> authorities = Arrays.asList(auths);
     AuthenticatedUserPrincipal principal =

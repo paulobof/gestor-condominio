@@ -4,6 +4,8 @@ import br.com.condominio.feature.recommendation.dto.*;
 import br.com.condominio.feature.tag.Tag;
 import br.com.condominio.feature.tag.TagService;
 import br.com.condominio.feature.tag.dto.TagView;
+import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -34,9 +36,37 @@ public class RecommendationService {
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
+  private final UserRepository userRepo;
+  private final UnitRepository unitRepo;
 
   @Transactional
-  public RecommendationView create(UUID authorId, CreateRecommendationRequest req) {
+  public RecommendationView create(
+      UUID authorId, UUID authorUnitId, boolean authorIsResident, CreateRecommendationRequest req) {
+    UUID ownerUnitId = null;
+    String ownerUnitCode = null;
+    if (req.isResident()) {
+      if (req.residentUserId() == null) {
+        // "sou eu" path: morador cadastrando a si próprio
+        if (authorUnitId == null) {
+          throw new RecommendationException(
+              "OWNER_UNIT_REQUIRED",
+              "Usuário sem unidade não pode marcar 'esta indicação é minha'.");
+        }
+        ownerUnitId = authorUnitId;
+        ownerUnitCode = unitRepo.findCodeById(authorUnitId).orElse(null);
+      } else {
+        // admin indica em nome de morador
+        ownerUnitId =
+            userRepo
+                .findUnitIdById(req.residentUserId())
+                .orElseThrow(
+                    () ->
+                        new RecommendationException(
+                            "RESIDENT_NOT_FOUND", "Morador não encontrado ou sem unidade."));
+        ownerUnitCode = unitRepo.findCodeById(ownerUnitId).orElse(null);
+      }
+    }
+
     Recommendation r =
         Recommendation.create(
             authorId,
@@ -48,7 +78,13 @@ public class RecommendationService {
             req.addressLine(),
             req.priceRange(),
             req.rating(),
-            req.comment());
+            req.comment(),
+            req.instagramUrl(),
+            req.facebookUrl(),
+            req.whatsappUrl(),
+            req.catalogUrl(),
+            ownerUnitId,
+            ownerUnitCode);
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
@@ -90,7 +126,11 @@ public class RecommendationService {
         req.addressLine(),
         req.priceRange(),
         req.rating(),
-        req.comment());
+        req.comment(),
+        req.instagramUrl(),
+        req.facebookUrl(),
+        req.whatsappUrl(),
+        req.catalogUrl());
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(id, req.openingHours());

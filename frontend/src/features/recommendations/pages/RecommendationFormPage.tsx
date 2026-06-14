@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/features/auth/useAuth';
 import {
   createRecommendation,
   deleteRecommendationPhoto,
@@ -37,11 +38,40 @@ function backendMessage(e: unknown, fallback: string): string {
   return (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback;
 }
 
+/**
+ * Normaliza handle do Instagram para URL completa.
+ * "@joao" → "https://instagram.com/joao"
+ * "https://instagram.com/joao" → inalterado
+ */
+function normalizeInstagramUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) return trimmed;
+  const handle = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+  return `https://instagram.com/${handle}`;
+}
+
+/**
+ * Normaliza número de telefone para URL wa.me.
+ * "+55 11 99999-0000" → "https://wa.me/5511999990000"
+ * "https://wa.me/..." → inalterado
+ */
+function normalizeWhatsappUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) return trimmed;
+  // Remove tudo exceto dígitos e +
+  const digits = trimmed.replace(/[^\d+]/g, '');
+  const number = digits.startsWith('+') ? digits.slice(1) : digits;
+  return `https://wa.me/${number}`;
+}
+
 export function RecommendationFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const [serviceName, setServiceName] = useState('');
   const [professionalName, setProfessionalName] = useState('');
@@ -51,8 +81,17 @@ export function RecommendationFormPage() {
   const [rating, setRating] = useState(''); // "" = sem nota
   const [comment, setComment] = useState('');
 
+  // links sociais
+  const [instagramInput, setInstagramInput] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [catalogUrl, setCatalogUrl] = useState('');
+
   // morador (apenas na criação)
   const [isResident, setIsResident] = useState(false);
+  // "sou eu" = checkbox marcado sem residentUserId (null = autor)
+  // "outro morador" = checkbox marcado com residentUserId preenchido (admin)
+  const [residentMode, setResidentMode] = useState<'self' | 'other'>('self');
   const [residentUserId, setResidentUserId] = useState('');
 
   // tags
@@ -70,6 +109,13 @@ export function RecommendationFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // O utilizador logado é morador (tem unitId)?
+  const userIsResident = !!(user as { unitId?: string | null } | null)?.unitId;
+
+  // Precisa informar o UUID do morador indicado quando: marcou "é morador" e
+  // (não é morador logado — ex.: admin — ou escolheu "outro morador").
+  const needsResidentUuid = isResident && (!userIsResident || residentMode === 'other');
 
   const loadPhotoUrls = useCallback((recId: string, list: RecommendationPhoto[]) => {
     list.forEach((photo) => {
@@ -91,6 +137,10 @@ export function RecommendationFormPage() {
     setComment(rec.comment ?? '');
     setIsResident(rec.isResident);
     setResidentUserId(rec.residentUserId ?? '');
+    setInstagramInput(rec.instagramUrl ?? '');
+    setFacebookUrl(rec.facebookUrl ?? '');
+    setWhatsappInput(rec.whatsappUrl ?? '');
+    setCatalogUrl(rec.catalogUrl ?? '');
     setTagSlugs(rec.tags.map((t) => t.slug));
     setPhotos(rec.photos);
     const rows = emptyHoursRows();
@@ -186,12 +236,18 @@ export function RecommendationFormPage() {
       toast.error('Informe o nome do serviço.');
       return;
     }
-    if (!isEdit && isResident && !residentUserId.trim()) {
+    // Validação de resident: se precisa do UUID do morador e está em branco
+    if (!isEdit && needsResidentUuid && !residentUserId.trim()) {
       toast.error('Informe o UUID do morador indicado.');
       return;
     }
     setSaving(true);
     try {
+      const instagramUrlFinal = instagramInput.trim()
+        ? normalizeInstagramUrl(instagramInput)
+        : null;
+      const whatsappUrlFinal = whatsappInput.trim() ? normalizeWhatsappUrl(whatsappInput) : null;
+
       const common = {
         serviceName: serviceName.trim(),
         professionalName: professionalName.trim() || undefined,
@@ -202,16 +258,24 @@ export function RecommendationFormPage() {
         comment: comment.trim() || undefined,
         tagSlugs,
         openingHours: buildOpeningHours(),
+        instagramUrl: instagramUrlFinal,
+        facebookUrl: facebookUrl.trim() || null,
+        whatsappUrl: whatsappUrlFinal,
+        catalogUrl: catalogUrl.trim() || null,
       };
       if (isEdit && id) {
         await updateRecommendation(id, common);
         toast.success('Indicação atualizada.');
         navigate(`/indicacoes/${id}`);
       } else {
+        // Para criação: resolver residentUserId baseado no modo.
+        // "sou eu" (morador logado, sem UUID) → null: backend resolve pelo JWT.
+        const resolvedResidentUserId = needsResidentUuid ? residentUserId.trim() || null : null;
+
         const created = await createRecommendation({
           ...common,
           isResident,
-          residentUserId: isResident ? residentUserId.trim() : null,
+          residentUserId: resolvedResidentUserId,
         });
         toast.success('Indicação criada. Adicione fotos e horários, se desejar.');
         navigate(`/indicacoes/${created.id}/editar`, { replace: true });
@@ -347,6 +411,53 @@ export function RecommendationFormPage() {
               />
             </div>
 
+            {/* Links sociais */}
+            <div className="space-y-3 rounded-md border p-3">
+              <p className="text-sm font-medium">Links (opcionais)</p>
+              <div className="space-y-2">
+                <Label htmlFor="instagramInput">Instagram</Label>
+                <Input
+                  id="instagramInput"
+                  value={instagramInput}
+                  onChange={(e) => setInstagramInput(e.target.value)}
+                  placeholder="@usuario ou https://instagram.com/usuario"
+                />
+                <p className="text-xs text-muted-foreground">Informe @handle ou URL completa.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="facebookUrl">Facebook</Label>
+                <Input
+                  id="facebookUrl"
+                  value={facebookUrl}
+                  onChange={(e) => setFacebookUrl(e.target.value)}
+                  placeholder="https://facebook.com/pagina"
+                  type="url"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsappInput">WhatsApp</Label>
+                <Input
+                  id="whatsappInput"
+                  value={whatsappInput}
+                  onChange={(e) => setWhatsappInput(e.target.value)}
+                  placeholder="+55 11 99999-0000 ou https://wa.me/5511999990000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Informe o número ou a URL wa.me completa.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="catalogUrl">Cardápio / Catálogo</Label>
+                <Input
+                  id="catalogUrl"
+                  value={catalogUrl}
+                  onChange={(e) => setCatalogUrl(e.target.value)}
+                  placeholder="https://ifood.com.br/... ou link do cardápio"
+                  type="url"
+                />
+              </div>
+            </div>
+
             {!isEdit && (
               <div className="space-y-2 rounded-md border p-3">
                 <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
@@ -354,23 +465,44 @@ export function RecommendationFormPage() {
                     type="checkbox"
                     className="h-5 w-5"
                     checked={isResident}
-                    onChange={(e) => setIsResident(e.target.checked)}
+                    onChange={(e) => {
+                      setIsResident(e.target.checked);
+                      setResidentMode('self');
+                      setResidentUserId('');
+                    }}
                   />
                   <span className="text-sm font-medium">É morador do condomínio?</span>
                 </label>
                 {isResident && (
-                  <div className="space-y-2">
-                    <Label htmlFor="residentUserId">UUID do morador indicado</Label>
-                    <Input
-                      id="residentUserId"
-                      value={residentUserId}
-                      onChange={(e) => setResidentUserId(e.target.value)}
-                      aria-invalid={isResident && !residentUserId.trim()}
-                      placeholder="00000000-0000-0000-0000-000000000000"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Identifica que o profissional indicado é um morador do prédio.
-                    </p>
+                  <div className="space-y-3 pl-7">
+                    {userIsResident && (
+                      <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5"
+                          checked={residentMode === 'self'}
+                          onChange={(e) => setResidentMode(e.target.checked ? 'self' : 'other')}
+                        />
+                        <span className="text-sm">
+                          Esta indicação é minha (morador da minha unidade)
+                        </span>
+                      </label>
+                    )}
+                    {(!userIsResident || residentMode === 'other') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="residentUserId">UUID do morador indicado</Label>
+                        <Input
+                          id="residentUserId"
+                          value={residentUserId}
+                          onChange={(e) => setResidentUserId(e.target.value)}
+                          aria-invalid={needsResidentUuid && !residentUserId.trim()}
+                          placeholder="00000000-0000-0000-0000-000000000000"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Identifica que o profissional indicado é um morador do prédio.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

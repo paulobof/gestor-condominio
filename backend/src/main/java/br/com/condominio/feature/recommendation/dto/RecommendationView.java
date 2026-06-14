@@ -23,7 +23,13 @@ public record RecommendationView(
     Instant createdAt,
     List<TagView> tags,
     List<OpeningHoursDto> openingHours,
-    List<RecommendationPhotoView> photos) {
+    List<RecommendationPhotoView> photos,
+    String instagramUrl,
+    String facebookUrl,
+    String whatsappUrl,
+    String catalogUrl,
+    UUID ownerUnitId,
+    String ownerUnitCode) {
 
   public static RecommendationView of(
       Recommendation r,
@@ -46,6 +52,12 @@ public record RecommendationView(
         r.getCreatedAt(),
         tags,
         openingHours,
-        photos);
+        photos,
+        r.getInstagramUrl(),
+        r.getFacebookUrl(),
+        r.getWhatsappUrl(),
+        r.getCatalogUrl(),
+        r.getOwnerUnitId(),
+        r.getOwnerUnitCode());
   }
 }

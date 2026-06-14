@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  EyeOff,
+  Facebook,
+  Instagram,
+  MessageCircle,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import {
@@ -125,6 +134,11 @@ export function RecommendationDetailPage() {
               Mora aqui
             </span>
           )}
+          {rec.ownerUnitCode && (
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+              Unidade {rec.ownerUnitCode}
+            </span>
+          )}
         </div>
         {rec.professionalName && <p className="text-muted-foreground">{rec.professionalName}</p>}
         {rec.rating != null && (
@@ -155,6 +169,60 @@ export function RecommendationDetailPage() {
           </div>
         )}
       </dl>
+
+      {/* Links sociais */}
+      {(rec.instagramUrl || rec.facebookUrl || rec.whatsappUrl || rec.catalogUrl) && (
+        <div className="flex flex-wrap gap-3">
+          {rec.instagramUrl && (
+            <a
+              href={rec.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              aria-label="Instagram"
+            >
+              <Instagram className="h-4 w-4" aria-hidden="true" />
+              Instagram
+            </a>
+          )}
+          {rec.facebookUrl && (
+            <a
+              href={rec.facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              aria-label="Facebook"
+            >
+              <Facebook className="h-4 w-4" aria-hidden="true" />
+              Facebook
+            </a>
+          )}
+          {rec.whatsappUrl && (
+            <a
+              href={rec.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              aria-label="WhatsApp"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              WhatsApp
+            </a>
+          )}
+          {rec.catalogUrl && (
+            <a
+              href={rec.catalogUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              aria-label="Cardápio / Catálogo"
+            >
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              Cardápio / Catálogo
+            </a>
+          )}
+        </div>
+      )}
 
       {rec.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">

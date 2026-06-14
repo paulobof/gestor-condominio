@@ -1,6 +1,7 @@
 package br.com.condominio.feature.recommendation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -68,7 +69,13 @@ class RecommendationControllerWebTest {
         Instant.now(),
         List.of(),
         List.of(),
-        List.of());
+        List.of(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   // ---- flag + autenticação básica -------------------------------------------------
@@ -118,7 +125,8 @@ class RecommendationControllerWebTest {
 
   @Test
   void create_returns201() throws Exception {
-    when(service.create(eq(UID), any())).thenReturn(view(RecommendationStatus.ACTIVE));
+    when(service.create(eq(UID), any(), anyBoolean(), any()))
+        .thenReturn(view(RecommendationStatus.ACTIVE));
 
     mvc.perform(
             post("/api/recommendations")
@@ -138,7 +146,23 @@ class RecommendationControllerWebTest {
                 .content("{\"serviceName\":\"\",\"isResident\":false}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-    verify(service, never()).create(any(), any());
+    verify(service, never()).create(any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void create_passesUnitIdFromPrincipal() throws Exception {
+    UUID unitId = UUID.randomUUID();
+    when(service.create(eq(UID), eq(unitId), eq(true), any()))
+        .thenReturn(view(RecommendationStatus.ACTIVE));
+
+    mvc.perform(
+            post("/api/recommendations")
+                .with(MockAuth.userWithUnit(UID, unitId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"serviceName\":\"Test\",\"isResident\":true}"))
+        .andExpect(status().isCreated());
+
+    verify(service).create(eq(UID), eq(unitId), eq(true), any());
   }
 
   // ---- matriz de autorização: hide exige RECOMMENDATION_MODERATE ------------------

@@ -12,6 +12,8 @@ import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
 import br.com.condominio.feature.recommendation.dto.UpdateRecommendationRequest;
 import br.com.condominio.feature.tag.TagService;
+import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
@@ -32,6 +34,8 @@ class RecommendationServiceTest {
   private FileStorage storage;
   private MagicBytesValidator magicBytes;
   private MinioProperties props;
+  private UserRepository userRepo;
+  private UnitRepository unitRepo;
   private RecommendationService service;
 
   private final UUID author = UUID.randomUUID();
@@ -47,9 +51,11 @@ class RecommendationServiceTest {
     storage = mock(FileStorage.class);
     magicBytes = mock(MagicBytesValidator.class);
     props = new MinioProperties();
+    userRepo = mock(UserRepository.class);
+    unitRepo = mock(UnitRepository.class);
     service =
         new RecommendationService(
-            repo, photoRepo, hoursRepo, tagService, storage, magicBytes, props);
+            repo, photoRepo, hoursRepo, tagService, storage, magicBytes, props, userRepo, unitRepo);
     when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByRecommendationIdOrderByOrdering(any())).thenReturn(List.of());
     when(hoursRepo.findByOwnerIdOrderByDayOfWeek(any())).thenReturn(List.of());
@@ -67,13 +73,32 @@ class RecommendationServiceTest {
         5,
         "ok",
         List.of(),
-        List.of());
+        List.of(),
+        null,
+        null,
+        null,
+        null);
   }
 
   private Recommendation persisted(UUID id, UUID authorId, RecommendationStatus status) {
     Recommendation r =
         Recommendation.create(
-            authorId, "Pintor", "João", "11999990000", false, null, "Rua X", "R$80/h", 5, "ok");
+            authorId,
+            "Pintor",
+            "João",
+            "11999990000",
+            false,
+            null,
+            "Rua X",
+            "R$80/h",
+            5,
+            "ok",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
     ReflectionTestUtils.setField(r, "id", id);
     ReflectionTestUtils.setField(r, "status", status);
     return r;
@@ -81,16 +106,94 @@ class RecommendationServiceTest {
 
   @Test
   void create_external_active() {
-    RecommendationView v = service.create(author, req(false, null));
+    RecommendationView v = service.create(author, null, false, req(false, null));
     assertThat(v.status()).isEqualTo(RecommendationStatus.ACTIVE);
   }
 
   @Test
   void create_resident_active_noApproval() {
     // Indicação de morador não exige mais consentimento: entra ACTIVE direto, sem evento.
-    RecommendationView v = service.create(author, req(true, resident));
+    // Admin indica em nome de outro morador (residentUserId != null).
+    UUID residentUnitId = UUID.randomUUID();
+    when(userRepo.findUnitIdById(resident)).thenReturn(Optional.of(residentUnitId));
+    when(unitRepo.findCodeById(residentUnitId)).thenReturn(Optional.of("T1-A-101"));
+    RecommendationView v = service.create(author, null, false, req(true, resident));
     assertThat(v.status()).isEqualTo(RecommendationStatus.ACTIVE);
     assertThat(v.isResident()).isTrue();
+  }
+
+  @Test
+  void create_residentSouEu_resolvesAuthorUnit() {
+    // "sou eu" path: morador marca a si próprio
+    UUID unitId = UUID.randomUUID();
+    when(unitRepo.findCodeById(unitId)).thenReturn(Optional.of("T1-A-101"));
+    CreateRecommendationRequest req = req(true, null); // residentUserId=null
+    RecommendationView v = service.create(author, unitId, true, req);
+    assertThat(v.isResident()).isTrue();
+    assertThat(v.ownerUnitId()).isEqualTo(unitId);
+    assertThat(v.ownerUnitCode()).isEqualTo("T1-A-101");
+  }
+
+  @Test
+  void create_residentSouEu_noUnit_throws() {
+    // "sou eu" mas autor não tem unidade
+    CreateRecommendationRequest req = req(true, null);
+    assertThatThrownBy(() -> service.create(author, null, false, req))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "OWNER_UNIT_REQUIRED");
+  }
+
+  @Test
+  void create_residentOtherUser_resolvesTheirUnit() {
+    UUID residentId = UUID.randomUUID();
+    UUID unitId = UUID.randomUUID();
+    when(userRepo.findUnitIdById(residentId)).thenReturn(Optional.of(unitId));
+    when(unitRepo.findCodeById(unitId)).thenReturn(Optional.of("T1-B-202"));
+    CreateRecommendationRequest req = req(true, residentId);
+    RecommendationView v = service.create(author, null, false, req);
+    assertThat(v.ownerUnitId()).isEqualTo(unitId);
+    assertThat(v.ownerUnitCode()).isEqualTo("T1-B-202");
+  }
+
+  @Test
+  void create_residentOtherUser_notFound_throws() {
+    UUID residentId = UUID.randomUUID();
+    when(userRepo.findUnitIdById(residentId)).thenReturn(Optional.empty());
+    CreateRecommendationRequest req = req(true, residentId);
+    assertThatThrownBy(() -> service.create(author, null, false, req))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "RESIDENT_NOT_FOUND");
+  }
+
+  @Test
+  void create_external_noOwnerUnit() {
+    CreateRecommendationRequest req = req(false, null);
+    RecommendationView v = service.create(author, UUID.randomUUID(), false, req);
+    assertThat(v.ownerUnitId()).isNull();
+    assertThat(v.ownerUnitCode()).isNull();
+  }
+
+  @Test
+  void create_withInstagramUrl_stored() {
+    CreateRecommendationRequest req =
+        new CreateRecommendationRequest(
+            "Pintor",
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            List.of(),
+            List.of(),
+            "https://instagram.com/joao",
+            null,
+            null,
+            null);
+    RecommendationView v = service.create(author, null, false, req);
+    assertThat(v.instagramUrl()).isEqualTo("https://instagram.com/joao");
   }
 
   @Test
@@ -105,7 +208,8 @@ class RecommendationServiceTest {
                     stranger,
                     false,
                     new UpdateRecommendationRequest(
-                        "X", null, null, null, null, null, null, List.of(), List.of())))
+                        "X", null, null, null, null, null, null, List.of(), List.of(), null, null,
+                        null, null)))
         .isInstanceOf(RecommendationException.class)
         .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
   }
@@ -121,7 +225,8 @@ class RecommendationServiceTest {
             stranger,
             true,
             new UpdateRecommendationRequest(
-                "Novo", null, null, null, null, null, null, List.of(), List.of()));
+                "Novo", null, null, null, null, null, null, List.of(), List.of(), null, null, null,
+                null));
     assertThat(v.serviceName()).isEqualTo("Novo");
   }
 

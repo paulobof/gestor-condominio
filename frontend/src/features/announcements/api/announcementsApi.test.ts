@@ -46,18 +46,22 @@ describe('announcementsApi — contrato com o backend', () => {
     expect(get).toHaveBeenCalledWith('/announcements/a1');
   });
 
-  it('createAnnouncement faz POST com o corpo', async () => {
+  it('createAnnouncement faz POST com o corpo incluindo importance', async () => {
     post.mockResolvedValue({ data: { id: 'a1' } });
-    await createAnnouncement({ title: 'Manutenção', body: 'corpo' });
-    expect(post).toHaveBeenCalledWith('/announcements', { title: 'Manutenção', body: 'corpo' });
+    await createAnnouncement({ title: 'Manutenção', body: 'corpo', importance: 'HIGH' });
+    expect(post).toHaveBeenCalledWith('/announcements', {
+      title: 'Manutenção',
+      body: 'corpo',
+      importance: 'HIGH',
+    });
   });
 
-  it('updateAnnouncement faz PUT no id', async () => {
+  it('updateAnnouncement faz PUT no id com importance', async () => {
     put.mockResolvedValue({ data: { id: 'a1' } });
-    await updateAnnouncement('a1', { title: 'Novo', body: 'corpo' });
+    await updateAnnouncement('a1', { title: 'Novo', body: 'corpo', importance: 'LOW' });
     expect(put).toHaveBeenCalledWith(
       '/announcements/a1',
-      expect.objectContaining({ title: 'Novo' })
+      expect.objectContaining({ title: 'Novo', importance: 'LOW' })
     );
   });
 

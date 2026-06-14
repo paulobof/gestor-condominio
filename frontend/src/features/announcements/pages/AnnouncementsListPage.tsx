@@ -9,7 +9,20 @@ import {
   listAnnouncements,
   reorderAnnouncements,
   type Announcement,
+  type AnnouncementImportance,
 } from '../api/announcementsApi';
+
+const IMPORTANCE_COLOR: Record<AnnouncementImportance, string> = {
+  HIGH: 'hsl(var(--brand-red))',
+  MEDIUM: 'hsl(var(--brand-yellow))',
+  LOW: 'hsl(var(--brand-blue))',
+};
+
+const IMPORTANCE_LABEL: Record<AnnouncementImportance, string> = {
+  HIGH: 'Urgente',
+  MEDIUM: 'Importante',
+  LOW: 'Informativo',
+};
 
 export function AnnouncementsListPage() {
   const { user } = useAuth();
@@ -74,9 +87,20 @@ export function AnnouncementsListPage() {
                 to={`/avisos/${a.id}`}
                 className="block flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <Card className="h-full transition-colors hover:bg-accent">
+                <Card
+                  className="h-full border-l-4 transition-colors hover:bg-accent"
+                  style={{ borderLeftColor: IMPORTANCE_COLOR[a.importance] }}
+                >
                   <CardHeader>
-                    <CardTitle className="text-base">{a.title}</CardTitle>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base">{a.title}</CardTitle>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                        style={{ backgroundColor: IMPORTANCE_COLOR[a.importance] }}
+                      >
+                        {IMPORTANCE_LABEL[a.importance]}
+                      </span>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <p className="line-clamp-2 text-sm text-muted-foreground">{a.body}</p>

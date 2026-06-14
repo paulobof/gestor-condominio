@@ -31,6 +31,7 @@ function announcement(over: Record<string, unknown> = {}) {
     publishedAt: '2026-06-06T00:00:00Z',
     authorUserId: 'u1',
     updatedAt: '2026-06-06T00:00:00Z',
+    importance: 'MEDIUM',
     ...over,
   };
 }
@@ -111,5 +112,29 @@ describe('AnnouncementsListPage', () => {
     await screen.findByText('Manutenção da bomba');
 
     expect(screen.queryByRole('button', { name: 'Mover para baixo' })).not.toBeInTheDocument();
+  });
+
+  it('mostra badge "Importante" para aviso MEDIUM', async () => {
+    listMock.mockResolvedValue(page([announcement({ importance: 'MEDIUM' })]));
+    renderPage();
+    await screen.findByText('Manutenção da bomba');
+
+    expect(screen.getByText('Importante')).toBeInTheDocument();
+  });
+
+  it('mostra badge "Urgente" para aviso HIGH', async () => {
+    listMock.mockResolvedValue(page([announcement({ importance: 'HIGH' })]));
+    renderPage();
+    await screen.findByText('Manutenção da bomba');
+
+    expect(screen.getByText('Urgente')).toBeInTheDocument();
+  });
+
+  it('mostra badge "Informativo" para aviso LOW', async () => {
+    listMock.mockResolvedValue(page([announcement({ importance: 'LOW' })]));
+    renderPage();
+    await screen.findByText('Manutenção da bomba');
+
+    expect(screen.getByText('Informativo')).toBeInTheDocument();
   });
 });

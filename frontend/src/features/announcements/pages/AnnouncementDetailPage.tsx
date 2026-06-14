@@ -4,7 +4,24 @@ import { toast } from 'sonner';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
-import { deleteAnnouncement, getAnnouncement, type Announcement } from '../api/announcementsApi';
+import {
+  deleteAnnouncement,
+  getAnnouncement,
+  type Announcement,
+  type AnnouncementImportance,
+} from '../api/announcementsApi';
+
+const IMPORTANCE_COLOR: Record<AnnouncementImportance, string> = {
+  HIGH: 'hsl(var(--brand-red))',
+  MEDIUM: 'hsl(var(--brand-yellow))',
+  LOW: 'hsl(var(--brand-blue))',
+};
+
+const IMPORTANCE_LABEL: Record<AnnouncementImportance, string> = {
+  HIGH: 'Urgente',
+  MEDIUM: 'Importante',
+  LOW: 'Informativo',
+};
 
 export function AnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +82,17 @@ export function AnnouncementDetailPage() {
         </Link>
       </Button>
 
-      <h1 className="text-2xl font-heading font-semibold">{a.title}</h1>
+      <div className="border-l-4 pl-4" style={{ borderLeftColor: IMPORTANCE_COLOR[a.importance] }}>
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <h1 className="text-2xl font-heading font-semibold">{a.title}</h1>
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
+            style={{ backgroundColor: IMPORTANCE_COLOR[a.importance] }}
+          >
+            {IMPORTANCE_LABEL[a.importance]}
+          </span>
+        </div>
+      </div>
 
       <p className="whitespace-pre-line text-sm leading-relaxed">{a.body}</p>
 

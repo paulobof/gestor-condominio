@@ -1,5 +1,7 @@
 import { api } from '@/lib/api';
 
+export type AnnouncementImportance = 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface Announcement {
   id: string;
   title: string;
@@ -8,6 +10,7 @@ export interface Announcement {
   publishedAt: string;
   authorUserId: string;
   updatedAt: string;
+  importance: AnnouncementImportance;
 }
 
 export interface AnnouncementPage {
@@ -20,6 +23,7 @@ export interface AnnouncementPage {
 export interface AnnouncementBody {
   title: string;
   body: string;
+  importance: AnnouncementImportance;
 }
 
 export async function listAnnouncements(page = 0, size = 20) {

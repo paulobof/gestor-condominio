@@ -94,4 +94,20 @@ describe('Sidebar', () => {
       '/minha-unidade/moradores'
     );
   });
+
+  it('usa cor de brand do item no estado ativo (não amarelo fixo)', () => {
+    // 'Avisos' tem brand red → style ativo deve referenciar --brand-red, nunca --accent
+    renderSidebar([], '/avisos');
+    const link = screen.getAllByRole('link', { name: /avisos/i })[0];
+    const style = link.getAttribute('style') ?? '';
+    expect(style).toContain('--brand-red');
+    expect(style).not.toContain('--accent');
+  });
+
+  it('item ativo tem hover:bg-transparent para não vazar amarelo do accent ao navegar', () => {
+    renderSidebar([], '/avisos');
+    const link = screen.getAllByRole('link', { name: /avisos/i })[0];
+    expect(link.className).toContain('hover:bg-transparent');
+    expect(link.className).not.toContain('hover:bg-accent');
+  });
 });

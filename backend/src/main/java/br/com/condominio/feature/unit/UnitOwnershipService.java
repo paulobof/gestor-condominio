@@ -42,6 +42,11 @@ public class UnitOwnershipService {
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
 
+  /** True se a unidade já tem proprietário aprovado. */
+  public boolean hasApprovedOwner(UUID unitId) {
+    return ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED);
+  }
+
   /**
    * Abre uma posse PENDING para o par usuário+unidade, com o comprovante anexado. Falha se a
    * unidade não existe, já tem master (posse APPROVED) ou já há claim aberto do mesmo par.

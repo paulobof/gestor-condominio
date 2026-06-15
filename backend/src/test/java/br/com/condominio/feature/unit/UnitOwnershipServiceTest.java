@@ -53,6 +53,18 @@ class UnitOwnershipServiceTest {
   private final UUID unitId = UUID.randomUUID();
 
   @Test
+  void hasApprovedOwner_returnsTrueWhenApprovedExists() {
+    when(ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)).thenReturn(true);
+    assertThat(service.hasApprovedOwner(unitId)).isTrue();
+  }
+
+  @Test
+  void hasApprovedOwner_returnsFalseWhenNoneApproved() {
+    when(ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)).thenReturn(false);
+    assertThat(service.hasApprovedOwner(unitId)).isFalse();
+  }
+
+  @Test
   void openClaim_createsPendingOwnership_withProofMetadata() {
     when(unitRepo.findById(unitId)).thenReturn(Optional.of(mock(Unit.class)));
     when(ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)).thenReturn(false);

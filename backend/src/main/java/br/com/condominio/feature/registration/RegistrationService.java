@@ -140,6 +140,10 @@ public class RegistrationService {
             .orElseThrow(
                 () -> new RegistrationException("UNIT_NOT_FOUND", "Unidade não encontrada."));
 
+    if (ownershipService.hasApprovedOwner(unit.getId())) {
+      throw new RegistrationException("UNIT_HAS_OWNER", "Esta unidade já possui um proprietário.");
+    }
+
     ConsentDocument consent =
         consentRepo
             .findByVersion(req.consentVersion())
@@ -168,7 +172,11 @@ public class RegistrationService {
     // Abre o pedido de posse PENDING com o comprovante de propriedade.
     // O papel PROPRIETARIO é concedido apenas na aprovação (UnitOwnershipService.approve).
     ownershipService.openClaim(
-        user.getId(), unit.getId(), objectKey, proof.getOriginalFilename(), detectedMime);
+        user.getId(),
+        unit.getId(),
+        objectKey,
+        proof.getOriginalFilename() != null ? proof.getOriginalFilename() : "comprovante",
+        detectedMime);
 
     log.info(
         "Owner registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);

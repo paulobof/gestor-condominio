@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UnitOwnershipRepository extends JpaRepository<UnitOwnership, UUID> {
 
@@ -17,4 +19,20 @@ public interface UnitOwnershipRepository extends JpaRepository<UnitOwnership, UU
 
   /** Claims pendentes (para a tela admin), mais antigos primeiro. */
   Page<UnitOwnership> findByStatusOrderByCreatedAtAsc(OwnershipStatus status, Pageable pageable);
+
+  /** Há posse nesse status na unidade? (ex.: APPROVED = unidade já tem master). */
+  boolean existsByUnitIdAndStatus(UUID unitId, OwnershipStatus status);
+
+  /** Claim por id num dado status (ex.: PENDING para aprovar/rejeitar). */
+  Optional<UnitOwnership> findByIdAndStatus(UUID id, OwnershipStatus status);
+
+  /** {@code unit_id} das posses do usuário num status — base de "minhas unidades". */
+  @Query("SELECT o.unitId FROM UnitOwnership o WHERE o.userId = :userId AND o.status = :status")
+  List<UUID> findUnitIdsByUserAndStatus(
+      @Param("userId") UUID userId, @Param("status") OwnershipStatus status);
+
+  /** Conveniência: unidades onde o usuário é master (posse APPROVED). */
+  default List<UUID> findApprovedUnitIdsByUser(UUID userId) {
+    return findUnitIdsByUserAndStatus(userId, OwnershipStatus.APPROVED);
+  }
 }

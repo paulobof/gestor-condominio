@@ -107,5 +107,17 @@ class RepositoryPostgresTest {
         .doesNotThrowAnyException();
 
     assertThat(ownerships.findByUserIdAndStatus(anyUser, OwnershipStatus.APPROVED)).isEmpty();
+
+    // Finders adicionados em PR-A (escopo multi-unidade / aprovação por claim).
+    assertThatCode(() -> ownerships.findApprovedUnitIdsByUser(anyUser)).doesNotThrowAnyException();
+    assertThatCode(() -> ownerships.existsByUnitIdAndStatus(anyUnit, OwnershipStatus.APPROVED))
+        .doesNotThrowAnyException();
+    assertThatCode(
+            () ->
+                ownerships.findByIdAndStatus(java.util.UUID.randomUUID(), OwnershipStatus.PENDING))
+        .doesNotThrowAnyException();
+
+    assertThat(ownerships.findApprovedUnitIdsByUser(anyUser)).isEmpty();
+    assertThat(ownerships.existsByUnitIdAndStatus(anyUnit, OwnershipStatus.APPROVED)).isFalse();
   }
 }

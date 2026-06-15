@@ -10,7 +10,6 @@ import { searchTags, type Tag } from '../api/tagsApi';
 
 export function RecommendationsListPage() {
   const [search, setSearch] = useState('');
-  const [residentOnly, setResidentOnly] = useState(false);
   const [tag, setTag] = useState(''); // slug aplicado ao filtro
   const [tagQuery, setTagQuery] = useState(''); // texto digitado no campo de autocomplete
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
@@ -23,7 +22,6 @@ export function RecommendationsListPage() {
     setLoading(true);
     listRecommendations({
       tag: tag || undefined,
-      residentOnly: residentOnly || undefined,
       search: search.trim() || undefined,
     })
       .then((p) => {
@@ -38,7 +36,7 @@ export function RecommendationsListPage() {
     return () => {
       active = false;
     };
-  }, [tag, residentOnly, search]);
+  }, [tag, search]);
 
   // autocomplete de tags com debounce simples
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,16 +131,6 @@ export function RecommendationsListPage() {
             </ul>
           )}
         </div>
-
-        <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            className="h-5 w-5"
-            checked={residentOnly}
-            onChange={(e) => setResidentOnly(e.target.checked)}
-          />
-          <span className="text-sm font-medium">Só moradores</span>
-        </label>
       </div>
 
       {loading ? (
@@ -175,6 +163,14 @@ export function RecommendationsListPage() {
                       {r.isResident && (
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                           Mora aqui
+                        </span>
+                      )}
+                      {r.likeCount > 0 && (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          aria-label={`${r.likeCount} curtidas`}
+                        >
+                          👍 {r.likeCount}
                         </span>
                       )}
                     </div>

@@ -5,6 +5,7 @@ import br.com.condominio.feature.tag.Tag;
 import br.com.condominio.feature.tag.TagService;
 import br.com.condominio.feature.tag.dto.TagView;
 import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
@@ -15,8 +16,10 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +41,8 @@ public class RecommendationService {
   private final MinioProperties props;
   private final UserRepository userRepo;
   private final UnitRepository unitRepo;
+  private final RecommendationVoteRepository voteRepo;
+  private final RecommendationCommentRepository commentRepo;
 
   @Transactional
   public RecommendationView create(
@@ -88,7 +93,7 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
-    return view(r);
+    return view(r, authorId);
   }
 
   // @Transactional nas leituras: view() acessa r.getTags() (@ManyToMany lazy); sem sessão aberta
@@ -104,15 +109,32 @@ public class RecommendationService {
         && !actorId.equals(r.getResidentUserId())) {
       throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
     }
-    return view(r);
+    return view(r, actorId);
   }
 
   @Transactional
-  public Page<RecommendationView> list(
-      String tag, boolean residentOnly, String search, Pageable pageable) {
+  public Page<RecommendationView> list(UUID userId, String tag, String search, Pageable pageable) {
     String t = (tag == null || tag.isBlank()) ? null : tag;
     String s = (search == null || search.isBlank()) ? null : search;
-    return repo.search(t, residentOnly, s, pageable).map(this::view);
+    Page<Recommendation> page = repo.search(t, s, pageable);
+    List<UUID> ids = page.getContent().stream().map(Recommendation::getId).toList();
+    Map<UUID, VoteValue> myVotes =
+        ids.isEmpty()
+            ? Map.of()
+            : voteRepo.findByUserIdAndRecommendationIdIn(userId, ids).stream()
+                .collect(
+                    Collectors.toMap(
+                        RecommendationVote::getRecommendationId, RecommendationVote::getValue));
+    Map<UUID, Long> commentCounts =
+        ids.isEmpty()
+            ? Map.of()
+            : commentRepo.countByRecommendationIdIn(ids).stream()
+                .collect(
+                    Collectors.toMap(
+                        RecommendationCommentRepository.CommentCount::getRid,
+                        RecommendationCommentRepository.CommentCount::getCnt));
+    return page.map(
+        r -> buildView(r, myVotes.get(r.getId()), commentCounts.getOrDefault(r.getId(), 0L)));
   }
 
   @Transactional
@@ -134,7 +156,7 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(id, req.openingHours());
-    return view(r);
+    return view(r, actorId);
   }
 
   @Transactional
@@ -152,14 +174,14 @@ public class RecommendationService {
   }
 
   private static final long MAX_PHOTO_BYTES = 1_048_576L;
-  private static final int MAX_PHOTOS = 5;
+  private static final int MAX_PHOTOS = 3;
 
   /** NÃO transacional: upload pro MinIO acontece fora de transação (CLAUDE.md). */
   public RecommendationPhotoView addPhoto(
       UUID id, UUID actorId, boolean canModerate, MultipartFile file) {
     loadOwned(id, actorId, canModerate);
     if (photoRepo.countByRecommendationId(id) >= MAX_PHOTOS) {
-      throw new RecommendationException("PHOTO_LIMIT", "Máximo de 5 fotos por indicação.");
+      throw new RecommendationException("PHOTO_LIMIT", "Máximo de 3 fotos por indicação.");
     }
     String mime;
     try (InputStream in = file.getInputStream()) {
@@ -243,7 +265,92 @@ public class RecommendationService {
     return r;
   }
 
-  private RecommendationView view(Recommendation r) {
+  // ---- Votos (like/dislike) e comentários ----------------------------------------
+
+  /** Define/alterna o voto do usuário: mesmo valor remove (toggle off); valor diferente troca. */
+  @Transactional
+  public RecommendationView vote(UUID id, UUID userId, VoteValue value) {
+    Recommendation r = load(id);
+    voteRepo
+        .findByRecommendationIdAndUserId(id, userId)
+        .ifPresentOrElse(
+            existing -> {
+              if (existing.getValue() == value) {
+                voteRepo.delete(existing); // toggle off
+              } else {
+                existing.changeValue(value);
+                voteRepo.save(existing);
+              }
+            },
+            () -> voteRepo.save(RecommendationVote.create(id, userId, value)));
+    int likes = (int) voteRepo.countByRecommendationIdAndValue(id, VoteValue.LIKE);
+    int dislikes = (int) voteRepo.countByRecommendationIdAndValue(id, VoteValue.DISLIKE);
+    r.updateVoteCounts(likes, dislikes);
+    repo.save(r);
+    return view(r, userId);
+  }
+
+  @Transactional
+  public List<CommentView> listComments(UUID id) {
+    load(id);
+    List<RecommendationComment> comments =
+        commentRepo.findByRecommendationIdOrderByCreatedAtAsc(id);
+    Set<UUID> authorIds =
+        comments.stream().map(RecommendationComment::getAuthorUserId).collect(Collectors.toSet());
+    Map<UUID, String> names =
+        authorIds.isEmpty()
+            ? Map.of()
+            : userRepo.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getFullName));
+    return comments.stream()
+        .map(
+            c ->
+                new CommentView(
+                    c.getId(),
+                    c.getAuthorUserId(),
+                    names.get(c.getAuthorUserId()),
+                    c.getText(),
+                    c.getCreatedAt()))
+        .toList();
+  }
+
+  @Transactional
+  public CommentView addComment(UUID id, UUID userId, String text) {
+    load(id);
+    RecommendationComment c =
+        commentRepo.save(RecommendationComment.create(id, userId, text.strip()));
+    String name =
+        userRepo.findAllById(List.of(userId)).stream()
+            .findFirst()
+            .map(User::getFullName)
+            .orElse(null);
+    return new CommentView(c.getId(), c.getAuthorUserId(), name, c.getText(), c.getCreatedAt());
+  }
+
+  @Transactional
+  public void deleteComment(UUID id, UUID commentId, UUID userId, boolean canModerate) {
+    RecommendationComment c =
+        commentRepo
+            .findByIdAndRecommendationId(commentId, id)
+            .orElseThrow(
+                () -> new RecommendationException("NOT_FOUND", "Comentário não encontrado."));
+    if (!c.getAuthorUserId().equals(userId) && !canModerate) {
+      throw new RecommendationException("FORBIDDEN", "Sem permissão sobre este comentário.");
+    }
+    commentRepo.delete(c);
+  }
+
+  private RecommendationView view(Recommendation r, UUID userId) {
+    VoteValue myVote =
+        voteRepo
+            .findByRecommendationIdAndUserId(r.getId(), userId)
+            .map(RecommendationVote::getValue)
+            .orElse(null);
+    long commentCount = commentRepo.countByRecommendationId(r.getId());
+    return buildView(r, myVote, commentCount);
+  }
+
+  private RecommendationView buildView(Recommendation r, VoteValue myVote, long commentCount) {
     List<TagView> tags = r.getTags().stream().map(TagView::of).toList();
     List<OpeningHoursDto> hours =
         hoursRepo.findByOwnerIdOrderByDayOfWeek(r.getId()).stream()
@@ -256,6 +363,7 @@ public class RecommendationService {
         photoRepo.findByRecommendationIdOrderByOrdering(r.getId()).stream()
             .map(p -> new RecommendationPhotoView(p.getId(), p.getOrdering(), p.getContentType()))
             .toList();
-    return RecommendationView.of(r, tags, hours, photos);
+    return RecommendationView.of(
+        r, tags, hours, photos, myVote == null ? null : myVote.name(), commentCount);
   }
 }

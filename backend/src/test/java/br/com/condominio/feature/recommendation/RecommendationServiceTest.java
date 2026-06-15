@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import br.com.condominio.feature.recommendation.dto.CommentView;
 import br.com.condominio.feature.recommendation.dto.CreateRecommendationRequest;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
@@ -36,6 +37,8 @@ class RecommendationServiceTest {
   private MinioProperties props;
   private UserRepository userRepo;
   private UnitRepository unitRepo;
+  private RecommendationVoteRepository voteRepo;
+  private RecommendationCommentRepository commentRepo;
   private RecommendationService service;
 
   private final UUID author = UUID.randomUUID();
@@ -53,12 +56,25 @@ class RecommendationServiceTest {
     props = new MinioProperties();
     userRepo = mock(UserRepository.class);
     unitRepo = mock(UnitRepository.class);
+    voteRepo = mock(RecommendationVoteRepository.class);
+    commentRepo = mock(RecommendationCommentRepository.class);
     service =
         new RecommendationService(
-            repo, photoRepo, hoursRepo, tagService, storage, magicBytes, props, userRepo, unitRepo);
+            repo,
+            photoRepo,
+            hoursRepo,
+            tagService,
+            storage,
+            magicBytes,
+            props,
+            userRepo,
+            unitRepo,
+            voteRepo,
+            commentRepo);
     when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByRecommendationIdOrderByOrdering(any())).thenReturn(List.of());
     when(hoursRepo.findByOwnerIdOrderByDayOfWeek(any())).thenReturn(List.of());
+    when(voteRepo.findByRecommendationIdAndUserId(any(), any())).thenReturn(Optional.empty());
   }
 
   private CreateRecommendationRequest req(boolean isResident, UUID residentId) {
@@ -364,5 +380,86 @@ class RecommendationServiceTest {
     when(storage.presignedGetUrl(eq(props.getBucketRecommendations()), eq("obj-key-1"), any()))
         .thenReturn("https://minio/obj-key-1?sig");
     assertThat(service.photoUrl(id, photoId)).startsWith("https://minio/");
+  }
+
+  // ---- votos e comentários --------------------------------------------------------
+
+  @Test
+  void vote_firstLike_savesAndRecomputesCount() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(voteRepo.countByRecommendationIdAndValue(id, VoteValue.LIKE)).thenReturn(1L);
+    when(voteRepo.countByRecommendationIdAndValue(id, VoteValue.DISLIKE)).thenReturn(0L);
+
+    RecommendationView v = service.vote(id, stranger, VoteValue.LIKE);
+
+    verify(voteRepo).save(any(RecommendationVote.class));
+    assertThat(v.likeCount()).isEqualTo(1);
+  }
+
+  @Test
+  void vote_sameValue_togglesOff() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    RecommendationVote existing = RecommendationVote.create(id, stranger, VoteValue.LIKE);
+    when(voteRepo.findByRecommendationIdAndUserId(id, stranger)).thenReturn(Optional.of(existing));
+
+    service.vote(id, stranger, VoteValue.LIKE);
+
+    verify(voteRepo).delete(existing);
+  }
+
+  @Test
+  void vote_differentValue_switches() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    RecommendationVote existing = RecommendationVote.create(id, stranger, VoteValue.LIKE);
+    when(voteRepo.findByRecommendationIdAndUserId(id, stranger)).thenReturn(Optional.of(existing));
+
+    service.vote(id, stranger, VoteValue.DISLIKE);
+
+    assertThat(existing.getValue()).isEqualTo(VoteValue.DISLIKE);
+    verify(voteRepo).save(existing);
+  }
+
+  @Test
+  void addComment_stripsAndSaves() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.ACTIVE)));
+    when(commentRepo.save(any(RecommendationComment.class))).thenAnswer(i -> i.getArgument(0));
+    when(userRepo.findAllById(any())).thenReturn(List.of());
+
+    CommentView c = service.addComment(id, stranger, "  Muito bom!  ");
+
+    assertThat(c.text()).isEqualTo("Muito bom!");
+    verify(commentRepo).save(any(RecommendationComment.class));
+  }
+
+  @Test
+  void deleteComment_byStranger_forbidden() {
+    UUID id = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+    RecommendationComment c = RecommendationComment.create(id, author, "x");
+    when(commentRepo.findByIdAndRecommendationId(commentId, id)).thenReturn(Optional.of(c));
+
+    assertThatThrownBy(() -> service.deleteComment(id, commentId, stranger, false))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
+  }
+
+  @Test
+  void deleteComment_byAuthor_deletes() {
+    UUID id = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+    RecommendationComment c = RecommendationComment.create(id, author, "x");
+    when(commentRepo.findByIdAndRecommendationId(commentId, id)).thenReturn(Optional.of(c));
+
+    service.deleteComment(id, commentId, author, false);
+
+    verify(commentRepo).delete(c);
   }
 }

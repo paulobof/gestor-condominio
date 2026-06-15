@@ -158,7 +158,7 @@ describe('RecommendationFormPage (criação)', () => {
   it('envia whatsappUrl normalizado a partir de número', async () => {
     renderPage();
     await userEvent.type(screen.getByLabelText('Serviço'), 'Pintor João');
-    await userEvent.type(screen.getByLabelText('WhatsApp'), '+55 11 99999-0000');
+    await userEvent.type(screen.getByLabelText(/WhatsApp/), '+55 11 99999-0000');
     await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));

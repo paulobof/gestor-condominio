@@ -17,11 +17,10 @@ public interface RecommendationRepository extends JpaRepository<Recommendation, 
       left join r.tags t
       where r.status = br.com.condominio.feature.recommendation.RecommendationStatus.ACTIVE
         and (:tag is null or lower(t.slug) = lower(cast(:tag as string)))
-        and (:residentOnly = false or r.resident = true)
         and (:search is null
              or lower(r.serviceName) like lower(concat('%', cast(:search as string), '%'))
              or lower(r.professionalName) like lower(concat('%', cast(:search as string), '%')))
-      order by r.resident desc, r.rating desc nulls last, r.createdAt desc
+      order by r.resident desc, r.likeCount desc, r.createdAt desc
       """)
-  Page<Recommendation> search(String tag, boolean residentOnly, String search, Pageable pageable);
+  Page<Recommendation> search(String tag, String search, Pageable pageable);
 }

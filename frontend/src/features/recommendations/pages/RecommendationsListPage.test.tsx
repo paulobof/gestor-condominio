@@ -67,18 +67,6 @@ describe('RecommendationsListPage', () => {
     expect(await screen.findByText('Nenhuma indicação.')).toBeInTheDocument();
   });
 
-  it('marcar "Só moradores" refaz a busca com residentOnly', async () => {
-    listMock.mockResolvedValue(page([]));
-    renderPage();
-    await screen.findByText('Nenhuma indicação.');
-
-    await userEvent.click(screen.getByRole('checkbox', { name: /só moradores/i }));
-
-    await waitFor(() =>
-      expect(listMock).toHaveBeenLastCalledWith(expect.objectContaining({ residentOnly: true }))
-    );
-  });
-
   it('digitar busca refaz a query com o termo', async () => {
     listMock.mockResolvedValue(page([]));
     renderPage();

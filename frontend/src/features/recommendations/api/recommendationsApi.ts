@@ -3,6 +3,8 @@ import type { Tag } from './tagsApi';
 
 export type RecommendationStatus = 'ACTIVE' | 'HIDDEN';
 
+export type VoteValue = 'LIKE' | 'DISLIKE';
+
 export interface OpeningHours {
   dayOfWeek: number;
   opensAt: string | null;
@@ -39,6 +41,10 @@ export interface Recommendation {
   catalogUrl: string | null;
   ownerUnitId: string | null;
   ownerUnitCode: string | null;
+  likeCount: number;
+  dislikeCount: number;
+  myVote: VoteValue | null;
+  commentCount: number;
 }
 
 export interface RecommendationPage {
@@ -50,7 +56,6 @@ export interface RecommendationPage {
 
 export interface RecommendationFilters {
   tag?: string;
-  residentOnly?: boolean;
   search?: string;
   page?: number;
   size?: number;
@@ -121,4 +126,32 @@ export async function deleteRecommendationPhoto(id: string, photoId: string) {
 export async function getRecommendationPhotoUrl(id: string, photoId: string) {
   const r = await api.get(`/recommendations/${id}/photos/${photoId}/url`);
   return (r.data as { url: string }).url;
+}
+
+export interface RecommendationComment {
+  id: string;
+  authorUserId: string;
+  authorName: string | null;
+  text: string;
+  createdAt: string;
+}
+
+/** Define/alterna o voto (mesmo valor remove). Retorna a indicação com contadores atualizados. */
+export async function voteRecommendation(id: string, value: VoteValue) {
+  const r = await api.post(`/recommendations/${id}/vote`, { value });
+  return r.data as Recommendation;
+}
+
+export async function listRecommendationComments(id: string) {
+  const r = await api.get(`/recommendations/${id}/comments`);
+  return r.data as RecommendationComment[];
+}
+
+export async function addRecommendationComment(id: string, text: string) {
+  const r = await api.post(`/recommendations/${id}/comments`, { text });
+  return r.data as RecommendationComment;
+}
+
+export async function deleteRecommendationComment(id: string, commentId: string) {
+  await api.delete(`/recommendations/${id}/comments/${commentId}`);
 }

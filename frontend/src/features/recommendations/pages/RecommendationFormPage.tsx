@@ -21,7 +21,7 @@ import {
 } from '../api/recommendationsApi';
 import { searchTags, type Tag } from '../api/tagsApi';
 
-const MAX_PHOTOS = 5;
+const MAX_PHOTOS = 3;
 const DAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 interface HoursRow {
@@ -368,6 +368,18 @@ export function RecommendationFormPage() {
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="whatsappInput">WhatsApp (número, opcional)</Label>
+              <Input
+                id="whatsappInput"
+                value={whatsappInput}
+                onChange={(e) => setWhatsappInput(e.target.value)}
+                placeholder="+55 11 99999-0000"
+              />
+              <p className="text-xs text-muted-foreground">
+                Vira um link wa.me. Você também pode informar a URL completa.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="addressLine">Endereço (opcional)</Label>
               <Input
                 id="addressLine"
@@ -433,18 +445,6 @@ export function RecommendationFormPage() {
                   placeholder="https://facebook.com/pagina"
                   type="url"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="whatsappInput">WhatsApp</Label>
-                <Input
-                  id="whatsappInput"
-                  value={whatsappInput}
-                  onChange={(e) => setWhatsappInput(e.target.value)}
-                  placeholder="+55 11 99999-0000 ou https://wa.me/5511999990000"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Informe o número ou a URL wa.me completa.
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="catalogUrl">Cardápio / Catálogo</Label>

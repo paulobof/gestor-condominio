@@ -15,6 +15,10 @@ vi.mock('../api/recommendationsApi', () => ({
   getRecommendationPhotoUrl: vi.fn(),
   deleteRecommendation: vi.fn(),
   hideRecommendation: vi.fn(),
+  voteRecommendation: vi.fn(),
+  listRecommendationComments: vi.fn(),
+  addRecommendationComment: vi.fn(),
+  deleteRecommendationComment: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -24,12 +28,18 @@ import {
   getRecommendation,
   deleteRecommendation,
   hideRecommendation,
+  voteRecommendation,
+  listRecommendationComments,
+  addRecommendationComment,
 } from '../api/recommendationsApi';
 
 const useAuthMock = vi.mocked(useAuth);
 const getMock = vi.mocked(getRecommendation);
 const deleteMock = vi.mocked(deleteRecommendation);
 const hideMock = vi.mocked(hideRecommendation);
+const voteMock = vi.mocked(voteRecommendation);
+const listCommentsMock = vi.mocked(listRecommendationComments);
+const addCommentMock = vi.mocked(addRecommendationComment);
 
 function reco(over: Record<string, unknown> = {}) {
   return {
@@ -49,6 +59,10 @@ function reco(over: Record<string, unknown> = {}) {
     tags: [{ id: 't1', slug: 'encanador', label: 'Encanador', color: null }],
     openingHours: [],
     photos: [],
+    likeCount: 0,
+    dislikeCount: 0,
+    myVote: null,
+    commentCount: 0,
     ...over,
   } as never;
 }
@@ -69,6 +83,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  listCommentsMock.mockResolvedValue([]);
 });
 
 describe('RecommendationDetailPage', () => {
@@ -140,5 +155,36 @@ describe('RecommendationDetailPage', () => {
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith('/indicacoes', { replace: true })
     );
+  });
+
+  it('curtir chama voteRecommendation com LIKE', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco({ likeCount: 0, myVote: null }));
+    voteMock.mockResolvedValue(reco({ likeCount: 1, myVote: 'LIKE' }));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Curtir' }));
+
+    await waitFor(() => expect(voteMock).toHaveBeenCalledWith('r1', 'LIKE'));
+  });
+
+  it('envia um comentário', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    addCommentMock.mockResolvedValue({
+      id: 'c1',
+      authorUserId: 'u9',
+      authorName: 'Eu',
+      text: 'Top!',
+      createdAt: '2026-06-15T00:00:00Z',
+    } as never);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.type(screen.getByLabelText('Comentário'), 'Top!');
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+
+    await waitFor(() => expect(addCommentMock).toHaveBeenCalledWith('r1', 'Top!'));
   });
 });

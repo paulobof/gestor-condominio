@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -8,17 +8,25 @@ import {
   EyeOff,
   MessageCircle,
   Pencil,
+  ThumbsDown,
   ThumbsUp,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth/useAuth';
 import {
+  addRecommendationComment,
   deleteRecommendation,
+  deleteRecommendationComment,
   getRecommendation,
   getRecommendationPhotoUrl,
   hideRecommendation,
+  listRecommendationComments,
+  voteRecommendation,
   type Recommendation,
+  type RecommendationComment,
+  type VoteValue,
 } from '../api/recommendationsApi';
 
 const DAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -37,6 +45,10 @@ export function RecommendationDetailPage() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
   const [hiding, setHiding] = useState(false);
+  const [voting, setVoting] = useState(false);
+  const [comments, setComments] = useState<RecommendationComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -104,6 +116,60 @@ export function RecommendationDetailPage() {
       toast.error('Erro ao ocultar a indicação.');
     } finally {
       setHiding(false);
+    }
+  };
+
+  const loadComments = useCallback(async () => {
+    if (!id) return;
+    try {
+      setComments(await listRecommendationComments(id));
+    } catch {
+      /* lista de comentários é não-crítica */
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
+
+  const handleVote = async (value: VoteValue) => {
+    if (!id || voting) return;
+    setVoting(true);
+    try {
+      setRec(await voteRecommendation(id, value));
+    } catch {
+      toast.error('Erro ao registrar o voto.');
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  const handleAddComment = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!id || !commentText.trim()) return;
+    setPostingComment(true);
+    try {
+      await addRecommendationComment(id, commentText.trim());
+      setCommentText('');
+      await loadComments();
+      setRec((prev) => (prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev));
+    } catch {
+      toast.error('Erro ao enviar o comentário.');
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id) return;
+    try {
+      await deleteRecommendationComment(id, commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setRec((prev) =>
+        prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : prev
+      );
+    } catch {
+      toast.error('Erro ao remover o comentário.');
     }
   };
 
@@ -224,6 +290,33 @@ export function RecommendationDetailPage() {
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant={rec.myVote === 'LIKE' ? 'default' : 'outline'}
+          size="sm"
+          className="min-h-[44px]"
+          onClick={() => handleVote('LIKE')}
+          disabled={voting}
+          aria-pressed={rec.myVote === 'LIKE'}
+          aria-label="Curtir"
+        >
+          <ThumbsUp className="mr-1 h-4 w-4" aria-hidden="true" /> {rec.likeCount}
+        </Button>
+        <Button
+          type="button"
+          variant={rec.myVote === 'DISLIKE' ? 'default' : 'outline'}
+          size="sm"
+          className="min-h-[44px]"
+          onClick={() => handleVote('DISLIKE')}
+          disabled={voting}
+          aria-pressed={rec.myVote === 'DISLIKE'}
+          aria-label="Não curtir"
+        >
+          <ThumbsDown className="mr-1 h-4 w-4" aria-hidden="true" /> {rec.dislikeCount}
+        </Button>
+      </div>
+
       {rec.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {rec.tags.map((t) => (
@@ -279,6 +372,55 @@ export function RecommendationDetailPage() {
           ))}
         </ul>
       )}
+
+      <section className="space-y-3 border-t pt-4">
+        <h2 className="text-lg font-heading font-semibold">
+          Comentários
+          {rec.commentCount > 0 && (
+            <span className="text-muted-foreground"> ({rec.commentCount})</span>
+          )}
+        </h2>
+        <form onSubmit={handleAddComment} className="flex gap-2">
+          <Input
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Escreva um comentário…"
+            maxLength={1000}
+            aria-label="Comentário"
+          />
+          <Button
+            type="submit"
+            className="min-h-[44px]"
+            disabled={postingComment || !commentText.trim()}
+          >
+            Enviar
+          </Button>
+        </form>
+        {comments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Seja o primeiro a comentar.</p>
+        ) : (
+          <ul className="space-y-3">
+            {comments.map((c) => (
+              <li key={c.id} className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{c.authorName ?? 'Usuário'}</span>
+                  {(user?.id === c.authorUserId || canModerate) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteComment(c.id)}
+                      aria-label="Excluir comentário"
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 whitespace-pre-line text-sm">{c.text}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {(canManage || canModerate) && (
         <div className="flex flex-wrap gap-2 pt-2">

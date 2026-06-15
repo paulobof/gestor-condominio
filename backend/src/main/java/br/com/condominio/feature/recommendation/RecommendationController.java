@@ -3,6 +3,7 @@ package br.com.condominio.feature.recommendation;
 import br.com.condominio.feature.recommendation.dto.*;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,13 +33,13 @@ public class RecommendationController {
   @PreAuthorize("isAuthenticated()")
   public Page<RecommendationView> list(
       @RequestParam(required = false) String tag,
-      @RequestParam(defaultValue = "false") boolean residentOnly,
       @RequestParam(required = false) String search,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "20") int size,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     int safePage = Math.max(page, 0);
     int safeSize = Math.min(Math.max(size, 1), 100);
-    return service.list(tag, residentOnly, search, PageRequest.of(safePage, safeSize));
+    return service.list(me.userId(), tag, search, PageRequest.of(safePage, safeSize));
   }
 
   @GetMapping("/{id}")
@@ -108,5 +109,42 @@ public class RecommendationController {
     return ResponseEntity.ok()
         .header("Referrer-Policy", "no-referrer")
         .body(Map.of("url", service.photoUrl(id, photoId)));
+  }
+
+  // ---- Votos (like/dislike) e comentários ----------------------------------------
+
+  @PostMapping("/{id}/vote")
+  @PreAuthorize("isAuthenticated()")
+  public RecommendationView vote(
+      @PathVariable UUID id,
+      @Valid @RequestBody VoteRequest body,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.vote(id, me.userId(), body.value());
+  }
+
+  @GetMapping("/{id}/comments")
+  @PreAuthorize("isAuthenticated()")
+  public List<CommentView> listComments(@PathVariable UUID id) {
+    return service.listComments(id);
+  }
+
+  @PostMapping("/{id}/comments")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<CommentView> addComment(
+      @PathVariable UUID id,
+      @Valid @RequestBody CommentRequest body,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(service.addComment(id, me.userId(), body.text()));
+  }
+
+  @DeleteMapping("/{id}/comments/{commentId}")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Void> deleteComment(
+      @PathVariable UUID id,
+      @PathVariable UUID commentId,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    service.deleteComment(id, commentId, me.userId(), canModerate(me));
+    return ResponseEntity.noContent().build();
   }
 }

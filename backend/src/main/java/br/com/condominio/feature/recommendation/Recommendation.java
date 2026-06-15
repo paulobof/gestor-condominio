@@ -64,6 +64,12 @@ public class Recommendation {
   @Column(name = "catalog_url", length = 500)
   private String catalogUrl;
 
+  @Column(name = "like_count", nullable = false)
+  private int likeCount;
+
+  @Column(name = "dislike_count", nullable = false)
+  private int dislikeCount;
+
   @Column(name = "owner_unit_id", updatable = false)
   private UUID ownerUnitId;
 
@@ -171,5 +177,11 @@ public class Recommendation {
       throw new IllegalStateException("Indicação já está oculta.");
     }
     status = RecommendationStatus.HIDDEN;
+  }
+
+  /** Atualiza os contadores denormalizados de votos (recomputados de recommendation_vote). */
+  public void updateVoteCounts(int likeCount, int dislikeCount) {
+    this.likeCount = likeCount;
+    this.dislikeCount = dislikeCount;
   }
 }

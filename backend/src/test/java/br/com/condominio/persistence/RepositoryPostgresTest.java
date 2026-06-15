@@ -52,16 +52,15 @@ class RepositoryPostgresTest {
   void recommendationSearch_nullFilters_runsAgainstPostgres() {
     // Regressão (#19): lower(:tag)/lower(:search) com parâmetro null gerava lower(bytea)
     // (SQLState 42883) -> 500. Sem dados seedados, a lista é vazia, mas a query precisa EXECUTAR.
-    assertThatCode(() -> recommendations.search(null, false, null, PageRequest.of(0, 10)))
+    assertThatCode(() -> recommendations.search(null, null, PageRequest.of(0, 10)))
         .doesNotThrowAnyException();
-    assertThat(recommendations.search(null, false, null, PageRequest.of(0, 10)).getContent())
-        .isEmpty();
+    assertThat(recommendations.search(null, null, PageRequest.of(0, 10)).getContent()).isEmpty();
   }
 
   @Test
   void recommendationSearch_allFilters_runsAgainstPostgres() {
-    // Exercita os caminhos lower()/cast com tag, residentOnly e search preenchidos.
-    assertThatCode(() -> recommendations.search("encanador", true, "enc", PageRequest.of(0, 10)))
+    // Exercita os caminhos lower()/cast com tag e search preenchidos.
+    assertThatCode(() -> recommendations.search("encanador", "enc", PageRequest.of(0, 10)))
         .doesNotThrowAnyException();
   }
 

@@ -7,12 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.condominio.feature.recommendation.dto.CommentView;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
@@ -75,14 +77,18 @@ class RecommendationControllerWebTest {
         null,
         null,
         null,
-        null);
+        null,
+        0,
+        0,
+        null,
+        0L);
   }
 
   // ---- flag + autenticação básica -------------------------------------------------
 
   @Test
   void list_authenticated_returns200() throws Exception {
-    when(service.list(any(), eq(false), any(), any()))
+    when(service.list(any(), any(), any(), any()))
         .thenReturn(
             new PageImpl<>(List.of(view(RecommendationStatus.ACTIVE)), PageRequest.of(0, 20), 1));
 
@@ -232,5 +238,79 @@ class RecommendationControllerWebTest {
             multipart("/api/recommendations/{id}/photos", RID).file(file).with(MockAuth.user(UID)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("PHOTO_INVALID_TYPE"));
+  }
+
+  // ---- votos e comentários --------------------------------------------------------
+
+  @Test
+  void vote_returns200_andPropagatesValue() throws Exception {
+    when(service.vote(eq(RID), eq(UID), eq(VoteValue.LIKE)))
+        .thenReturn(view(RecommendationStatus.ACTIVE));
+
+    mvc.perform(
+            post("/api/recommendations/{id}/vote", RID)
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"LIKE\"}"))
+        .andExpect(status().isOk());
+
+    verify(service).vote(RID, UID, VoteValue.LIKE);
+  }
+
+  @Test
+  void vote_unauthenticated_isRejected() throws Exception {
+    mvc.perform(
+            post("/api/recommendations/{id}/vote", RID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"LIKE\"}"))
+        .andExpect(status().is4xxClientError());
+    verify(service, never()).vote(any(), any(), any());
+  }
+
+  @Test
+  void listComments_returns200() throws Exception {
+    when(service.listComments(RID))
+        .thenReturn(
+            List.of(new CommentView(UUID.randomUUID(), UID, "Fulano", "Oi", Instant.now())));
+
+    mvc.perform(get("/api/recommendations/{id}/comments", RID).with(MockAuth.user(UID)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].text").value("Oi"));
+  }
+
+  @Test
+  void addComment_returns201() throws Exception {
+    UUID cid = UUID.randomUUID();
+    when(service.addComment(eq(RID), eq(UID), eq("Top!")))
+        .thenReturn(new CommentView(cid, UID, "Fulano", "Top!", Instant.now()));
+
+    mvc.perform(
+            post("/api/recommendations/{id}/comments", RID)
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"Top!\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.text").value("Top!"));
+  }
+
+  @Test
+  void addComment_blank_returns400() throws Exception {
+    mvc.perform(
+            post("/api/recommendations/{id}/comments", RID)
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    verify(service, never()).addComment(any(), any(), any());
+  }
+
+  @Test
+  void deleteComment_returns204_andPassesCanModerate() throws Exception {
+    UUID cid = UUID.randomUUID();
+    mvc.perform(
+            delete("/api/recommendations/{id}/comments/{cid}", RID, cid).with(MockAuth.user(UID)))
+        .andExpect(status().isNoContent());
+    verify(service).deleteComment(RID, cid, UID, false);
   }
 }

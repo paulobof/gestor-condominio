@@ -32,10 +32,10 @@ describe('recommendationsApi — contrato com o backend', () => {
     const page = { content: [], totalElements: 0, totalPages: 0, number: 0 };
     get.mockResolvedValue({ data: page });
 
-    const result = await listRecommendations({ tag: 'encanador', residentOnly: true, page: 2 });
+    const result = await listRecommendations({ tag: 'encanador', search: 'ze', page: 2 });
 
     expect(get).toHaveBeenCalledWith('/recommendations', {
-      params: { tag: 'encanador', residentOnly: true, page: 2 },
+      params: { tag: 'encanador', search: 'ze', page: 2 },
     });
     expect(result).toBe(page);
   });

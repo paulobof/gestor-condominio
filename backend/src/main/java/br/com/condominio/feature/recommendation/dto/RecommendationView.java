@@ -29,13 +29,19 @@ public record RecommendationView(
     String whatsappUrl,
     String catalogUrl,
     UUID ownerUnitId,
-    String ownerUnitCode) {
+    String ownerUnitCode,
+    int likeCount,
+    int dislikeCount,
+    String myVote,
+    long commentCount) {
 
   public static RecommendationView of(
       Recommendation r,
       List<TagView> tags,
       List<OpeningHoursDto> openingHours,
-      List<RecommendationPhotoView> photos) {
+      List<RecommendationPhotoView> photos,
+      String myVote,
+      long commentCount) {
     return new RecommendationView(
         r.getId(),
         r.getServiceName(),
@@ -58,6 +64,10 @@ public record RecommendationView(
         r.getWhatsappUrl(),
         r.getCatalogUrl(),
         r.getOwnerUnitId(),
-        r.getOwnerUnitCode());
+        r.getOwnerUnitCode(),
+        r.getLikeCount(),
+        r.getDislikeCount(),
+        myVote,
+        commentCount);
   }
 }

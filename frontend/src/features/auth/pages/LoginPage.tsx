@@ -112,6 +112,12 @@ export function LoginPage() {
                 >
                   Primeiro acesso? Cadastre-se
                 </Link>
+                <Link
+                  to="/register-owner"
+                  className="block text-muted-foreground hover:text-foreground underline"
+                >
+                  Sou proprietário (não moro no condomínio)
+                </Link>
               </div>
             </form>
           </CardContent>

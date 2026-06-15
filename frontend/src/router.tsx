@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterMasterPage } from '@/features/auth/pages/RegisterMasterPage';
+import { RegisterOwnerPage } from '@/features/auth/pages/RegisterOwnerPage';
 import { PendingApprovalPage } from '@/features/auth/pages/PendingApprovalPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
@@ -34,6 +35,7 @@ import App from './App';
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register-master', element: <RegisterMasterPage /> },
+  { path: '/register-owner', element: <RegisterOwnerPage /> },
   { path: '/pending-approval', element: <PendingApprovalPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset', element: <ResetPasswordPage /> },

@@ -2,8 +2,8 @@
 
 Configurações para Dokploy em `panel.paulobof.com.br`. Dois *environments*:
 
-- **prod** — `app.helbor.exemplo` / `api.helbor.exemplo`.
-- **hml** — `hml.app.helbor.exemplo` / `hml.api.helbor.exemplo`.
+- **prod** — `www.helbortrilogyhome.com.br` / `api.helbortrilogyhome.com.br`.
+- **hml** — `hml.app.helbor.paulobof.com.br` / `hml.api.helbor.paulobof.com.br`.
 
 ## Serviços por environment
 

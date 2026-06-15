@@ -8,6 +8,7 @@ import { PrivacyPage } from '@/features/privacy/pages/PrivacyPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { PendingRegistrationsPage } from '@/features/admin/pages/PendingRegistrationsPage';
+import { OwnershipClaimsPage } from '@/features/admin/pages/OwnershipClaimsPage';
 import { ClassifiedsListPage } from '@/features/classifieds/pages/ClassifiedsListPage';
 import { ClassifiedDetailPage } from '@/features/classifieds/pages/ClassifiedDetailPage';
 import { ClassifiedFormPage } from '@/features/classifieds/pages/ClassifiedFormPage';
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <App /> },
       { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
+      { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
       { path: '/privacidade', element: <PrivacyPage /> },
       { path: '/classificados', element: <ClassifiedsListPage /> },
       { path: '/classificados/novo', element: <ClassifiedFormPage /> },

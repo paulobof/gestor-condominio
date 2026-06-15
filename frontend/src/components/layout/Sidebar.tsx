@@ -77,6 +77,14 @@ const ENTRIES: NavEntry[] = [
   },
   {
     kind: 'item',
+    to: '/admin/ownership-claims',
+    label: 'Pedidos de unidade',
+    icon: Building2,
+    brand: 'ink',
+    requires: 'REGISTRATION_VIEW',
+  },
+  {
+    kind: 'item',
     to: '/admin/acessos',
     label: 'Gestão de usuários',
     icon: UserCog,

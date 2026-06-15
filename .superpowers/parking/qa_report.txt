@@ -1,0 +1,93 @@
+
+## TORRE corrigida (code != cor antiga): 9
+  piso -1 T3 3228: B -> C
+  piso -1 T3 3218: B -> C
+  piso -1 T3 3219: B -> C
+  piso -1 T3 3220: B -> C
+  piso -1 T3 3221: B -> C
+  piso -1 T3 3222: B -> C
+  piso -1 T2 2214: A -> B
+  piso -1 T2 2215: A -> B
+  piso -1 T2 2114: C -> B
+
+## CATEGORIA corrigida (cor restrita): 0
+
+## MOTOS atribuidas a torre: 71
+  piso -1 MOTO 001 -> torre B
+  piso -1 MOTO 002 -> torre B
+  piso -1 MOTO 003 -> torre B
+  piso -1 MOTO 006 -> torre B
+  piso -1 MOTO 004 -> torre A
+  piso -1 MOTO 005 -> torre A
+  piso -1 MOTO 007 -> torre B
+  piso 0 MOTO 008 -> torre C
+  piso 0 MOTO 009 -> torre C
+  piso 0 MOTO 010 -> torre C
+  piso 0 MOTO 017 -> torre B
+  piso 0 MOTO 018 -> torre A
+  piso 0 MOTO 013 -> torre A
+  piso 0 MOTO 014 -> torre A
+  piso 0 MOTO 015 -> torre A
+  piso 0 MOTO 012 -> torre B
+  piso 0 MOTO 011 -> torre C
+  piso 0 MOTO 016 -> torre A
+  piso 0 MOTO 028 -> torre A
+  piso 0 MOTO 027 -> torre A
+  piso 0 MOTO 026 -> torre A
+  piso 0 MOTO 025 -> torre A
+  piso 0 MOTO 024 -> torre A
+  piso 0 MOTO 023 -> torre A
+  piso 0 MOTO 022 -> torre A
+  piso 0 MOTO 021 -> torre A
+  piso 0 MOTO 020 -> torre A
+  piso 0 MOTO 019 -> torre A
+  piso 0 MOTO 033 -> torre A
+  piso 0 MOTO 032 -> torre A
+  piso 0 MOTO 031 -> torre A
+  piso 0 MOTO 030 -> torre A
+  piso 0 MOTO 029 -> torre A
+  piso 1 MOTO 036 -> torre C
+  piso 1 MOTO 035 -> torre C
+  piso 1 MOTO 034 -> torre C
+  piso 1 MOTO 039 -> torre A
+  piso 1 MOTO 040 -> torre A
+  piso 1 MOTO 041 -> torre A
+  piso 1 MOTO 045 -> torre A
+  piso 1 MOTO 042 -> torre A
+  piso 1 MOTO 043 -> torre A
+  piso 1 MOTO 037 -> torre B
+  piso 1 MOTO 038 -> torre B
+  piso 1 MOTO 044 -> torre A
+  piso 2 MOTO 046 -> torre C
+  piso 2 MOTO 047 -> torre C
+  piso 2 MOTO 048 -> torre B
+  piso 2 MOTO 049 -> torre B
+  piso 2 MOTO 050 -> torre B
+  ... +21
+
+## CAT baixa confianca (mantida, revisar): 9
+  piso -1 T3 3228: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T3 3218: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T3 3219: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T3 3220: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T3 3221: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T3 3222: cat 2 (cor sugere 3, dist 0.817)
+  piso -1 T2 2214: cat 2 (cor sugere 1, dist 0.567)
+  piso -1 T2 2215: cat 2 (cor sugere 1, dist 0.567)
+  piso -1 T2 2114: cat 2 (cor sugere 3, dist 1.066)
+
+## Sem cor casada no PDF (cat mantida): 0
+
+## DISTRIBUICAO FINAL torre x piso
+  piso -1 torre A: 51
+  piso -1 torre B: 56
+  piso -1 torre C: 47
+  piso  0 torre A: 72
+  piso  0 torre B: 57
+  piso  0 torre C: 58
+  piso  1 torre A: 44
+  piso  1 torre B: 35
+  piso  1 torre C: 41
+  piso  2 torre A: 56
+  piso  2 torre B: 42
+  piso  2 torre C: 39

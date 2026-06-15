@@ -43,9 +43,6 @@ public class RegistrationService {
   private final PermissionGrantService permissionGrants;
   private final UnitOwnershipService ownershipService;
 
-  @org.springframework.beans.factory.annotation.Value("${app.feature.unitownership.enabled:false}")
-  private boolean unitOwnershipEnabled;
-
   @Transactional
   public RegistrationStatusResponse registerMaster(
       RegisterMasterRequest req, MultipartFile proof, String clientIp) {
@@ -110,12 +107,6 @@ public class RegistrationService {
     UserRole userRole =
         new UserRole(new UserRoleId(user.getId(), residentRole.getId()), Instant.now(), null);
     userRoleRepo.save(userRole);
-
-    // Sob a flag: a posse vira a fonte de verdade do master. Mantém as colunas do User (expand).
-    if (unitOwnershipEnabled) {
-      ownershipService.openClaim(
-          user.getId(), unit.getId(), objectKey, proof.getOriginalFilename(), detectedMime);
-    }
 
     log.info(
         "Master registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);

@@ -125,14 +125,12 @@ class RegistrationServiceTest {
   }
 
   @Test
-  void registerMaster_withFlagOn_opensOwnershipClaim() {
-    setField(service, "unitOwnershipEnabled", true);
+  void registerMaster_doesNotOpenOwnershipClaim() {
     when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com")).thenReturn(Optional.empty());
     when(magicBytes.detect(any())).thenReturn("application/pdf");
     when(magicBytes.isAcceptedForProof("application/pdf")).thenReturn(true);
     Unit unit = newInstance(Unit.class);
-    UUID unitId = UUID.randomUUID();
-    setField(unit, "id", unitId);
+    setField(unit, "id", UUID.randomUUID());
     setField(unit, "code", "702C");
     when(unitRepo.findByCode("702C")).thenReturn(Optional.of(unit));
     when(consentRepo.findByVersion("1.0.0")).thenReturn(Optional.of(newConsent("1.0.0")));
@@ -168,9 +166,7 @@ class RegistrationServiceTest {
 
     service.registerMaster(req, file, "127.0.0.1");
 
-    verify(ownershipService)
-        .openClaim(
-            any(), eq(unitId), eq("object-key-uuid"), eq("comprovante.pdf"), eq("application/pdf"));
+    verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());
   }
 
   @Test

@@ -177,7 +177,7 @@ public class GlobalExceptionHandler {
     HttpStatus status =
         switch (ex.getCode()) {
           case "UNIT_NOT_FOUND", "CLAIM_NOT_FOUND" -> HttpStatus.NOT_FOUND;
-          case "UNIT_HAS_MASTER", "DUPLICATE_CLAIM" -> HttpStatus.CONFLICT;
+          case "UNIT_HAS_OWNER", "DUPLICATE_CLAIM" -> HttpStatus.CONFLICT;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

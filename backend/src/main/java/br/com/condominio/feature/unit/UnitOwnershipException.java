@@ -2,7 +2,7 @@ package br.com.condominio.feature.unit;
 
 /**
  * Erros de posse de unidade mapeados em {@code GlobalExceptionHandler}: UNIT_NOT_FOUND → 404;
- * UNIT_HAS_MASTER/DUPLICATE_CLAIM → 409; CLAIM_NOT_FOUND → 404; demais → 400.
+ * UNIT_HAS_OWNER/DUPLICATE_CLAIM → 409; CLAIM_NOT_FOUND → 404; demais → 400.
  */
 public class UnitOwnershipException extends RuntimeException {
 

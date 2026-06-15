@@ -164,6 +164,51 @@ class UnitOwnershipServiceTest {
   }
 
   @Test
+  void approve_idempotent_doesNotSaveRoleWhenAlreadyGranted() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership claim =
+        UnitOwnership.pending(userId, unitId, "proofs/k3", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(claim));
+    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of(UUID.randomUUID()));
+
+    Role proprietario = mock(Role.class);
+    when(proprietario.getId()).thenReturn((short) 9);
+    when(roleRepo.findByName(RoleName.PROPRIETARIO)).thenReturn(Optional.of(proprietario));
+    when(userRoleRepo.existsById(any())).thenReturn(true); // role já concedida
+
+    service.approve(ownershipId, approverId);
+
+    verify(userRoleRepo, never()).save(any()); // não deve salvar novamente
+  }
+
+  @Test
+  void approve_activeUser_grantsRole_butDoesNotCallApproveAsOwner() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership claim =
+        UnitOwnership.pending(userId, unitId, "proofs/k4", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(claim));
+    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of()); // 1ª posse
+
+    Role proprietario = mock(Role.class);
+    when(proprietario.getId()).thenReturn((short) 9);
+    when(roleRepo.findByName(RoleName.PROPRIETARIO)).thenReturn(Optional.of(proprietario));
+    when(userRoleRepo.existsById(any())).thenReturn(false);
+
+    User user = mock(User.class);
+    when(user.getStatus()).thenReturn(UserStatus.ACTIVE); // usuário já ativo
+    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    service.approve(ownershipId, approverId);
+
+    verify(userRoleRepo).save(any(UserRole.class)); // papel concedido
+    verify(user, never()).approveAsOwner(any()); // não chama approveAsOwner
+  }
+
+  @Test
   void reject_purgesProofFromStorage() {
     UUID ownershipId = UUID.randomUUID();
     UUID approverId = UUID.randomUUID();

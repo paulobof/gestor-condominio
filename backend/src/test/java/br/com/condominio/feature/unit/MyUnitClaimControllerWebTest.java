@@ -57,15 +57,17 @@ class MyUnitClaimControllerWebTest {
   }
 
   @Test
-  void claim_unitHasMaster_returns409() throws Exception {
+  void claim_unitHasOwner_returns409() throws Exception {
     when(service.claimExtraUnit(eq(UID), eq("702C"), any()))
-        .thenThrow(new UnitOwnershipException("UNIT_HAS_MASTER", "já possui master"));
+        .thenThrow(
+            new UnitOwnershipException(
+                "UNIT_HAS_OWNER", "unidade já possui proprietário aprovado"));
     mvc.perform(
             multipart("/api/auth/me/unit-claims")
                 .file(proof())
                 .param("unitCode", "702C")
                 .with(MockAuth.user(UID)))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("UNIT_HAS_MASTER"));
+        .andExpect(jsonPath("$.code").value("UNIT_HAS_OWNER"));
   }
 }

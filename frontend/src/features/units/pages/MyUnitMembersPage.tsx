@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { useAuth } from '@/features/auth/useAuth';
 import {
   listMembers,
@@ -249,14 +250,12 @@ function AddMemberForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
             onChange={setEmail}
             required
           />
-          <Field
-            id="nm-phone"
-            label="Telefone"
-            value={phone}
-            onChange={setPhone}
-            required
-            placeholder="+5511999999999"
-          />
+          <div className="space-y-1">
+            <label htmlFor="nm-phone" className="text-sm font-medium">
+              Telefone
+            </label>
+            <PhoneInput id="nm-phone" value={phone} onChange={setPhone} />
+          </div>
           <div className="space-y-1">
             <label htmlFor="nm-gender" className="text-sm font-medium">
               Gênero
@@ -392,14 +391,12 @@ function EditMemberForm({
             onChange={setEmail}
             required
           />
-          <Field
-            id="em-phone"
-            label="Telefone"
-            value={phone}
-            onChange={setPhone}
-            required
-            placeholder="+5511999999999"
-          />
+          <div className="space-y-1">
+            <label htmlFor="em-phone" className="text-sm font-medium">
+              Telefone
+            </label>
+            <PhoneInput id="em-phone" value={phone} onChange={setPhone} />
+          </div>
           <div className="space-y-1">
             <label htmlFor="em-gender" className="text-sm font-medium">
               Gênero

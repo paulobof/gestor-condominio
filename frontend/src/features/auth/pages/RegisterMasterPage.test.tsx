@@ -33,7 +33,7 @@ async function fillAllFieldsExceptPassword(user: ReturnType<typeof userEvent.set
   await user.type(screen.getByLabelText('Nome completo'), 'Maria Souza');
   await user.type(screen.getByLabelText('Como prefere ser chamado'), 'Maria');
   await user.type(screen.getByLabelText('E-mail'), 'maria@example.com');
-  await user.type(screen.getByLabelText('Telefone (WhatsApp)'), '+5511999990000');
+  await user.type(screen.getByLabelText('Telefone (WhatsApp)'), '11999990000');
 
   // Fill proof
   await user.click(screen.getByRole('button', { name: 'pick-proof' }));

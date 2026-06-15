@@ -96,7 +96,7 @@ describe('MyUnitMembersPage — adicionar', () => {
     await user.type(screen.getByLabelText('Nome'), 'Novo Morador');
     await user.type(screen.getByLabelText('Como chamar'), 'Novo');
     await user.type(screen.getByLabelText('E-mail'), 'novo@x.com');
-    await user.type(screen.getByLabelText('Telefone'), '+5511977776666');
+    await user.type(screen.getByLabelText('Telefone'), '11977776666');
     await user.click(screen.getByRole('button', { name: /^cadastrar$/i }));
 
     await waitFor(() => expect(createMock).toHaveBeenCalled());
@@ -118,7 +118,7 @@ describe('MyUnitMembersPage — adicionar', () => {
     await user.type(screen.getByLabelText('Nome'), 'Novo Morador');
     await user.type(screen.getByLabelText('Como chamar'), 'Novo');
     await user.type(screen.getByLabelText('E-mail'), 'novo@x.com');
-    await user.type(screen.getByLabelText('Telefone'), '+5511977776666');
+    await user.type(screen.getByLabelText('Telefone'), '11977776666');
     await user.click(screen.getByRole('button', { name: /^cadastrar$/i }));
 
     await screen.findByText('X1y!aaaa');
@@ -137,7 +137,7 @@ describe('MyUnitMembersPage — adicionar', () => {
     await user.type(screen.getByLabelText('Nome'), 'Novo Morador');
     await user.type(screen.getByLabelText('Como chamar'), 'Novo');
     await user.type(screen.getByLabelText('E-mail'), 'novo@x.com');
-    await user.type(screen.getByLabelText('Telefone'), '+5511977776666');
+    await user.type(screen.getByLabelText('Telefone'), '11977776666');
     await user.click(screen.getByRole('button', { name: /^cadastrar$/i }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('E-mail já usado.'));
   });

@@ -10,8 +10,10 @@ import { ProofUploader } from '@/components/ProofUploader';
 import { ConsentBox } from '@/features/consent/ConsentBox';
 import { registerMaster } from '@/features/consent/api/consentApi';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
 import { isStrongPassword } from '@/features/auth/passwordPolicy';
+import { parsePhone, isValidPhone } from '@/lib/phone';
 
 export function RegisterMasterPage() {
   const navigate = useNavigate();
@@ -29,11 +31,14 @@ export function RegisterMasterPage() {
   const [proof, setProof] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const phoneParsed = parsePhone(phone);
+  const phoneValid = isValidPhone(phoneParsed.ddi, phoneParsed.national);
+
   const canSubmit =
     !!fullName &&
     !!greetingName &&
     !!email &&
-    !!phone &&
+    phoneValid &&
     !!unitCode &&
     hasMaster === false &&
     isStrongPassword(password) &&
@@ -116,13 +121,7 @@ export function RegisterMasterPage() {
               </div>
               <div>
                 <Label htmlFor="phone">Telefone (WhatsApp)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+5511..."
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+                <PhoneInput id="phone" value={phone} onChange={setPhone} />
               </div>
               <div>
                 <Label>Data de nascimento</Label>

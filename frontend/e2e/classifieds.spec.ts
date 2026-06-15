@@ -19,7 +19,7 @@ test.describe('Classificados — contato no detalhe', () => {
     await page.goto('/classificados/c-1');
 
     await expect(page.getByRole('heading', { name: 'Bicicleta aro 29' })).toBeVisible();
-    await expect(page.getByText('Contato')).toBeVisible();
+    await expect(page.getByText('Contato', { exact: true })).toBeVisible();
     await expect(page.getByText('Maria Souza')).toBeVisible();
 
     const tel = page.getByRole('link', { name: '+5511988887777' });
@@ -36,6 +36,6 @@ test.describe('Classificados — contato no detalhe', () => {
     await page.goto('/classificados/c-2');
 
     await expect(page.getByRole('heading', { name: 'Bicicleta aro 29' })).toBeVisible();
-    await expect(page.getByText('Contato')).toHaveCount(0);
+    await expect(page.getByText('Contato', { exact: true })).toHaveCount(0);
   });
 });

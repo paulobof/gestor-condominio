@@ -57,6 +57,7 @@ public class WhatsAppMessageRenderer {
               + CONDO
               + " foi atualizado pelo responsável da sua unidade.\n\n"
               + "Não reconhece esta alteração? Fale com a administração imediatamente.";
+      case ACTIVITY_ALERT -> req(d, "text", template);
     };
   }
 

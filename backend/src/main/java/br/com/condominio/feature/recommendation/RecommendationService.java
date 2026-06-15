@@ -1,5 +1,7 @@
 package br.com.condominio.feature.recommendation;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.recommendation.dto.*;
 import br.com.condominio.feature.tag.Tag;
 import br.com.condominio.feature.tag.TagService;
@@ -43,6 +45,7 @@ public class RecommendationService {
   private final UnitRepository unitRepo;
   private final RecommendationVoteRepository voteRepo;
   private final RecommendationCommentRepository commentRepo;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional
   public RecommendationView create(
@@ -93,6 +96,7 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
+    activityNotifier.notify(ActivityAction.CREATED, "Indicação", r.getServiceName(), authorId);
     return view(r, authorId);
   }
 
@@ -156,6 +160,7 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(id, req.openingHours());
+    activityNotifier.notify(ActivityAction.UPDATED, "Indicação", r.getServiceName(), actorId);
     return view(r, actorId);
   }
 
@@ -164,6 +169,7 @@ public class RecommendationService {
     Recommendation r = loadOwned(id, actorId, canModerate);
     photoRepo.findByRecommendationIdOrderByOrdering(id).forEach(photoRepo::delete);
     repo.delete(r);
+    activityNotifier.notify(ActivityAction.DELETED, "Indicação", r.getServiceName(), actorId);
   }
 
   @Transactional

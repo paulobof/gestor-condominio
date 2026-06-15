@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.document.dto.DocumentView;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
@@ -30,6 +31,7 @@ class DocumentServiceTest {
   private FileStorage storage;
   private MagicBytesValidator magicBytes;
   private MinioProperties props;
+  private ActivityNotifier activityNotifier;
   private DocumentService service;
 
   @BeforeEach
@@ -38,7 +40,8 @@ class DocumentServiceTest {
     storage = mock(FileStorage.class);
     magicBytes = mock(MagicBytesValidator.class);
     props = new MinioProperties();
-    service = new DocumentService(repo, storage, magicBytes, props);
+    activityNotifier = mock(ActivityNotifier.class);
+    service = new DocumentService(repo, storage, magicBytes, props, activityNotifier);
     when(repo.save(any(Document.class))).thenAnswer(i -> i.getArgument(0));
   }
 

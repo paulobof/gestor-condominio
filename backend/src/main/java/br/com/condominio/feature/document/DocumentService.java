@@ -1,5 +1,7 @@
 package br.com.condominio.feature.document;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.document.dto.DocumentView;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
@@ -25,6 +27,7 @@ public class DocumentService {
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
+  private final ActivityNotifier activityNotifier;
 
   /** NÃO transacional: upload pro MinIO acontece fora de transação (CLAUDE.md). */
   public DocumentView upload(UUID uploaderId, String title, DocumentType type, MultipartFile file) {
@@ -67,6 +70,7 @@ public class DocumentService {
             Document.create(
                 t, type, objectKey, file.getOriginalFilename(), mime, file.getSize(), uploaderId));
     log.info("document.uploaded id={} type={} by={}", saved.getId(), type, uploaderId);
+    activityNotifier.notify(ActivityAction.CREATED, "Documento", saved.getTitle(), uploaderId);
     return DocumentView.of(saved);
   }
 
@@ -86,6 +90,7 @@ public class DocumentService {
   public void delete(UUID id) {
     Document d = load(id);
     String objectKey = d.getObjectKey();
+    String title = d.getTitle();
     repo.delete(d);
     try {
       storage.delete(props.getBucketDocuments(), objectKey);
@@ -93,6 +98,7 @@ public class DocumentService {
       log.warn("document.delete: falha removendo objeto {}: {}", id, e.getMessage());
     }
     log.info("document.deleted id={}", id);
+    activityNotifier.notify(ActivityAction.DELETED, "Documento", title, null);
   }
 
   private Document load(UUID id) {

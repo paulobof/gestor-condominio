@@ -56,7 +56,9 @@ public class WhatsAppNotificationClient {
   @CircuitBreaker(name = "whatsapp", fallbackMethod = "sendFallback")
   @Retry(name = "whatsapp")
   public void send(String toPhone, WhatsAppTemplate template, Map<String, Object> data) {
-    String number = normalizer.toEvolutionNumber(toPhone);
+    // JID de grupo (ex.: 1203...@g.us) não é telefone — vai direto, sem normalizar pra DDI.
+    String number =
+        toPhone != null && toPhone.contains("@") ? toPhone : normalizer.toEvolutionNumber(toPhone);
     String text = renderer.render(template, data);
     String uri = props.getBaseUrl() + "/send/text";
     try {

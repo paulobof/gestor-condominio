@@ -37,7 +37,8 @@ public class WhatsAppOutboxEntry {
 
   @Id @GeneratedValue private UUID id;
 
-  @Column(name = "to_phone", nullable = false, length = 20)
+  // Aceita telefone (DDI) ou JID de grupo (ex.: 1203...@g.us) para os avisos de atividade.
+  @Column(name = "to_phone", nullable = false, length = 64)
   private String toPhone;
 
   @Column(name = "template", nullable = false, length = 60)

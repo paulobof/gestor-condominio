@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.recommendation.dto.CommentView;
 import br.com.condominio.feature.recommendation.dto.CreateRecommendationRequest;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
@@ -39,6 +40,7 @@ class RecommendationServiceTest {
   private UnitRepository unitRepo;
   private RecommendationVoteRepository voteRepo;
   private RecommendationCommentRepository commentRepo;
+  private ActivityNotifier activityNotifier;
   private RecommendationService service;
 
   private final UUID author = UUID.randomUUID();
@@ -58,6 +60,7 @@ class RecommendationServiceTest {
     unitRepo = mock(UnitRepository.class);
     voteRepo = mock(RecommendationVoteRepository.class);
     commentRepo = mock(RecommendationCommentRepository.class);
+    activityNotifier = mock(ActivityNotifier.class);
     service =
         new RecommendationService(
             repo,
@@ -70,7 +73,8 @@ class RecommendationServiceTest {
             userRepo,
             unitRepo,
             voteRepo,
-            commentRepo);
+            commentRepo,
+            activityNotifier);
     when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByRecommendationIdOrderByOrdering(any())).thenReturn(List.of());
     when(hoursRepo.findByOwnerIdOrderByDayOfWeek(any())).thenReturn(List.of());

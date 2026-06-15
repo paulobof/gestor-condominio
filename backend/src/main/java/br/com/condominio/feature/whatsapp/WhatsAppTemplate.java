@@ -15,5 +15,7 @@ public enum WhatsAppTemplate {
    * E-mail de acesso do morador alterado pelo master da unidade. Espera data: {@code
    * {greetingName}}.
    */
-  MEMBER_EMAIL_CHANGED
+  MEMBER_EMAIL_CHANGED,
+  /** Aviso de atividade pro grupo de admins. Espera data: {@code {text}} (texto já pronto). */
+  ACTIVITY_ALERT
 }

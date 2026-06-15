@@ -19,7 +19,7 @@ import {
   type ClassifiedStatus,
 } from '../api/classifiedsApi';
 
-const MAX_PHOTOS = 5;
+const MAX_PHOTOS = 3;
 
 const STATUS_OPTIONS: { value: ClassifiedStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Ativo' },

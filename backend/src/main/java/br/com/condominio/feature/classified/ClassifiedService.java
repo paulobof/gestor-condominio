@@ -97,14 +97,14 @@ public class ClassifiedService {
   }
 
   private static final long MAX_PHOTO_BYTES = 1_048_576L;
-  private static final int MAX_PHOTOS = 5;
+  private static final int MAX_PHOTOS = 3;
 
   /** NÃO transacional: upload pro MinIO acontece fora de transação (CLAUDE.md). */
   public ClassifiedPhotoView addPhoto(
       UUID id, UUID actorId, boolean canModerate, MultipartFile file) {
     loadOwned(id, actorId, canModerate);
     if (photoRepo.countByClassifiedId(id) >= MAX_PHOTOS) {
-      throw new ClassifiedException("PHOTO_LIMIT", "Máximo de 5 fotos por anúncio.");
+      throw new ClassifiedException("PHOTO_LIMIT", "Máximo de 3 fotos por anúncio.");
     }
     String mime;
     try (InputStream in = file.getInputStream()) {

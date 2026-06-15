@@ -217,7 +217,7 @@ class ClassifiedServiceTest {
   void addPhoto_overLimit_throws() {
     UUID id = UUID.randomUUID();
     when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
-    when(photoRepo.countByClassifiedId(id)).thenReturn(5L);
+    when(photoRepo.countByClassifiedId(id)).thenReturn(3L);
     assertThatThrownBy(() -> service.addPhoto(id, author, false, jpeg(10)))
         .isInstanceOf(ClassifiedException.class)
         .hasFieldOrPropertyWithValue("code", "PHOTO_LIMIT");

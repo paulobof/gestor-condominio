@@ -7,17 +7,24 @@ import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitOwnershipRepository;
+import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.MyUnitView;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
 import br.com.condominio.feature.user.event.MemberEmailChangedEvent;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,24 +45,48 @@ public class UnitMemberService {
   private final RoleRepository roleRepo;
   private final UserProvisioning provisioning;
   private final ApplicationEventPublisher eventPublisher;
+  private final UnitOwnershipRepository ownershipRepo;
+  private final UnitRepository unitRepo;
+
+  @Value("${app.feature.unitownership.enabled:false}")
+  private boolean unitOwnershipEnabled;
 
   @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
-    UUID unitId = userRepo.findById(masterUserId).map(User::getUnitId).orElse(null);
-    if (unitId == null) {
+    User master = userRepo.findById(masterUserId).orElse(null);
+    if (master == null) {
       return List.of();
     }
+    List<UUID> myUnits = myUnitIds(master);
+    if (myUnits.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, String> codeByUnit = unitCodes(myUnits);
     return userRepo
-        .findByUnitIdAndStatusNotAndIsUnitMasterFalse(unitId, UserStatus.ANONYMIZED)
+        .findByUnitIdInAndStatusNotAndIsUnitMasterFalse(myUnits, UserStatus.ANONYMIZED)
         .stream()
-        .map(this::toResponse)
+        .map(u -> toResponse(u, codeByUnit.get(u.getUnitId())))
         .toList();
+  }
+
+  /**
+   * Unidades sob gestão do usuário (posses APPROVED, ou a unidade única no fallback single-unit).
+   */
+  @Transactional(readOnly = true)
+  public List<MyUnitView> listMyUnits(UUID masterUserId) {
+    User master = userRepo.findById(masterUserId).orElse(null);
+    if (master == null) {
+      return List.of();
+    }
+    List<UUID> myUnits = myUnitIds(master);
+    Map<UUID, String> codes = unitCodes(myUnits);
+    return myUnits.stream().map(id -> new MyUnitView(id, codes.get(id))).toList();
   }
 
   @Transactional(readOnly = true)
   public UnitMemberDetail getMemberDetail(UUID masterUserId, UUID memberId) {
-    UUID unitId = requireMaster(masterUserId).getUnitId();
-    User member = requireMemberInUnit(memberId, unitId);
+    List<UUID> myUnits = myUnitIds(requireMaster(masterUserId));
+    User member = requireMemberInMyUnits(memberId, myUnits);
     String email = emailRepo.findPrimaryByUserId(memberId).map(UserEmail::getEmail).orElse(null);
     return new UnitMemberDetail(
         member.getId(),
@@ -69,7 +100,8 @@ public class UnitMemberService {
 
   @Transactional
   public CreatedUnitMemberResponse createMember(UUID masterUserId, CreateUnitMemberRequest req) {
-    UUID unitId = requireMaster(masterUserId).getUnitId();
+    User master = requireMaster(masterUserId);
+    UUID unitId = resolveTargetUnit(req.unitId(), myUnitIds(master), master);
     Role residentRole = roleRepo.findByName(RoleName.RESIDENT).orElseThrow();
 
     UserProvisioning.Provisioned provisioned =
@@ -95,8 +127,8 @@ public class UnitMemberService {
 
   @Transactional
   public void updateMember(UUID masterUserId, UUID memberId, UpdateUnitMemberRequest req) {
-    UUID unitId = requireMaster(masterUserId).getUnitId();
-    User member = requireMemberInUnit(memberId, unitId);
+    User member = requireMemberInMyUnits(memberId, myUnitIds(requireMaster(masterUserId)));
+    UUID unitId = member.getUnitId();
 
     // Detecta mudança de e-mail ANTES de aplicar (comparação case-insensitive).
     // changePrimaryEmail é no-op se igual — então detectamos aqui para não notificar em vão.
@@ -123,8 +155,7 @@ public class UnitMemberService {
 
   @Transactional
   public void deleteMember(UUID masterUserId, UUID memberId) {
-    UUID unitId = requireMaster(masterUserId).getUnitId();
-    User member = requireMemberInUnit(memberId, unitId);
+    User member = requireMemberInMyUnits(memberId, myUnitIds(requireMaster(masterUserId)));
     provisioning.softDelete(member, memberId);
     log.info("Master {} excluiu (soft) morador {}", masterUserId, memberId);
   }
@@ -148,14 +179,14 @@ public class UnitMemberService {
     return master;
   }
 
-  /** Garante que o alvo existe, está na unidade do master, é não-master e está ACTIVE. */
-  private User requireMemberInUnit(UUID memberId, UUID masterUnitId) {
+  /** Garante que o alvo existe, está em uma das minhas unidades, é não-master e está ACTIVE. */
+  private User requireMemberInMyUnits(UUID memberId, List<UUID> myUnits) {
     User member =
         userRepo
             .findById(memberId)
             .orElseThrow(
                 () -> new UnitMemberException("MEMBER_NOT_IN_UNIT", "Morador não encontrado."));
-    if (masterUnitId == null || !masterUnitId.equals(member.getUnitId()) || member.isUnitMaster()) {
+    if (myUnits.isEmpty() || !myUnits.contains(member.getUnitId()) || member.isUnitMaster()) {
       throw new UnitMemberException(
           "MEMBER_NOT_IN_UNIT", "Este morador não pertence à sua unidade.");
     }
@@ -165,10 +196,55 @@ public class UnitMemberService {
     return member;
   }
 
-  private UnitMemberResponse toResponse(User u) {
+  /**
+   * Unidades sob gestão do master. Com a flag on e posses APPROVED, usa-as (multi-unidade); caso
+   * contrário, faz fallback para a unidade única do {@code User.unitId} (comportamento atual).
+   */
+  private List<UUID> myUnitIds(User master) {
+    if (unitOwnershipEnabled) {
+      List<UUID> approved = ownershipRepo.findApprovedUnitIdsByUser(master.getId());
+      if (!approved.isEmpty()) {
+        return approved;
+      }
+    }
+    return master.getUnitId() == null ? List.of() : List.of(master.getUnitId());
+  }
+
+  /**
+   * Resolve em qual unidade cadastrar: a pedida (deve ser minha) ou, sem pedido, a unidade única.
+   */
+  private UUID resolveTargetUnit(UUID requested, List<UUID> myUnits, User master) {
+    if (requested != null) {
+      if (!myUnits.contains(requested)) {
+        throw new UnitMemberException("UNIT_NOT_MINE", "Esta unidade não é sua.");
+      }
+      return requested;
+    }
+    if (master.getUnitId() != null) {
+      return master.getUnitId();
+    }
+    if (myUnits.size() == 1) {
+      return myUnits.get(0);
+    }
+    throw new UnitMemberException("UNIT_REQUIRED", "Selecione a unidade do morador.");
+  }
+
+  private Map<UUID, String> unitCodes(List<UUID> unitIds) {
+    return unitRepo.findAllById(unitIds).stream()
+        .collect(Collectors.toMap(Unit::getId, Unit::getCode));
+  }
+
+  private UnitMemberResponse toResponse(User u, String unitCode) {
     String email = emailRepo.findPrimaryByUserId(u.getId()).map(UserEmail::getEmail).orElse(null);
     return new UnitMemberResponse(
-        u.getId(), u.getFullName(), u.getGreetingName(), email, u.getPhone(), u.getStatus().name());
+        u.getId(),
+        u.getFullName(),
+        u.getGreetingName(),
+        email,
+        u.getPhone(),
+        u.getStatus().name(),
+        u.getUnitId(),
+        unitCode);
   }
 
   private static String trimToNull(String s) {

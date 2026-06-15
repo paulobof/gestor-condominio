@@ -15,6 +15,7 @@ import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleRepository;
+import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
@@ -33,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -48,6 +50,8 @@ class UnitMemberServiceTest {
   @Mock private RoleRepository roleRepo;
   @Mock private UserProvisioning provisioning;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private br.com.condominio.feature.unit.UnitOwnershipRepository ownershipRepo;
+  @Mock private br.com.condominio.feature.unit.UnitRepository unitRepo;
 
   @InjectMocks private UnitMemberService service;
 
@@ -69,7 +73,7 @@ class UnitMemberServiceTest {
     when(member.getGreetingName()).thenReturn("Maria");
     when(member.getPhone()).thenReturn("11999998888");
     when(member.getStatus()).thenReturn(UserStatus.ACTIVE);
-    when(userRepo.findByUnitIdAndStatusNotAndIsUnitMasterFalse(UNIT, UserStatus.ANONYMIZED))
+    when(userRepo.findByUnitIdInAndStatusNotAndIsUnitMasterFalse(any(), eq(UserStatus.ANONYMIZED)))
         .thenReturn(List.of(member));
     UserEmail e = mock(UserEmail.class);
     when(e.getEmail()).thenReturn("maria@x.com");
@@ -88,7 +92,7 @@ class UnitMemberServiceTest {
     when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
 
     assertThat(service.listMyUnitMembers(MASTER)).isEmpty();
-    verify(userRepo, never()).findByUnitIdAndStatusNotAndIsUnitMasterFalse(any(), any());
+    verify(userRepo, never()).findByUnitIdInAndStatusNotAndIsUnitMasterFalse(any(), any());
   }
 
   @Test
@@ -106,7 +110,7 @@ class UnitMemberServiceTest {
 
     CreateUnitMemberRequest req =
         new CreateUnitMemberRequest(
-            "Maria Silva", "Maria", "maria@x.com", "11999998888", null, null, false);
+            "Maria Silva", "Maria", "maria@x.com", "11999998888", null, null, false, null);
     CreatedUnitMemberResponse out = service.createMember(MASTER, req);
 
     assertThat(out.password()).isEqualTo("Abc123!xYZ09__a");
@@ -124,7 +128,7 @@ class UnitMemberServiceTest {
 
     CreateUnitMemberRequest req =
         new CreateUnitMemberRequest(
-            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false);
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false, null);
     assertThatThrownBy(() -> service.createMember(MASTER, req))
         .isInstanceOf(UnitMemberException.class)
         .extracting("code")
@@ -228,7 +232,7 @@ class UnitMemberServiceTest {
 
     CreateUnitMemberRequest req =
         new CreateUnitMemberRequest(
-            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false);
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false, null);
     assertThatThrownBy(() -> service.createMember(MASTER, req))
         .isInstanceOf(AccessException.class)
         .extracting("code")
@@ -244,7 +248,7 @@ class UnitMemberServiceTest {
 
     CreateUnitMemberRequest req =
         new CreateUnitMemberRequest(
-            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false);
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false, null);
     assertThatThrownBy(() -> service.createMember(MASTER, req))
         .isInstanceOf(UnitMemberException.class)
         .extracting("code")
@@ -378,5 +382,85 @@ class UnitMemberServiceTest {
         .isInstanceOf(UnitMemberException.class)
         .extracting("code")
         .isEqualTo("MEMBER_NOT_IN_UNIT");
+  }
+
+  // ===== Multi-unidade (flag on) =====
+
+  @Test
+  void createMember_rejectsUnitNotMine() {
+    ReflectionTestUtils.setField(service, "unitOwnershipEnabled", true);
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    when(ownershipRepo.findApprovedUnitIdsByUser(any())).thenReturn(List.of(UNIT));
+    UUID other = UUID.randomUUID();
+
+    CreateUnitMemberRequest req =
+        new CreateUnitMemberRequest(
+            "Maria", "Maria", "maria@x.com", "11999998888", null, null, false, other);
+    assertThatThrownBy(() -> service.createMember(MASTER, req))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("UNIT_NOT_MINE");
+    verify(provisioning, never()).createActiveUser(any(), any(), any(), any());
+  }
+
+  @Test
+  void createMember_inOneOfMyUnits_ok() {
+    ReflectionTestUtils.setField(service, "unitOwnershipEnabled", true);
+    UUID unitB = UUID.randomUUID();
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    when(ownershipRepo.findApprovedUnitIdsByUser(any())).thenReturn(List.of(UNIT, unitB));
+    Role resident = mock(Role.class);
+    when(resident.getId()).thenReturn((short) 4);
+    when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(resident));
+    User saved = mock(User.class);
+    when(saved.getId()).thenReturn(MEMBER);
+    when(saved.getFullName()).thenReturn("Maria Silva");
+    when(provisioning.createActiveUser(unitB, "Maria Silva", "11999998888", "maria@x.com"))
+        .thenReturn(new UserProvisioning.Provisioned(saved, "Abc123!xYZ09__a"));
+
+    CreateUnitMemberRequest req =
+        new CreateUnitMemberRequest(
+            "Maria Silva", "Maria", "maria@x.com", "11999998888", null, null, false, unitB);
+    CreatedUnitMemberResponse out = service.createMember(MASTER, req);
+
+    assertThat(out.id()).isEqualTo(MEMBER);
+    verify(provisioning).createActiveUser(unitB, "Maria Silva", "11999998888", "maria@x.com");
+  }
+
+  @Test
+  void listMyUnitMembers_groupsAcrossApprovedUnits() {
+    ReflectionTestUtils.setField(service, "unitOwnershipEnabled", true);
+    UUID unitB = UUID.randomUUID();
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    when(ownershipRepo.findApprovedUnitIdsByUser(any())).thenReturn(List.of(UNIT, unitB));
+
+    User m1 = mock(User.class);
+    when(m1.getId()).thenReturn(MEMBER);
+    when(m1.getUnitId()).thenReturn(UNIT);
+    when(m1.getStatus()).thenReturn(UserStatus.ACTIVE);
+    User m2 = mock(User.class);
+    UUID member2 = UUID.randomUUID();
+    when(m2.getId()).thenReturn(member2);
+    when(m2.getUnitId()).thenReturn(unitB);
+    when(m2.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(userRepo.findByUnitIdInAndStatusNotAndIsUnitMasterFalse(any(), eq(UserStatus.ANONYMIZED)))
+        .thenReturn(List.of(m1, m2));
+
+    Unit uA = mock(Unit.class);
+    when(uA.getId()).thenReturn(UNIT);
+    when(uA.getCode()).thenReturn("702A");
+    Unit uB = mock(Unit.class);
+    when(uB.getId()).thenReturn(unitB);
+    when(uB.getCode()).thenReturn("702B");
+    when(unitRepo.findAllById(any())).thenReturn(List.of(uA, uB));
+
+    List<UnitMemberResponse> out = service.listMyUnitMembers(MASTER);
+
+    assertThat(out).hasSize(2);
+    assertThat(out).anyMatch(r -> "702A".equals(r.unitCode()));
+    assertThat(out).anyMatch(r -> "702B".equals(r.unitCode()));
   }
 }

@@ -215,7 +215,7 @@ public class GlobalExceptionHandler {
     HttpStatus status =
         switch (ex.getCode()) {
           case "MEMBER_NOT_IN_UNIT" -> HttpStatus.FORBIDDEN;
-          case "NOT_A_MASTER" -> HttpStatus.FORBIDDEN;
+          case "NOT_A_MASTER", "UNIT_NOT_MINE" -> HttpStatus.FORBIDDEN;
           case "MASTER_HAS_NO_UNIT" -> HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };

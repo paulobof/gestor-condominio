@@ -35,6 +35,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   List<User> findByUnitIdAndStatusNotAndIsUnitMasterFalse(UUID unitId, UserStatus status);
 
+  /**
+   * Moradores de um conjunto de unidades (multi-unidade): não-master, exceto o status informado.
+   */
+  List<User> findByUnitIdInAndStatusNotAndIsUnitMasterFalse(
+      java.util.Collection<UUID> unitIds, UserStatus status);
+
   @Query("SELECT u.unitId FROM User u WHERE u.id = :id")
   Optional<UUID> findUnitIdById(@Param("id") UUID id);
 }

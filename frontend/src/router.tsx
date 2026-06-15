@@ -23,6 +23,7 @@ import { InfoPage } from '@/features/generalinfo/pages/InfoPage';
 import { InfoAdminPage } from '@/features/generalinfo/pages/InfoAdminPage';
 import { AccessManagementPage } from '@/features/access/pages/AccessManagementPage';
 import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
+import { RegisterExtraUnitPage } from '@/features/units/pages/RegisterExtraUnitPage';
 import { ParkingRentalsListPage } from '@/features/parking-rentals/pages/ParkingRentalsListPage';
 import { ParkingRentalDetailPage } from '@/features/parking-rentals/pages/ParkingRentalDetailPage';
 import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingRentalFormPage';
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
       { path: '/faq/gerenciar', element: <FaqAdminPage /> },
       { path: '/admin/acessos', element: <AccessManagementPage /> },
       { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
+      { path: '/minha-unidade/registrar', element: <RegisterExtraUnitPage /> },
       { path: '/vagas/aluguel', element: <ParkingRentalsListPage /> },
       { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
       { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },

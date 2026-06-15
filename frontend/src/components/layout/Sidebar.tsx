@@ -11,6 +11,7 @@ import {
   FileText,
   UserCog,
   Users,
+  Building2,
   SquareParking,
   ChevronDown,
   ChevronRight,
@@ -89,6 +90,13 @@ const ENTRIES: NavEntry[] = [
     icon: Users,
     brand: 'ink',
     requires: 'RESIDENT_MANAGE',
+  },
+  {
+    kind: 'item',
+    to: '/minha-unidade/registrar',
+    label: 'Registrar unidade',
+    icon: Building2,
+    brand: 'ink',
   },
 ];
 

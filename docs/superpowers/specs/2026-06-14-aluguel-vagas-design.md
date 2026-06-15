@@ -125,7 +125,7 @@ CREATE TABLE parking_rental (
     spot_number     varchar(40)   NOT NULL,
     monthly_price   numeric(12,2) NOT NULL,
     status          varchar(20)   NOT NULL,
-    author_user_id  uuid          NOT NULL REFERENCES app_user(id),
+    author_user_id  uuid          NOT NULL REFERENCES "user" (id) ON DELETE RESTRICT,
     created_at      timestamptz   NOT NULL DEFAULT now(),
     updated_at      timestamptz,
     deleted_at      timestamptz

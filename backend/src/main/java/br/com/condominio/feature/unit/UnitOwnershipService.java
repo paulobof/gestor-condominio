@@ -2,6 +2,7 @@ package br.com.condominio.feature.unit;
 
 import br.com.condominio.feature.role.PermissionCode;
 import br.com.condominio.feature.role.PermissionGrantService;
+import br.com.condominio.feature.unit.dto.OwnershipClaimView;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
@@ -11,6 +12,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,4 +117,47 @@ public class UnitOwnershipService {
     }
     log.info("Ownership rejected: ownershipId={} by approverId={}", ownershipId, approverId);
   }
+
+  /**
+   * Lista os pedidos de posse PENDING (mais antigos primeiro), com nome do usuário e código da
+   * unidade.
+   */
+  @Transactional
+  public Page<OwnershipClaimView> listPendingClaims(Pageable pageable) {
+    return ownershipRepo
+        .findByStatusOrderByCreatedAtAsc(OwnershipStatus.PENDING, pageable)
+        .map(
+            o -> {
+              String userName =
+                  userRepo.findById(o.getUserId()).map(User::getFullName).orElse(null);
+              String unitCode = unitRepo.findById(o.getUnitId()).map(Unit::getCode).orElse(null);
+              return new OwnershipClaimView(
+                  o.getId(),
+                  o.getUserId(),
+                  userName,
+                  o.getUnitId(),
+                  unitCode,
+                  o.getResidenceProofFilename(),
+                  o.getResidenceProofUploadedAt(),
+                  o.getCreatedAt());
+            });
+  }
+
+  /** Conteúdo do comprovante de um claim para streaming direto pelo backend (MinIO privado). */
+  @Transactional
+  public ProofContent getClaimProofContent(UUID ownershipId) {
+    UnitOwnership o =
+        ownershipRepo
+            .findById(ownershipId)
+            .orElseThrow(
+                () -> new UnitOwnershipException("CLAIM_NOT_FOUND", "Pedido não encontrado."));
+    if (o.getResidenceProofObjectKey() == null) {
+      throw new UnitOwnershipException("NO_PROOF", "Pedido sem comprovante.");
+    }
+    byte[] content = storage.getObject(props.getBucketProofs(), o.getResidenceProofObjectKey());
+    return new ProofContent(
+        content, o.getResidenceProofContentType(), o.getResidenceProofFilename());
+  }
+
+  public record ProofContent(byte[] content, String contentType, String filename) {}
 }

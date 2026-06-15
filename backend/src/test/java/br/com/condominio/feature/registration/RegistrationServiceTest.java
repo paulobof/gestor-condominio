@@ -12,6 +12,7 @@ import br.com.condominio.feature.registration.dto.RegisterGuestRequest;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitOwnershipService;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.*;
 import br.com.condominio.storage.FileStorage;
@@ -39,6 +40,7 @@ class RegistrationServiceTest {
   private PasswordEncoder encoder;
   private MinioProperties props;
   private PermissionGrantService permissionGrants;
+  private UnitOwnershipService ownershipService;
   private RegistrationService service;
 
   @BeforeEach
@@ -55,6 +57,7 @@ class RegistrationServiceTest {
     props = new MinioProperties();
     props.setBucketProofs("residence-proofs");
     permissionGrants = mock(PermissionGrantService.class);
+    ownershipService = mock(UnitOwnershipService.class);
     service =
         new RegistrationService(
             unitRepo,
@@ -67,7 +70,8 @@ class RegistrationServiceTest {
             magicBytes,
             encoder,
             props,
-            permissionGrants);
+            permissionGrants,
+            ownershipService);
   }
 
   @Test
@@ -117,6 +121,56 @@ class RegistrationServiceTest {
         .upload(eq("residence-proofs"), any(), eq((long) pdf.length), eq("application/pdf"));
     verify(emailRepo).save(any());
     verify(userRoleRepo).save(any());
+    verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void registerMaster_withFlagOn_opensOwnershipClaim() {
+    setField(service, "unitOwnershipEnabled", true);
+    when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com")).thenReturn(Optional.empty());
+    when(magicBytes.detect(any())).thenReturn("application/pdf");
+    when(magicBytes.isAcceptedForProof("application/pdf")).thenReturn(true);
+    Unit unit = newInstance(Unit.class);
+    UUID unitId = UUID.randomUUID();
+    setField(unit, "id", unitId);
+    setField(unit, "code", "702C");
+    when(unitRepo.findByCode("702C")).thenReturn(Optional.of(unit));
+    when(consentRepo.findByVersion("1.0.0")).thenReturn(Optional.of(newConsent("1.0.0")));
+    when(encoder.encode(any())).thenReturn("hashed");
+    Role role = newInstance(Role.class);
+    setField(role, "id", (short) 4);
+    when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(role));
+    when(storage.upload(eq("residence-proofs"), any(), anyLong(), eq("application/pdf")))
+        .thenReturn("object-key-uuid");
+    when(userRepo.save(any()))
+        .thenAnswer(
+            inv -> {
+              User u = inv.getArgument(0);
+              setField(u, "id", UUID.randomUUID());
+              return u;
+            });
+
+    var req =
+        new RegisterMasterRequest(
+            "Paulo Teste",
+            "Paulo",
+            "paulo@x.com",
+            "+5511999999999",
+            "MALE",
+            LocalDate.of(1990, 1, 1),
+            "702C",
+            "Senha@1234",
+            "1.0.0",
+            true);
+    var file =
+        new MockMultipartFile(
+            "proof", "comprovante.pdf", "application/pdf", new byte[] {0x25, 0x50, 0x44, 0x46});
+
+    service.registerMaster(req, file, "127.0.0.1");
+
+    verify(ownershipService)
+        .openClaim(
+            any(), eq(unitId), eq("object-key-uuid"), eq("comprovante.pdf"), eq("application/pdf"));
   }
 
   @Test

@@ -7,6 +7,7 @@ import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
 import br.com.condominio.feature.registration.dto.RegistrationStatusResponse;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
+import br.com.condominio.feature.unit.UnitOwnershipService;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.*;
 import br.com.condominio.storage.FileStorage;
@@ -40,6 +41,10 @@ public class RegistrationService {
   private final PasswordEncoder encoder;
   private final MinioProperties props;
   private final PermissionGrantService permissionGrants;
+  private final UnitOwnershipService ownershipService;
+
+  @org.springframework.beans.factory.annotation.Value("${app.feature.unitownership.enabled:false}")
+  private boolean unitOwnershipEnabled;
 
   @Transactional
   public RegistrationStatusResponse registerMaster(
@@ -105,6 +110,12 @@ public class RegistrationService {
     UserRole userRole =
         new UserRole(new UserRoleId(user.getId(), residentRole.getId()), Instant.now(), null);
     userRoleRepo.save(userRole);
+
+    // Sob a flag: a posse vira a fonte de verdade do master. Mantém as colunas do User (expand).
+    if (unitOwnershipEnabled) {
+      ownershipService.openClaim(
+          user.getId(), unit.getId(), objectKey, proof.getOriginalFilename(), detectedMime);
+    }
 
     log.info(
         "Master registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);

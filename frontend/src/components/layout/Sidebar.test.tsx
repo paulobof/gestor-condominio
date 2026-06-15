@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -109,5 +110,35 @@ describe('Sidebar', () => {
     const link = screen.getAllByRole('link', { name: /avisos/i })[0];
     expect(link.className).toContain('hover:bg-transparent');
     expect(link.className).not.toContain('hover:bg-accent');
+  });
+
+  it('grupo "Vagas" começa recolhido e expande mostrando os sub-itens', async () => {
+    renderSidebar();
+    // recolhido: o sub-item ainda não está no DOM
+    expect(screen.queryByRole('link', { name: 'Aluguel de Vagas' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Vagas' })[0]);
+
+    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
+      'href',
+      '/vagas/aluguel'
+    );
+  });
+
+  it('"Escolha de Vaga" aparece desabilitada com selo "Em breve" (não é link)', async () => {
+    renderSidebar();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Vagas' })[0]);
+
+    expect(screen.queryByRole('link', { name: /escolha de vaga/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Escolha de Vaga')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Em breve')[0]).toBeInTheDocument();
+  });
+
+  it('grupo "Vagas" abre automaticamente quando a rota ativa pertence a ele', () => {
+    renderSidebar([], '/vagas/aluguel');
+    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
+      'href',
+      '/vagas/aluguel'
+    );
   });
 });

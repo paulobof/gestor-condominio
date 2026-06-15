@@ -78,3 +78,5 @@ Limitações: `@SQLRestriction` **não filtra** queries nativas nem `JdbcTemplat
 ## Commits
 
 Conventional Commits. Squash merge. Hooks: `pre-commit` (lint-staged) + `commit-msg` (commitlint) + `pre-push` (testes back+front). Não usar `--no-verify`.
+
+**Proibido** adicionar co-autor nos commits — sem trailer `Co-Authored-By`, sem mencionar agente de IA como autor.

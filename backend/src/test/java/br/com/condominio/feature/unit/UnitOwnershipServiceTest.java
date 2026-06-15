@@ -8,10 +8,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.condominio.feature.role.PermissionCode;
 import br.com.condominio.feature.role.PermissionGrantService;
+import br.com.condominio.feature.role.Role;
+import br.com.condominio.feature.role.RoleName;
+import br.com.condominio.feature.role.RoleRepository;
+import br.com.condominio.feature.role.UserRole;
+import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
@@ -37,6 +42,8 @@ class UnitOwnershipServiceTest {
   @Mock private UnitRepository unitRepo;
   @Mock private UserRepository userRepo;
   @Mock private PermissionGrantService permissionGrants;
+  @Mock private RoleRepository roleRepo;
+  @Mock private UserRoleRepository userRoleRepo;
   @Mock private FileStorage storage;
   @Mock private MagicBytesValidator magicBytes;
   @Mock private MinioProperties props;
@@ -67,7 +74,7 @@ class UnitOwnershipServiceTest {
   }
 
   @Test
-  void openClaim_rejectsWhenUnitHasMaster() {
+  void openClaim_rejectsWhenUnitHasOwner() {
     when(unitRepo.findById(unitId)).thenReturn(Optional.of(mock(Unit.class)));
     when(ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)).thenReturn(true);
 
@@ -75,7 +82,7 @@ class UnitOwnershipServiceTest {
             () -> service.openClaim(userId, unitId, "proofs/k1", "c.pdf", "application/pdf"))
         .isInstanceOf(UnitOwnershipException.class)
         .satisfies(
-            e -> assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("UNIT_HAS_MASTER"));
+            e -> assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("UNIT_HAS_OWNER"));
     verify(ownershipRepo, never()).save(any());
   }
 
@@ -107,30 +114,35 @@ class UnitOwnershipServiceTest {
   }
 
   @Test
-  void approve_firstOwnership_setsUserActive_assignsMaster_grantsResidentManage() {
+  void approve_grantsProprietarioRole_andActivates_withoutMastership() {
     UUID ownershipId = UUID.randomUUID();
-    UUID approverId = UUID.randomUUID();
-    UnitOwnership o =
-        UnitOwnership.pending(userId, unitId, "proofs/k1", "c.pdf", "application/pdf");
+    UUID approver = UUID.randomUUID();
+
+    UnitOwnership claim = UnitOwnership.pending(userId, unitId, "key", "f.pdf", "application/pdf");
     when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
-        .thenReturn(Optional.of(o));
-    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of());
-    Unit unit = mock(Unit.class);
-    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+        .thenReturn(Optional.of(claim));
+    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of()); // 1ª posse
+
+    Role proprietario = mock(Role.class);
+    when(proprietario.getId()).thenReturn((short) 9);
+    when(roleRepo.findByName(RoleName.PROPRIETARIO)).thenReturn(Optional.of(proprietario));
+    when(userRoleRepo.existsById(any())).thenReturn(false);
+
     User user = mock(User.class);
     when(user.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
     when(userRepo.findById(userId)).thenReturn(Optional.of(user));
 
-    service.approve(ownershipId, approverId);
+    service.approve(ownershipId, approver);
 
-    assertThat(o.getStatus()).isEqualTo(OwnershipStatus.APPROVED);
-    verify(unit).assignMaster(userId);
-    verify(user).approveAsMaster(approverId);
-    verify(permissionGrants).grantIfAbsent(userId, PermissionCode.RESIDENT_MANAGE, approverId);
+    assertThat(claim.getStatus()).isEqualTo(OwnershipStatus.APPROVED);
+    verify(userRoleRepo).save(any(UserRole.class)); // papel concedido
+    verify(user).approveAsOwner(approver); // ativa sem mastership
+    verify(unitRepo, never()).findById(unitId); // NÃO resolve unidade p/ assignMaster
+    verifyNoInteractions(permissionGrants); // NÃO concede RESIDENT_MANAGE
   }
 
   @Test
-  void approve_secondOwnership_doesNotReactivateUser_butStillGrants() {
+  void approve_secondOwnership_grantsRole_doesNotReactivateUser() {
     UUID ownershipId = UUID.randomUUID();
     UUID approverId = UUID.randomUUID();
     UnitOwnership o =
@@ -138,15 +150,17 @@ class UnitOwnershipServiceTest {
     when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
         .thenReturn(Optional.of(o));
     when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of(UUID.randomUUID()));
-    Unit unit = mock(Unit.class);
-    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
-    User user = mock(User.class);
-    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    Role proprietario = mock(Role.class);
+    when(proprietario.getId()).thenReturn((short) 9);
+    when(roleRepo.findByName(RoleName.PROPRIETARIO)).thenReturn(Optional.of(proprietario));
+    when(userRoleRepo.existsById(any())).thenReturn(false);
 
     service.approve(ownershipId, approverId);
 
-    verify(user, never()).approveAsMaster(any());
-    verify(permissionGrants).grantIfAbsent(userId, PermissionCode.RESIDENT_MANAGE, approverId);
+    verify(userRoleRepo).save(any(UserRole.class));
+    verify(userRepo, never()).findById(any()); // não precisa ativar usuário
+    verifyNoInteractions(permissionGrants);
   }
 
   @Test

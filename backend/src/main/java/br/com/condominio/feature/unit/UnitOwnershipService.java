@@ -1,7 +1,10 @@
 package br.com.condominio.feature.unit;
 
-import br.com.condominio.feature.role.PermissionCode;
-import br.com.condominio.feature.role.PermissionGrantService;
+import br.com.condominio.feature.role.RoleName;
+import br.com.condominio.feature.role.RoleRepository;
+import br.com.condominio.feature.role.UserRole;
+import br.com.condominio.feature.role.UserRoleId;
+import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.dto.OwnershipClaimView;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
@@ -10,6 +13,7 @@ import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +36,8 @@ public class UnitOwnershipService {
   private final UnitOwnershipRepository ownershipRepo;
   private final UnitRepository unitRepo;
   private final UserRepository userRepo;
-  private final PermissionGrantService permissionGrants;
+  private final RoleRepository roleRepo;
+  private final UserRoleRepository userRoleRepo;
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
@@ -49,8 +54,7 @@ public class UnitOwnershipService {
         .orElseThrow(() -> new UnitOwnershipException("UNIT_NOT_FOUND", "Unidade não encontrada."));
 
     if (ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)) {
-      throw new UnitOwnershipException(
-          "UNIT_HAS_MASTER", "Esta unidade já possui um master ativo.");
+      throw new UnitOwnershipException("UNIT_HAS_OWNER", "Esta unidade já possui um proprietário.");
     }
 
     if (ownershipRepo.existsByUserIdAndUnitIdAndStatusIn(
@@ -99,9 +103,9 @@ public class UnitOwnershipService {
   }
 
   /**
-   * Aprova uma posse PENDING: marca APPROVED, atribui master à unidade e concede {@code
-   * RESIDENT_MANAGE} (idempotente). Se for a 1ª posse aprovada do usuário e ele ainda estiver
-   * PENDING_APPROVAL, ativa a conta.
+   * Aprova uma posse PENDING: marca APPROVED, concede o papel PROPRIETARIO (idempotente) e ativa a
+   * conta se for a 1ª posse e o usuário ainda estiver PENDING_APPROVAL. NÃO atribui master à
+   * unidade nem concede RESIDENT_MANAGE — posse != mastership.
    */
   @Transactional
   public void approve(UUID ownershipId, UUID approverId) {
@@ -114,24 +118,31 @@ public class UnitOwnershipService {
     boolean firstApproved = ownershipRepo.findApprovedUnitIdsByUser(o.getUserId()).isEmpty();
     o.approve(approverId);
 
-    Unit unit =
-        unitRepo
-            .findById(o.getUnitId())
-            .orElseThrow(
-                () -> new UnitOwnershipException("UNIT_NOT_FOUND", "Unidade não encontrada."));
-    unit.assignMaster(o.getUserId());
+    // Posse != mastership: concede o papel PROPRIETARIO (read-only); NÃO atribui master
+    // nem RESIDENT_MANAGE.
+    grantProprietarioRole(o.getUserId(), approverId);
 
-    User user =
-        userRepo
-            .findById(o.getUserId())
-            .orElseThrow(
-                () -> new UnitOwnershipException("USER_NOT_FOUND", "Usuário não encontrado."));
-    if (firstApproved && user.getStatus() == UserStatus.PENDING_APPROVAL) {
-      user.approveAsMaster(approverId);
+    if (firstApproved) {
+      userRepo
+          .findById(o.getUserId())
+          .filter(u -> u.getStatus() == UserStatus.PENDING_APPROVAL)
+          .ifPresent(u -> u.approveAsOwner(approverId));
     }
 
-    permissionGrants.grantIfAbsent(o.getUserId(), PermissionCode.RESIDENT_MANAGE, approverId);
     log.info("Ownership approved: ownershipId={} by approverId={}", ownershipId, approverId);
+  }
+
+  /** Concede o papel PROPRIETARIO ao usuário, idempotente. */
+  private void grantProprietarioRole(UUID userId, UUID approverId) {
+    Short roleId =
+        roleRepo
+            .findByName(RoleName.PROPRIETARIO)
+            .orElseThrow(() -> new IllegalStateException("PROPRIETARIO role missing"))
+            .getId();
+    UserRoleId id = new UserRoleId(userId, roleId);
+    if (!userRoleRepo.existsById(id)) {
+      userRoleRepo.save(new UserRole(id, Instant.now(), approverId));
+    }
   }
 
   /** Rejeita uma posse PENDING, registra o motivo e purga o comprovante do storage. */

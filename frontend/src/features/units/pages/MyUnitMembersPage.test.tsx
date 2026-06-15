@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/unitMembersApi', () => ({
   listMembers: vi.fn(),
+  getMemberDetail: vi.fn(),
   createMember: vi.fn(),
   updateMember: vi.fn(),
   deleteMember: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 import { MyUnitMembersPage } from './MyUnitMembersPage';
 import {
   listMembers,
+  getMemberDetail,
   createMember,
   updateMember,
   deleteMember,
@@ -23,6 +25,7 @@ import { useAuth } from '@/features/auth/useAuth';
 import { toast } from 'sonner';
 
 const listMock = vi.mocked(listMembers);
+const detailMock = vi.mocked(getMemberDetail);
 const createMock = vi.mocked(createMember);
 const updateMock = vi.mocked(updateMember);
 const deleteMock = vi.mocked(deleteMember);
@@ -45,6 +48,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   setAuth(['RESIDENT_MANAGE']);
   listMock.mockResolvedValue([MEMBER]);
+  detailMock.mockResolvedValue({
+    id: 'm1',
+    fullName: 'Bia Souza',
+    greetingName: 'Bia',
+    phone: '+5511988887777',
+    email: 'bia@x.com',
+    gender: 'FEMALE',
+    birthDate: '1990-01-02',
+  });
   createMock.mockResolvedValue({ id: 'm9', fullName: 'Novo Morador', password: 'X1y!aaaa' });
   updateMock.mockResolvedValue(undefined);
   deleteMock.mockResolvedValue(undefined);
@@ -145,6 +157,26 @@ describe('MyUnitMembersPage — editar', () => {
     await waitFor(() => expect(updateMock).toHaveBeenCalled());
     expect(updateMock.mock.calls[0][0]).toBe('m1');
     expect(updateMock.mock.calls[0][1].email).toBe('bia@x.com');
+  });
+
+  it('"Dados" carrega gênero e data de nascimento salvos e os preserva ao salvar', async () => {
+    const user = userEvent.setup();
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Bia Souza');
+    await user.click(screen.getByRole('button', { name: /^dados$/i }));
+
+    // Busca o detalhe (gênero/nascimento não vêm na lista).
+    await waitFor(() => expect(detailMock).toHaveBeenCalledWith('m1'));
+
+    // Campos pré-preenchidos com o que estava salvo.
+    expect(await screen.findByLabelText(/gênero/i)).toHaveValue('FEMALE');
+    expect(screen.getByLabelText(/data de nascimento/i)).toHaveValue('1990-01-02');
+
+    // Salvar sem mexer nesses campos não pode apagá-los.
+    await user.click(screen.getByRole('button', { name: /^salvar$/i }));
+    await waitFor(() => expect(updateMock).toHaveBeenCalled());
+    expect(updateMock.mock.calls[0][1].gender).toBe('FEMALE');
+    expect(updateMock.mock.calls[0][1].birthDate).toBe('1990-01-02');
   });
 
   it('cancelar a edição volta para a lista sem salvar', async () => {

@@ -157,11 +157,6 @@ public class RegistrationService {
       throw new RegistrationException("PROOF_UPLOAD_FAILED", "Falha ao enviar comprovante.");
     }
 
-    Role ownerRole =
-        roleRepo
-            .findByName(RoleName.PROPRIETARIO)
-            .orElseThrow(() -> new IllegalStateException("PROPRIETARIO role missing"));
-
     User user = newInstance(User.class);
     setOwnerFields(user, req, consent, clientIp);
     user = userRepo.save(user);
@@ -170,10 +165,8 @@ public class RegistrationService {
     setEmail(userEmail, user.getId(), req.email());
     emailRepo.save(userEmail);
 
-    userRoleRepo.save(
-        new UserRole(new UserRoleId(user.getId(), ownerRole.getId()), Instant.now(), null));
-
     // Abre o pedido de posse PENDING com o comprovante de propriedade.
+    // O papel PROPRIETARIO é concedido apenas na aprovação (UnitOwnershipService.approve).
     ownershipService.openClaim(
         user.getId(), unit.getId(), objectKey, proof.getOriginalFilename(), detectedMime);
 

@@ -225,6 +225,44 @@ class UnitOwnershipServiceTest {
   }
 
   @Test
+  void reject_pendingOwner_alsoRejectsUserAccount() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership o =
+        UnitOwnership.pending(userId, unitId, "proofs/k1", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(o));
+    when(props.getBucketProofs()).thenReturn("residence-proofs");
+
+    User user = mock(User.class);
+    when(user.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
+    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    service.reject(ownershipId, approverId, "motivo");
+
+    verify(user).reject(approverId, "motivo");
+  }
+
+  @Test
+  void reject_activeUserExtraClaim_doesNotRejectUserAccount() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership o =
+        UnitOwnership.pending(userId, unitId, "proofs/k2", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(o));
+    when(props.getBucketProofs()).thenReturn("residence-proofs");
+
+    User user = mock(User.class);
+    when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    service.reject(ownershipId, approverId, "comprovante ilegível");
+
+    verify(user, never()).reject(any(), any());
+  }
+
+  @Test
   void approve_rejectsWhenClaimNotFound() {
     UUID ownershipId = UUID.randomUUID();
     when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))

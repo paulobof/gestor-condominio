@@ -154,6 +154,12 @@ public class UnitOwnershipService {
             .orElseThrow(
                 () -> new UnitOwnershipException("CLAIM_NOT_FOUND", "Pedido não encontrado."));
     o.reject(approverId, reason);
+    // Se o usuário ainda está PENDING_APPROVAL (conta criada só para este pedido),
+    // rejeita a conta também — evita conta zumbi sem posse aprovada.
+    userRepo
+        .findById(o.getUserId())
+        .filter(u -> u.getStatus() == UserStatus.PENDING_APPROVAL)
+        .ifPresent(u -> u.reject(approverId, reason));
     if (o.getResidenceProofObjectKey() != null) {
       try {
         storage.delete(props.getBucketProofs(), o.getResidenceProofObjectKey());

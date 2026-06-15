@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   BookOpen,
   Info,
+  FileText,
   UserCog,
   Users,
   SquareParking,
@@ -52,6 +53,7 @@ const ENTRIES: NavEntry[] = [
   { kind: 'item', to: '/avisos', label: 'Avisos', icon: Megaphone, brand: 'red' },
   { kind: 'item', to: '/informacoes', label: 'Informações', icon: Info, brand: 'blue' },
   { kind: 'item', to: '/faq', label: 'Perguntas Frequentes', icon: BookOpen, brand: 'blue' },
+  { kind: 'item', to: '/documentos', label: 'Documentos', icon: FileText, brand: 'blue' },
   { kind: 'item', to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
   { kind: 'item', to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
   {

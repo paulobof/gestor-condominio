@@ -19,7 +19,10 @@ public class MinioBootstrap {
     return args -> {
       for (String bucket :
           new String[] {
-            props.getBucketProofs(), props.getBucketClassifieds(), props.getBucketRecommendations()
+            props.getBucketProofs(),
+            props.getBucketClassifieds(),
+            props.getBucketRecommendations(),
+            props.getBucketDocuments()
           }) {
         try {
           storage.ensureBucketExists(bucket);

@@ -14,6 +14,8 @@ public class MagicBytesValidator {
 
   static final Set<String> ALLOWED_PHOTO_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
+  static final Set<String> ALLOWED_DOCUMENT_TYPES = Set.of("application/pdf");
+
   private final Tika tika = new Tika();
 
   public String detect(InputStream input) {
@@ -30,5 +32,9 @@ public class MagicBytesValidator {
 
   public boolean isAcceptedForPhoto(String contentType) {
     return contentType != null && ALLOWED_PHOTO_TYPES.contains(contentType);
+  }
+
+  public boolean isAcceptedForDocument(String contentType) {
+    return contentType != null && ALLOWED_DOCUMENT_TYPES.contains(contentType);
   }
 }

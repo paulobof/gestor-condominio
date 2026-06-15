@@ -3,6 +3,7 @@ package br.com.condominio.shared.exception;
 import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
+import br.com.condominio.feature.document.DocumentException;
 import br.com.condominio.feature.faq.FaqException;
 import br.com.condominio.feature.info.InfoException;
 import br.com.condominio.feature.parkingrental.ParkingRentalException;
@@ -68,6 +69,20 @@ public class GlobalExceptionHandler {
           case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
           default -> HttpStatus.BAD_REQUEST;
         };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(DocumentException.class)
+  public ResponseEntity<ApiError> handleDocument(DocumentException ex) {
+    HttpStatus status =
+        "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
     return ResponseEntity.status(status)
         .body(
             ApiError.of(

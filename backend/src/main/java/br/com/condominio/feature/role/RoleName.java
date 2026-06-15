@@ -7,5 +7,6 @@ public enum RoleName {
   RESIDENT,
   DOORMAN,
   MURAL_EDITOR,
-  GUEST
+  GUEST,
+  DOCUMENT_EDITOR
 }

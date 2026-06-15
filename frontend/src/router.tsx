@@ -26,6 +26,7 @@ import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
 import { ParkingRentalsListPage } from '@/features/parking-rentals/pages/ParkingRentalsListPage';
 import { ParkingRentalDetailPage } from '@/features/parking-rentals/pages/ParkingRentalDetailPage';
 import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingRentalFormPage';
+import { DocumentsPage } from '@/features/documents/pages/DocumentsPage';
 import App from './App';
 
 const router = createBrowserRouter([
@@ -67,6 +68,7 @@ const router = createBrowserRouter([
       { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
       { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },
       { path: '/vagas/aluguel/:id/editar', element: <ParkingRentalFormPage /> },
+      { path: '/documentos', element: <DocumentsPage /> },
     ],
   },
 ]);

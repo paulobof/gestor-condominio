@@ -134,8 +134,6 @@ app:
       enabled: ${APP_FEATURE_GENERALINFO_ENABLED:false}
     parkingrental:
       enabled: ${APP_FEATURE_PARKINGRENTAL_ENABLED:false}
-    contacts:
-      enabled: ${APP_FEATURE_CONTACTS_ENABLED:false}
     unitownership:
       enabled: ${APP_FEATURE_UNITOWNERSHIP_ENABLED:false}
   recommendation:

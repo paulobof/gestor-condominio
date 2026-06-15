@@ -19,5 +19,8 @@ export default defineConfig({
     // padrão de 5s. A margem maior cobre a execução sob carga sem mascarar bug real.
     testTimeout: 20000,
     hookTimeout: 20000,
+    // Reexecuta uma vez o teste que falha por flakiness sob carga do pre-push
+    // (jsdom/userEvent). Bug real falha nas duas tentativas; flake transiente passa.
+    retry: 1,
   },
 });

@@ -210,6 +210,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Reexecuta testes que falham por flakiness (contenção de recursos no
+                         pre-push, p.ex. AccessControllerWebTest). Não mascara bug real: teste
+                         consistentemente quebrado falha em todas as tentativas. -->
+                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

@@ -1,4 +1,19 @@
 #!/usr/bin/env sh
+# Pula a suíte quando o push contém apenas deleções de refs (nada novo a validar) —
+# evita rodar back+front+e2e só para apagar uma branch. O git envia em stdin uma
+# linha por ref: "<local_ref> <local_sha> <remote_ref> <remote_sha>"; numa deleção
+# o local_sha é só zeros.
+only_deletes=1
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ -z "$local_sha" ] && continue
+  case "$local_sha" in
+    *[!0]*) only_deletes=0 ;;
+  esac
+done
+if [ "$only_deletes" = "1" ]; then
+  echo "[pre-push] apenas deleções de refs — pulando testes."
+  exit 0
+fi
 echo "[pre-push] testes backend + frontend..."
 npm run test:backend && npm run test:frontend || exit 1
 echo "[pre-push] build de produção do frontend (tsc + vite)..."

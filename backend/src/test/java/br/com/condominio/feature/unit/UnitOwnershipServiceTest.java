@@ -9,7 +9,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.role.PermissionCode;
+import br.com.condominio.feature.role.PermissionGrantService;
+import br.com.condominio.feature.user.User;
+import br.com.condominio.feature.user.UserRepository;
+import br.com.condominio.feature.user.UserStatus;
+import br.com.condominio.storage.FileStorage;
+import br.com.condominio.storage.MinioProperties;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +32,10 @@ class UnitOwnershipServiceTest {
 
   @Mock private UnitOwnershipRepository ownershipRepo;
   @Mock private UnitRepository unitRepo;
+  @Mock private UserRepository userRepo;
+  @Mock private PermissionGrantService permissionGrants;
+  @Mock private FileStorage storage;
+  @Mock private MinioProperties props;
   @InjectMocks private UnitOwnershipService service;
 
   private final UUID userId = UUID.randomUUID();
@@ -88,5 +100,76 @@ class UnitOwnershipServiceTest {
         .isInstanceOf(UnitOwnershipException.class)
         .satisfies(
             e -> assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("UNIT_NOT_FOUND"));
+  }
+
+  @Test
+  void approve_firstOwnership_setsUserActive_assignsMaster_grantsResidentManage() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership o =
+        UnitOwnership.pending(userId, unitId, "proofs/k1", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(o));
+    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of());
+    Unit unit = mock(Unit.class);
+    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+    User user = mock(User.class);
+    when(user.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
+    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    service.approve(ownershipId, approverId);
+
+    assertThat(o.getStatus()).isEqualTo(OwnershipStatus.APPROVED);
+    verify(unit).assignMaster(userId);
+    verify(user).approveAsMaster(approverId);
+    verify(permissionGrants).grantIfAbsent(userId, PermissionCode.RESIDENT_MANAGE, approverId);
+  }
+
+  @Test
+  void approve_secondOwnership_doesNotReactivateUser_butStillGrants() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership o =
+        UnitOwnership.pending(userId, unitId, "proofs/k2", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(o));
+    when(ownershipRepo.findApprovedUnitIdsByUser(userId)).thenReturn(List.of(UUID.randomUUID()));
+    Unit unit = mock(Unit.class);
+    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+    User user = mock(User.class);
+    when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+
+    service.approve(ownershipId, approverId);
+
+    verify(user, never()).approveAsMaster(any());
+    verify(permissionGrants).grantIfAbsent(userId, PermissionCode.RESIDENT_MANAGE, approverId);
+  }
+
+  @Test
+  void reject_purgesProofFromStorage() {
+    UUID ownershipId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+    UnitOwnership o =
+        UnitOwnership.pending(userId, unitId, "proofs/k1", "c.pdf", "application/pdf");
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.of(o));
+    when(props.getBucketProofs()).thenReturn("residence-proofs");
+
+    service.reject(ownershipId, approverId, "comprovante ilegível");
+
+    assertThat(o.getStatus()).isEqualTo(OwnershipStatus.REJECTED);
+    verify(storage).delete("residence-proofs", "proofs/k1");
+  }
+
+  @Test
+  void approve_rejectsWhenClaimNotFound() {
+    UUID ownershipId = UUID.randomUUID();
+    when(ownershipRepo.findByIdAndStatus(ownershipId, OwnershipStatus.PENDING))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.approve(ownershipId, UUID.randomUUID()))
+        .isInstanceOf(UnitOwnershipException.class)
+        .satisfies(
+            e -> assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("CLAIM_NOT_FOUND"));
   }
 }

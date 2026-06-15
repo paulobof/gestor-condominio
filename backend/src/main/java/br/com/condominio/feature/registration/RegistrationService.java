@@ -39,8 +39,7 @@ public class RegistrationService {
   private final MagicBytesValidator magicBytes;
   private final PasswordEncoder encoder;
   private final MinioProperties props;
-  private final PermissionRepository permissionRepo;
-  private final UserPermissionGrantRepository grantRepo;
+  private final PermissionGrantService permissionGrants;
 
   @Transactional
   public RegistrationStatusResponse registerMaster(
@@ -265,16 +264,7 @@ public class RegistrationService {
     Unit unit = unitRepo.findById(user.getUnitId()).orElseThrow();
     unit.assignMaster(user.getId());
 
-    Permission perm =
-        permissionRepo
-            .findByCode(PermissionCode.RESIDENT_MANAGE)
-            .orElseThrow(() -> new IllegalStateException("RESIDENT_MANAGE not found"));
-    boolean alreadyGranted =
-        grantRepo.findByUserIdAndRevokedAtIsNull(user.getId()).stream()
-            .anyMatch(g -> g.getPermissionId().equals(perm.getId()));
-    if (!alreadyGranted) {
-      grantRepo.save(UserPermissionGrant.grant(user.getId(), perm.getId(), approverId));
-    }
+    permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, approverId);
 
     log.info("Master approved userId={} by approverId={}", userId, approverId);
   }

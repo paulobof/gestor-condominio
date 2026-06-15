@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/unitMembersApi', () => ({
   listMembers: vi.fn(),
+  listMyUnits: vi.fn(),
   getMemberDetail: vi.fn(),
   createMember: vi.fn(),
   updateMember: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 import { MyUnitMembersPage } from './MyUnitMembersPage';
 import {
   listMembers,
+  listMyUnits,
   getMemberDetail,
   createMember,
   updateMember,
@@ -25,6 +27,7 @@ import { useAuth } from '@/features/auth/useAuth';
 import { toast } from 'sonner';
 
 const listMock = vi.mocked(listMembers);
+const unitsMock = vi.mocked(listMyUnits);
 const detailMock = vi.mocked(getMemberDetail);
 const createMock = vi.mocked(createMember);
 const updateMock = vi.mocked(updateMember);
@@ -48,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   setAuth(['RESIDENT_MANAGE']);
   listMock.mockResolvedValue([MEMBER]);
+  unitsMock.mockResolvedValue([]);
   detailMock.mockResolvedValue({
     id: 'm1',
     fullName: 'Bia Souza',
@@ -219,5 +223,41 @@ describe('MyUnitMembersPage — excluir e gating', () => {
     expect(screen.queryByRole('button', { name: /adicionar morador/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^dados$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /excluir bia souza/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('MyUnitMembersPage — multi-unidade', () => {
+  it('com mais de uma unidade, o cadastro exige seleção e envia unitId', async () => {
+    const user = userEvent.setup();
+    unitsMock.mockResolvedValue([
+      { unitId: 'uA', code: '702A' },
+      { unitId: 'uB', code: '702B' },
+    ]);
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Bia Souza');
+    await user.click(screen.getByRole('button', { name: /adicionar morador/i }));
+
+    // Botão começa desabilitado até escolher a unidade.
+    const submit = screen.getByRole('button', { name: /^cadastrar$/i });
+    expect(submit).toBeDisabled();
+
+    await user.selectOptions(screen.getByLabelText('Unidade'), 'uB');
+    await user.type(screen.getByLabelText('Nome'), 'Novo Morador');
+    await user.type(screen.getByLabelText('Como chamar'), 'Novo');
+    await user.type(screen.getByLabelText('E-mail'), 'novo@x.com');
+    await user.type(screen.getByLabelText('Telefone'), '11977776666');
+    await user.click(submit);
+
+    await waitFor(() => expect(createMock).toHaveBeenCalled());
+    expect(createMock.mock.calls[0][0].unitId).toBe('uB');
+  });
+
+  it('com uma única unidade, não mostra o seletor de unidade', async () => {
+    unitsMock.mockResolvedValue([{ unitId: 'uA', code: '702A' }]);
+    const user = userEvent.setup();
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Bia Souza');
+    await user.click(screen.getByRole('button', { name: /adicionar morador/i }));
+    expect(screen.queryByLabelText('Unidade')).not.toBeInTheDocument();
   });
 });

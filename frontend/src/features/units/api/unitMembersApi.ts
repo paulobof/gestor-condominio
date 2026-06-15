@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 
-/** Espelha UnitMemberResponse (id, fullName, greetingName, email, phone, status). */
+/** Espelha UnitMemberResponse (inclui unitId/unitCode para multi-unidade). */
 export interface UnitMember {
   id: string;
   fullName: string;
@@ -8,6 +8,14 @@ export interface UnitMember {
   email: string;
   phone: string;
   status: string;
+  unitId?: string | null;
+  unitCode?: string | null;
+}
+
+/** Espelha MyUnitView: unidade sob gestão do usuário (seletor de unidade). */
+export interface MyUnit {
+  unitId: string;
+  code: string;
 }
 
 /** Espelha UnitMemberDetail (inclui gênero e nascimento, ausentes na lista). */
@@ -21,7 +29,7 @@ export interface MemberDetail {
   birthDate: string | null;
 }
 
-/** Espelha CreateUnitMemberRequest (sem password, sem unitId). */
+/** Espelha CreateUnitMemberRequest. unitId opcional: usado quando o master tem >1 unidade. */
 export interface CreateMemberPayload {
   fullName: string;
   greetingName: string;
@@ -30,6 +38,7 @@ export interface CreateMemberPayload {
   gender: string | null;
   birthDate: string | null;
   whatsappOptIn: boolean;
+  unitId?: string | null;
 }
 
 /** Espelha CreatedUnitMemberResponse: senha provisória mostrada uma única vez. */
@@ -52,6 +61,12 @@ export interface UpdateMemberPayload {
 export async function listMembers() {
   const r = await api.get('/units/me/members');
   return r.data as UnitMember[];
+}
+
+/** Unidades sob gestão do usuário (para o seletor quando há mais de uma). */
+export async function listMyUnits() {
+  const r = await api.get('/units/me');
+  return r.data as MyUnit[];
 }
 
 export async function getMemberDetail(id: string) {

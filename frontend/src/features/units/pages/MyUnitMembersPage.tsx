@@ -6,11 +6,13 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { useAuth } from '@/features/auth/useAuth';
 import {
   listMembers,
+  listMyUnits,
   getMemberDetail,
   createMember,
   updateMember,
   deleteMember,
   type UnitMember,
+  type MyUnit,
 } from '../api/unitMembersApi';
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -31,10 +33,13 @@ export function MyUnitMembersPage() {
   const canManage = user?.authorities.includes('RESIDENT_MANAGE') ?? false;
 
   const [rows, setRows] = useState<UnitMember[]>([]);
+  const [units, setUnits] = useState<MyUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<UnitMember | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const multiUnit = units.length > 1;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +55,14 @@ export function MyUnitMembersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    listMyUnits()
+      .then(setUnits)
+      .catch(() => {
+        /* sem unidades extras: segue single-unit */
+      });
+  }, []);
 
   const onDelete = async (id: string) => {
     try {
@@ -97,7 +110,14 @@ export function MyUnitMembersPage() {
                 className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2"
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
-                  <span className="font-medium">{m.fullName}</span>
+                  <span className="font-medium">
+                    {m.fullName}
+                    {multiUnit && m.unitCode && (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        {m.unitCode}
+                      </span>
+                    )}
+                  </span>
                   <span className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
                     <span>{m.email}</span>
                     <span>{m.phone}</span>
@@ -153,6 +173,7 @@ export function MyUnitMembersPage() {
 
       {adding && (
         <AddMemberForm
+          units={units}
           onDone={() => {
             setAdding(false);
             void load();
@@ -175,13 +196,23 @@ export function MyUnitMembersPage() {
   );
 }
 
-function AddMemberForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+function AddMemberForm({
+  units,
+  onDone,
+  onCancel,
+}: {
+  units: MyUnit[];
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const multiUnit = units.length > 1;
   const [fullName, setFullName] = useState('');
   const [greetingName, setGreetingName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [unitId, setUnitId] = useState('');
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
@@ -198,6 +229,7 @@ function AddMemberForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
         gender: gender || null,
         birthDate: birthDate || null,
         whatsappOptIn,
+        unitId: multiUnit ? unitId || null : null,
       });
       setCreatedPassword(out.password);
       toast.success('Morador cadastrado.');
@@ -234,6 +266,26 @@ function AddMemberForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={(e) => void submit(e)}>
+          {multiUnit && (
+            <div className="space-y-1">
+              <label htmlFor="nm-unit" className="text-sm font-medium">
+                Unidade
+              </label>
+              <select
+                id="nm-unit"
+                value={unitId}
+                onChange={(e) => setUnitId(e.target.value)}
+                className="min-h-[44px] w-full rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="">Selecione…</option>
+                {units.map((u) => (
+                  <option key={u.unitId} value={u.unitId}>
+                    {u.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <Field id="nm-name" label="Nome" value={fullName} onChange={setFullName} required />
           <Field
             id="nm-greeting"
@@ -295,7 +347,11 @@ function AddMemberForm({ onDone, onCancel }: { onDone: () => void; onCancel: () 
             <span>Avisar por WhatsApp</span>
           </label>
           <div className="flex gap-2">
-            <Button type="submit" className="min-h-[44px]" disabled={saving}>
+            <Button
+              type="submit"
+              className="min-h-[44px]"
+              disabled={saving || (multiUnit && !unitId)}
+            >
               Cadastrar
             </Button>
             <Button type="button" variant="outline" className="min-h-[44px]" onClick={onCancel}>

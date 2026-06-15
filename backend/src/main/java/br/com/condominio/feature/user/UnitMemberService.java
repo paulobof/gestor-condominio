@@ -1,6 +1,8 @@
 package br.com.condominio.feature.user;
 
 import br.com.condominio.feature.access.AccessException;
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -47,6 +49,7 @@ public class UnitMemberService {
   private final ApplicationEventPublisher eventPublisher;
   private final UnitOwnershipRepository ownershipRepo;
   private final UnitRepository unitRepo;
+  private final ActivityNotifier activityNotifier;
 
   @Value("${app.feature.unitownership.enabled:false}")
   private boolean unitOwnershipEnabled;
@@ -120,6 +123,7 @@ public class UnitMemberService {
         new UserRole(
             new UserRoleId(member.getId(), residentRole.getId()), Instant.now(), masterUserId));
 
+    activityNotifier.notify(ActivityAction.CREATED, "Morador", unitCode(unitId), masterUserId);
     log.info("Master {} criou morador {}", masterUserId, member.getId());
     return new CreatedUnitMemberResponse(
         member.getId(), member.getFullName(), provisioned.provisionalPassword());
@@ -145,6 +149,7 @@ public class UnitMemberService {
         unitId,
         req.gender(),
         req.birthDate());
+    activityNotifier.notify(ActivityAction.UPDATED, "Morador", unitCode(unitId), masterUserId);
     log.info("Master {} atualizou morador {}", masterUserId, memberId);
 
     if (emailChanged) {
@@ -156,6 +161,8 @@ public class UnitMemberService {
   @Transactional
   public void deleteMember(UUID masterUserId, UUID memberId) {
     User member = requireMemberInMyUnits(memberId, myUnitIds(requireMaster(masterUserId)));
+    activityNotifier.notify(
+        ActivityAction.DELETED, "Morador", unitCode(member.getUnitId()), masterUserId);
     provisioning.softDelete(member, memberId);
     log.info("Master {} excluiu (soft) morador {}", masterUserId, memberId);
   }
@@ -232,6 +239,10 @@ public class UnitMemberService {
   private Map<UUID, String> unitCodes(List<UUID> unitIds) {
     return unitRepo.findAllById(unitIds).stream()
         .collect(Collectors.toMap(Unit::getId, Unit::getCode));
+  }
+
+  private String unitCode(UUID unitId) {
+    return unitId == null ? null : unitRepo.findById(unitId).map(Unit::getCode).orElse(null);
   }
 
   private UnitMemberResponse toResponse(User u, String unitCode) {

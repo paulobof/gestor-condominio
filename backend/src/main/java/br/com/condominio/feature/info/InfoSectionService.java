@@ -1,5 +1,7 @@
 package br.com.condominio.feature.info;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.info.dto.CreateInfoSectionRequest;
 import br.com.condominio.feature.info.dto.InfoSectionView;
 import br.com.condominio.feature.info.dto.ReorderInfoRequest;
@@ -21,6 +23,7 @@ public class InfoSectionService {
 
   private final InfoSectionRepository repo;
   private final HtmlSanitizer sanitizer;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional(readOnly = true)
   public List<InfoSectionView> list() {
@@ -32,13 +35,16 @@ public class InfoSectionService {
     Integer max = repo.findMaxPosition();
     int next = (max == null ? 0 : max + 1);
     InfoSection s = InfoSection.create(b.title(), sanitizer.sanitize(b.body()), next);
-    return InfoSectionView.of(repo.save(s));
+    repo.save(s);
+    activityNotifier.notify(ActivityAction.CREATED, "Informação", b.title(), null);
+    return InfoSectionView.of(s);
   }
 
   @Transactional
   public InfoSectionView update(UUID id, UpdateInfoSectionRequest b) {
     InfoSection s = find(id);
     s.edit(b.title(), sanitizer.sanitize(b.body()));
+    activityNotifier.notify(ActivityAction.UPDATED, "Informação", b.title(), null);
     return InfoSectionView.of(s);
   }
 
@@ -51,7 +57,9 @@ public class InfoSectionService {
 
   @Transactional
   public void delete(UUID id) {
-    repo.delete(find(id));
+    InfoSection s = find(id);
+    activityNotifier.notify(ActivityAction.DELETED, "Informação", s.getTitle(), null);
+    repo.delete(s);
   }
 
   private InfoSection find(UUID id) {

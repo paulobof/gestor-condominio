@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.announcement.dto.AnnouncementView;
 import br.com.condominio.feature.announcement.dto.CreateAnnouncementRequest;
 import br.com.condominio.feature.announcement.dto.ReorderAnnouncementsRequest;
@@ -23,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AnnouncementServiceTest {
 
   private AnnouncementRepository repo;
+  private ActivityNotifier activityNotifier;
   private AnnouncementService service;
 
   private final UUID author = UUID.randomUUID();
@@ -30,7 +32,8 @@ class AnnouncementServiceTest {
   @BeforeEach
   void setUp() {
     repo = mock(AnnouncementRepository.class);
-    service = new AnnouncementService(repo);
+    activityNotifier = mock(ActivityNotifier.class);
+    service = new AnnouncementService(repo, activityNotifier);
     when(repo.save(any(Announcement.class))).thenAnswer(i -> i.getArgument(0));
   }
 

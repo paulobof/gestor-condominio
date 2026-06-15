@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.faq.dto.CreateFaqRequest;
 import br.com.condominio.feature.faq.dto.FaqView;
 import br.com.condominio.feature.faq.dto.ReorderFaqRequest;
@@ -21,12 +22,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 class FaqServiceTest {
 
   private FaqRepository repo;
+  private ActivityNotifier activityNotifier;
   private FaqService service;
 
   @BeforeEach
   void setUp() {
     repo = mock(FaqRepository.class);
-    service = new FaqService(repo);
+    activityNotifier = mock(ActivityNotifier.class);
+    service = new FaqService(repo, activityNotifier);
     when(repo.save(any(Faq.class))).thenAnswer(i -> i.getArgument(0));
   }
 

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.condominio.feature.access.AccessException;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -52,6 +53,7 @@ class UnitMemberServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private br.com.condominio.feature.unit.UnitOwnershipRepository ownershipRepo;
   @Mock private br.com.condominio.feature.unit.UnitRepository unitRepo;
+  @Mock private ActivityNotifier activityNotifier;
 
   @InjectMocks private UnitMemberService service;
 

@@ -1,5 +1,7 @@
 package br.com.condominio.feature.faq;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.faq.dto.CreateFaqRequest;
 import br.com.condominio.feature.faq.dto.FaqView;
 import br.com.condominio.feature.faq.dto.ReorderFaqRequest;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FaqService {
 
   private final FaqRepository repo;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional(readOnly = true)
   public List<FaqView> listPublished() {
@@ -40,8 +43,10 @@ public class FaqService {
   public FaqView create(CreateFaqRequest b) {
     Integer max = repo.findMaxOrderingByCategory(b.category());
     int nextOrdering = (max == null ? 0 : max + 1);
-    return FaqView.of(
-        repo.save(Faq.create(b.question(), b.answer(), b.category(), b.published(), nextOrdering)));
+    Faq f =
+        repo.save(Faq.create(b.question(), b.answer(), b.category(), b.published(), nextOrdering));
+    activityNotifier.notify(ActivityAction.CREATED, "FAQ", b.question(), null);
+    return FaqView.of(f);
   }
 
   @Transactional
@@ -49,6 +54,7 @@ public class FaqService {
     Faq f = find(id);
     f.edit(b.question(), b.answer(), b.category());
     f.setPublishedFlag(b.published());
+    activityNotifier.notify(ActivityAction.UPDATED, "FAQ", f.getQuestion(), null);
     return FaqView.of(f);
   }
 
@@ -68,7 +74,9 @@ public class FaqService {
 
   @Transactional
   public void delete(UUID id) {
-    repo.delete(find(id));
+    Faq f = find(id);
+    activityNotifier.notify(ActivityAction.DELETED, "FAQ", f.getQuestion(), null);
+    repo.delete(f);
   }
 
   private Faq find(UUID id) {

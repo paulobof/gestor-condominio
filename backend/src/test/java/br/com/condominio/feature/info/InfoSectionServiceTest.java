@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.info.dto.CreateInfoSectionRequest;
 import br.com.condominio.feature.info.dto.ReorderInfoRequest;
 import br.com.condominio.feature.info.dto.UpdateInfoSectionRequest;
@@ -25,6 +26,7 @@ class InfoSectionServiceTest {
 
   @Mock private InfoSectionRepository repo;
   @Mock private HtmlSanitizer sanitizer;
+  @Mock private ActivityNotifier activityNotifier;
   @InjectMocks private InfoSectionService service;
 
   @BeforeEach

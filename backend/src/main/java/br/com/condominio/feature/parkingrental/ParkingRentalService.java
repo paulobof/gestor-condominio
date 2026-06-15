@@ -1,5 +1,7 @@
 package br.com.condominio.feature.parkingrental;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.parkingrental.dto.CreateParkingRentalRequest;
 import br.com.condominio.feature.parkingrental.dto.ParkingRentalView;
 import br.com.condominio.feature.parkingrental.dto.UpdateParkingRentalRequest;
@@ -27,6 +29,7 @@ public class ParkingRentalService {
   private final ParkingRentalRepository repo;
   private final UserRepository userRepo;
   private final PhoneNumberNormalizer normalizer;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional
   public ParkingRentalView create(UUID authorId, CreateParkingRentalRequest req) {
@@ -34,6 +37,7 @@ public class ParkingRentalService {
         ParkingRental.create(
             authorId, req.tower(), req.floor(), req.spotNumber(), req.monthlyPrice());
     repo.save(r);
+    activityNotifier.notify(ActivityAction.CREATED, "Vaga", spotLabel(r), authorId);
     return view(r);
   }
 
@@ -71,12 +75,19 @@ public class ParkingRentalService {
       applyStatus(r, req.status());
     }
     repo.save(r);
+    activityNotifier.notify(ActivityAction.UPDATED, "Vaga", spotLabel(r), actorId);
     return view(r);
   }
 
   @Transactional
   public void delete(UUID id, UUID actorId, boolean canModerate) {
-    repo.delete(loadOwned(id, actorId, canModerate));
+    ParkingRental r = loadOwned(id, actorId, canModerate);
+    activityNotifier.notify(ActivityAction.DELETED, "Vaga", spotLabel(r), actorId);
+    repo.delete(r);
+  }
+
+  private static String spotLabel(ParkingRental r) {
+    return r.getTower() + " " + r.getFloor() + " vaga " + r.getSpotNumber();
   }
 
   private void applyStatus(ParkingRental r, ParkingRentalStatus target) {

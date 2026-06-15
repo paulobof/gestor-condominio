@@ -7,6 +7,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.parkingrental.dto.CreateParkingRentalRequest;
 import br.com.condominio.feature.parkingrental.dto.ParkingRentalView;
 import br.com.condominio.feature.parkingrental.dto.UpdateParkingRentalRequest;
@@ -30,6 +31,7 @@ class ParkingRentalServiceTest {
   @Mock private ParkingRentalRepository repo;
   @Mock private UserRepository userRepo;
   @Mock private PhoneNumberNormalizer normalizer;
+  @Mock private ActivityNotifier activityNotifier;
   @InjectMocks private ParkingRentalService service;
 
   private final UUID author = UUID.randomUUID();

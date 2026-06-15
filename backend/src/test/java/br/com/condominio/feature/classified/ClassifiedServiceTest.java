@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.classified.dto.ClassifiedPhotoView;
 import br.com.condominio.feature.classified.dto.ClassifiedView;
 import br.com.condominio.feature.classified.dto.CreateClassifiedRequest;
@@ -33,6 +34,7 @@ class ClassifiedServiceTest {
   private FileStorage storage;
   private MagicBytesValidator magicBytes;
   private MinioProperties props;
+  private ActivityNotifier activityNotifier;
   private ClassifiedService service;
 
   private final UUID author = UUID.randomUUID();
@@ -46,7 +48,10 @@ class ClassifiedServiceTest {
     storage = mock(FileStorage.class);
     magicBytes = mock(MagicBytesValidator.class);
     props = new MinioProperties();
-    service = new ClassifiedService(repo, photoRepo, userRepo, storage, magicBytes, props);
+    activityNotifier = mock(ActivityNotifier.class);
+    service =
+        new ClassifiedService(
+            repo, photoRepo, userRepo, storage, magicBytes, props, activityNotifier);
     when(repo.save(any(Classified.class))).thenAnswer(i -> i.getArgument(0));
     when(photoRepo.findByClassifiedIdOrderByOrdering(any())).thenReturn(List.of());
     when(userRepo.findAllById(any())).thenReturn(List.of());

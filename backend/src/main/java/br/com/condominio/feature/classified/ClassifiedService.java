@@ -1,5 +1,7 @@
 package br.com.condominio.feature.classified;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.classified.dto.ClassifiedPhotoView;
 import br.com.condominio.feature.classified.dto.ClassifiedView;
 import br.com.condominio.feature.classified.dto.CreateClassifiedRequest;
@@ -37,11 +39,13 @@ public class ClassifiedService {
   private final FileStorage storage;
   private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional
   public ClassifiedView create(UUID authorId, CreateClassifiedRequest req) {
     Classified c = Classified.create(authorId, req.title(), req.description(), req.price());
     repo.save(c);
+    activityNotifier.notify(ActivityAction.CREATED, "Classificado", c.getTitle(), authorId);
     return view(c);
   }
 
@@ -80,6 +84,7 @@ public class ClassifiedService {
       applyStatus(c, req.status());
     }
     repo.save(c);
+    activityNotifier.notify(ActivityAction.UPDATED, "Classificado", c.getTitle(), actorId);
     return view(c);
   }
 
@@ -88,6 +93,7 @@ public class ClassifiedService {
     Classified c = loadOwned(id, actorId, canModerate);
     photoRepo.findByClassifiedIdOrderByOrdering(id).forEach(photoRepo::delete);
     repo.delete(c);
+    activityNotifier.notify(ActivityAction.DELETED, "Classificado", c.getTitle(), actorId);
   }
 
   private static final long MAX_PHOTO_BYTES = 1_048_576L;

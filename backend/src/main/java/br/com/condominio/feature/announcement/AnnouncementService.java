@@ -1,5 +1,7 @@
 package br.com.condominio.feature.announcement;
 
+import br.com.condominio.feature.activity.ActivityAction;
+import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.announcement.dto.AnnouncementView;
 import br.com.condominio.feature.announcement.dto.CreateAnnouncementRequest;
 import br.com.condominio.feature.announcement.dto.ReorderAnnouncementsRequest;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnnouncementService {
 
   private final AnnouncementRepository repo;
+  private final ActivityNotifier activityNotifier;
 
   @Transactional(readOnly = true)
   public Page<AnnouncementView> list(Pageable pageable) {
@@ -39,13 +42,16 @@ public class AnnouncementService {
     int top = (min == null ? 0 : min - 1);
     Announcement a =
         Announcement.create(authorId, body.title(), body.body(), top, body.importance());
-    return AnnouncementView.of(repo.save(a));
+    repo.save(a);
+    activityNotifier.notify(ActivityAction.CREATED, "Aviso", body.title(), authorId);
+    return AnnouncementView.of(a);
   }
 
   @Transactional
   public AnnouncementView update(UUID id, UpdateAnnouncementRequest body) {
     Announcement a = find(id);
     a.edit(body.title(), body.body(), body.importance());
+    activityNotifier.notify(ActivityAction.UPDATED, "Aviso", a.getTitle(), null);
     return AnnouncementView.of(a);
   }
 
@@ -58,7 +64,9 @@ public class AnnouncementService {
 
   @Transactional
   public void delete(UUID id) {
-    repo.delete(find(id));
+    Announcement a = find(id);
+    activityNotifier.notify(ActivityAction.DELETED, "Aviso", a.getTitle(), null);
+    repo.delete(a);
   }
 
   private Announcement find(UUID id) {

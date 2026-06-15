@@ -141,4 +141,13 @@ describe('Sidebar', () => {
       '/vagas/aluguel'
     );
   });
+
+  it('proprietário (só leitura) não vê itens de escrita/admin', () => {
+    renderSidebar(['GENERAL_AREAS_VIEW']);
+    expect(screen.queryByRole('link', { name: /^moradores$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /gestão de usuários/i })).not.toBeInTheDocument();
+    // itens de leitura devem aparecer normalmente
+    expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /classificados/i })[0]).toBeInTheDocument();
+  });
 });

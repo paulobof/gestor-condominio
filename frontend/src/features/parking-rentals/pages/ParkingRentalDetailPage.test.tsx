@@ -117,6 +117,28 @@ describe('ParkingRentalDetailPage', () => {
     );
   });
 
+  it('autor de vaga alugada disponibiliza novamente (RENTED → ACTIVE)', async () => {
+    setUser('u1');
+    getMock.mockResolvedValue(rental({ status: 'RENTED' }));
+    updateMock.mockResolvedValue(rental({ status: 'ACTIVE' }));
+    renderPage();
+    await screen.findByText('Ana Costa');
+
+    // numa vaga alugada não cabe "marcar como alugada"
+    expect(screen.queryByRole('button', { name: /marcar como alugada/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /disponibilizar novamente/i }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith('r1', {
+        tower: 'A',
+        floor: '-1',
+        spotNumber: '045',
+        monthlyPrice: 350,
+        status: 'ACTIVE',
+      })
+    );
+  });
+
   it('moderador exclui após confirmar e volta para a lista', async () => {
     setUser('u9', ['PARKING_RENTAL_MODERATE']);
     getMock.mockResolvedValue(rental());

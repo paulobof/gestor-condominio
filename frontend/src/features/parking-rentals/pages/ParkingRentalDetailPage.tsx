@@ -151,6 +151,16 @@ export function ParkingRentalDetailPage() {
               Marcar como alugada
             </Button>
           )}
+          {r.status === 'RENTED' && (
+            <Button
+              variant="secondary"
+              className="min-h-[44px]"
+              onClick={() => changeStatus('ACTIVE')}
+              disabled={busy}
+            >
+              Disponibilizar novamente
+            </Button>
+          )}
           {r.status !== 'ARCHIVED' ? (
             <Button
               variant="secondary"

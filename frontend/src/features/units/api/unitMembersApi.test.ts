@@ -7,6 +7,7 @@ vi.mock('@/lib/api', () => ({
 import { api } from '@/lib/api';
 import {
   listMembers,
+  getMemberDetail,
   createMember,
   updateMember,
   deleteMember,
@@ -41,6 +42,24 @@ describe('unitMembersApi — contrato com o backend', () => {
     expect(get).toHaveBeenCalledWith('/units/me/members');
     expect(out).toHaveLength(1);
     expect(out[0].fullName).toBe('Bia Souza');
+  });
+
+  it('getMemberDetail faz GET em /units/me/members/:id e devolve gênero e nascimento', async () => {
+    get.mockResolvedValue({
+      data: {
+        id: 'm1',
+        fullName: 'Bia Souza',
+        greetingName: 'Bia',
+        phone: '+5511988887777',
+        email: 'bia@x.com',
+        gender: 'FEMALE',
+        birthDate: '1990-01-02',
+      },
+    });
+    const out = await getMemberDetail('m1');
+    expect(get).toHaveBeenCalledWith('/units/me/members/m1');
+    expect(out.gender).toBe('FEMALE');
+    expect(out.birthDate).toBe('1990-01-02');
   });
 
   it('createMember faz POST em /units/me/members com o payload e devolve a senha 1x', async () => {

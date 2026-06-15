@@ -10,6 +10,17 @@ export interface UnitMember {
   status: string;
 }
 
+/** Espelha UnitMemberDetail (inclui gênero e nascimento, ausentes na lista). */
+export interface MemberDetail {
+  id: string;
+  fullName: string;
+  greetingName: string;
+  phone: string;
+  email: string;
+  gender: string | null;
+  birthDate: string | null;
+}
+
 /** Espelha CreateUnitMemberRequest (sem password, sem unitId). */
 export interface CreateMemberPayload {
   fullName: string;
@@ -41,6 +52,11 @@ export interface UpdateMemberPayload {
 export async function listMembers() {
   const r = await api.get('/units/me/members');
   return r.data as UnitMember[];
+}
+
+export async function getMemberDetail(id: string) {
+  const r = await api.get(`/units/me/members/${id}`);
+  return r.data as MemberDetail;
 }
 
 export async function createMember(payload: CreateMemberPayload) {

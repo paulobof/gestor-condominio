@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 import {
   listMembers,
+  getMemberDetail,
   createMember,
   updateMember,
   deleteMember,
@@ -324,6 +325,29 @@ function EditMemberForm({
   const [gender, setGender] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Gênero e data de nascimento não vêm na lista; busca o detalhe para pré-preencher
+  // e evitar que um "Salvar" sem alterações apague os valores salvos.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const detail = await getMemberDetail(member.id);
+        if (!active) return;
+        setFullName(detail.fullName);
+        setGreetingName(detail.greetingName ?? '');
+        setEmail(detail.email ?? '');
+        setPhone(detail.phone ?? '');
+        setGender(detail.gender ?? '');
+        setBirthDate(detail.birthDate ?? '');
+      } catch {
+        toast.error('Erro ao carregar os dados do morador.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [member.id]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

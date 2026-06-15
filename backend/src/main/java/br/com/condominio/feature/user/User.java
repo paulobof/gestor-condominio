@@ -194,6 +194,18 @@ public class User {
     this.proofVerifiedAt = Instant.now();
   }
 
+  /** Aprovar proprietário (posse verificada). Ativa a conta sem exigir mastership. */
+  public void approveAsOwner(UUID approverId) {
+    if (this.status != UserStatus.PENDING_APPROVAL) {
+      throw new IllegalStateException(
+          "User not in PENDING_APPROVAL state (current=" + this.status + ")");
+    }
+    this.status = UserStatus.ACTIVE;
+    this.approvedByUserId = approverId;
+    this.approvedAt = Instant.now();
+    this.proofVerifiedAt = Instant.now();
+  }
+
   /** Rejeitar cadastro pendente. */
   public void reject(UUID approverId, String reason) {
     if (this.status != UserStatus.PENDING_APPROVAL) {

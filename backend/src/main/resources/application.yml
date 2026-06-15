@@ -30,7 +30,7 @@ spring:
     enabled: true
     baseline-on-migrate: false
     placeholders:
-      adminEmail: ${APP_ADMIN_EMAIL:paulobof@gmail.com}
+      adminEmail: ${APP_ADMIN_EMAIL:paulo.tamara.casal@gmail.com}
       adminName: ${APP_ADMIN_NAME:Paulo}
   lifecycle:
     timeout-per-shutdown-phase: 20s
@@ -96,7 +96,7 @@ app:
     login-lockout-attempts: 10
     login-lockout-window: PT30M
   admin:
-    email: ${APP_ADMIN_EMAIL:paulobof@gmail.com}
+    email: ${APP_ADMIN_EMAIL:paulo.tamara.casal@gmail.com}
     name: ${APP_ADMIN_NAME:Paulo}
     initial-password: ${APP_ADMIN_INITIAL_PASSWORD:trocar-no-primeiro-login}
   storage:

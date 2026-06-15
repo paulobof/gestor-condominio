@@ -4,6 +4,7 @@ import br.com.condominio.feature.consent.ConsentDocument;
 import br.com.condominio.feature.registration.dto.PendingRegistrationView;
 import br.com.condominio.feature.registration.dto.RegisterGuestRequest;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
+import br.com.condominio.feature.registration.dto.RegisterOwnerRequest;
 import br.com.condominio.feature.registration.dto.RegistrationStatusResponse;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
@@ -112,6 +113,99 @@ public class RegistrationService {
         "Master registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);
 
     return new RegistrationStatusResponse(user.getId(), user.getStatus().name());
+  }
+
+  @Transactional
+  public RegistrationStatusResponse registerOwner(
+      RegisterOwnerRequest req, MultipartFile proof, String clientIp) {
+
+    if (emailRepo.findActiveByEmailIgnoreCase(req.email()).isPresent()) {
+      throw new RegistrationException("EMAIL_TAKEN", "Este e-mail já está cadastrado.");
+    }
+
+    String detectedMime;
+    try {
+      detectedMime = magicBytes.detect(proof.getInputStream());
+    } catch (IOException e) {
+      throw new RegistrationException("PROOF_READ_FAILED", "Falha ao ler comprovante.");
+    }
+    if (!magicBytes.isAcceptedForProof(detectedMime)) {
+      throw new RegistrationException(
+          "PROOF_TYPE_INVALID", "Tipo de comprovante inválido. Aceitamos PDF, JPG, PNG ou WEBP.");
+    }
+
+    Unit unit =
+        unitRepo
+            .findByCode(req.unitCode())
+            .orElseThrow(
+                () -> new RegistrationException("UNIT_NOT_FOUND", "Unidade não encontrada."));
+
+    ConsentDocument consent =
+        consentRepo
+            .findByVersion(req.consentVersion())
+            .orElseThrow(
+                () ->
+                    new RegistrationException(
+                        "CONSENT_VERSION_INVALID", "Versão do termo de privacidade inválida."));
+
+    String objectKey;
+    try {
+      objectKey =
+          storage.upload(
+              props.getBucketProofs(), proof.getInputStream(), proof.getSize(), detectedMime);
+    } catch (IOException e) {
+      throw new RegistrationException("PROOF_UPLOAD_FAILED", "Falha ao enviar comprovante.");
+    }
+
+    Role ownerRole =
+        roleRepo
+            .findByName(RoleName.PROPRIETARIO)
+            .orElseThrow(() -> new IllegalStateException("PROPRIETARIO role missing"));
+
+    User user = newInstance(User.class);
+    setOwnerFields(user, req, consent, clientIp);
+    user = userRepo.save(user);
+
+    UserEmail userEmail = newInstance(UserEmail.class);
+    setEmail(userEmail, user.getId(), req.email());
+    emailRepo.save(userEmail);
+
+    userRoleRepo.save(
+        new UserRole(new UserRoleId(user.getId(), ownerRole.getId()), Instant.now(), null));
+
+    // Abre o pedido de posse PENDING com o comprovante de propriedade.
+    ownershipService.openClaim(
+        user.getId(), unit.getId(), objectKey, proof.getOriginalFilename(), detectedMime);
+
+    log.info(
+        "Owner registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);
+    return new RegistrationStatusResponse(user.getId(), user.getStatus().name());
+  }
+
+  private void setOwnerFields(
+      User user, RegisterOwnerRequest req, ConsentDocument consent, String clientIp) {
+    try {
+      setField(user, "unitId", null); // proprietário não mora
+      setField(user, "isUnitMaster", false);
+      setField(user, "fullName", req.fullName());
+      setField(user, "greetingName", req.greetingName());
+      setField(user, "phone", req.phone());
+      if (req.gender() != null && !req.gender().isBlank() && !"NOT_INFORMED".equals(req.gender())) {
+        setField(user, "gender", Gender.valueOf(req.gender()));
+      }
+      setField(user, "birthDate", req.birthDate());
+      setField(user, "passwordHash", encoder.encode(req.password()));
+      setField(user, "passwordPepperVersion", (short) 1);
+      setField(user, "mustChangePassword", false);
+      setField(user, "status", UserStatus.PENDING_APPROVAL);
+      setField(user, "consentDocumentVersion", consent.getVersion());
+      setField(user, "consentAcceptedAt", Instant.now());
+      setField(user, "consentAcceptedIp", clientIp);
+      setField(user, "whatsappOptIn", req.whatsappOptIn());
+      if (req.whatsappOptIn()) setField(user, "whatsappOptInAt", Instant.now());
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed setting owner User fields", e);
+    }
   }
 
   @Transactional

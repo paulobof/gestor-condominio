@@ -48,6 +48,7 @@ public class SecurityConfig {
                         "/api/auth/login",
                         "/api/auth/refresh",
                         "/api/auth/register-master",
+                        "/api/auth/register-owner",
                         "/api/auth/register-guest",
                         "/api/auth/password/request-reset",
                         "/api/auth/password/consume-reset")

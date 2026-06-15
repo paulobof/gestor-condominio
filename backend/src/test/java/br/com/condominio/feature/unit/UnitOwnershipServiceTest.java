@@ -3,6 +3,7 @@ package br.com.condominio.feature.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -15,6 +16,7 @@ import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import br.com.condominio.storage.FileStorage;
+import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +28,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class UnitOwnershipServiceTest {
@@ -35,6 +38,7 @@ class UnitOwnershipServiceTest {
   @Mock private UserRepository userRepo;
   @Mock private PermissionGrantService permissionGrants;
   @Mock private FileStorage storage;
+  @Mock private MagicBytesValidator magicBytes;
   @Mock private MinioProperties props;
   @InjectMocks private UnitOwnershipService service;
 
@@ -171,5 +175,48 @@ class UnitOwnershipServiceTest {
         .isInstanceOf(UnitOwnershipException.class)
         .satisfies(
             e -> assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("CLAIM_NOT_FOUND"));
+  }
+
+  @Test
+  void claimExtraUnit_rejectsInvalidProofType() {
+    MockMultipartFile proof =
+        new MockMultipartFile("proof", "f.zip", "application/zip", new byte[] {0x50, 0x4B});
+    when(magicBytes.detect(any())).thenReturn("application/zip");
+    when(magicBytes.isAcceptedForProof("application/zip")).thenReturn(false);
+
+    assertThatThrownBy(() -> service.claimExtraUnit(userId, "702C", proof))
+        .isInstanceOf(UnitOwnershipException.class)
+        .satisfies(
+            e ->
+                assertThat(((UnitOwnershipException) e).getCode()).isEqualTo("PROOF_TYPE_INVALID"));
+    verify(ownershipRepo, never()).save(any());
+  }
+
+  @Test
+  void claimExtraUnit_uploadsAndOpensClaim() {
+    MockMultipartFile proof =
+        new MockMultipartFile(
+            "proof", "comprovante.pdf", "application/pdf", new byte[] {0x25, 0x50, 0x44, 0x46});
+    when(magicBytes.detect(any())).thenReturn("application/pdf");
+    when(magicBytes.isAcceptedForProof("application/pdf")).thenReturn(true);
+    Unit unit = mock(Unit.class);
+    when(unit.getId()).thenReturn(unitId);
+    when(unitRepo.findByCode("702C")).thenReturn(Optional.of(unit));
+    when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
+    when(props.getBucketProofs()).thenReturn("residence-proofs");
+    when(storage.upload(eq("residence-proofs"), any(), anyLong(), eq("application/pdf")))
+        .thenReturn("objkey");
+    when(ownershipRepo.existsByUnitIdAndStatus(unitId, OwnershipStatus.APPROVED)).thenReturn(false);
+    when(ownershipRepo.existsByUserIdAndUnitIdAndStatusIn(eq(userId), eq(unitId), any()))
+        .thenReturn(false);
+    when(ownershipRepo.save(any(UnitOwnership.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.claimExtraUnit(userId, "702C", proof);
+
+    verify(storage).upload(eq("residence-proofs"), any(), anyLong(), eq("application/pdf"));
+    ArgumentCaptor<UnitOwnership> captor = ArgumentCaptor.forClass(UnitOwnership.class);
+    verify(ownershipRepo).save(captor.capture());
+    assertThat(captor.getValue().getStatus()).isEqualTo(OwnershipStatus.PENDING);
+    assertThat(captor.getValue().getResidenceProofObjectKey()).isEqualTo("objkey");
   }
 }

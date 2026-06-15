@@ -7,7 +7,9 @@ import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import br.com.condominio.storage.FileStorage;
+import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Posse de unidade (proprietário): abertura de claim PENDING, aprovação e rejeição. Fica atrás da
@@ -31,6 +34,7 @@ public class UnitOwnershipService {
   private final UserRepository userRepo;
   private final PermissionGrantService permissionGrants;
   private final FileStorage storage;
+  private final MagicBytesValidator magicBytes;
   private final MinioProperties props;
 
   /**
@@ -60,6 +64,38 @@ public class UnitOwnershipService {
     UUID id = ownershipRepo.save(o).getId();
     log.info("Ownership claim opened: ownershipId={} unitId={}", id, unitId);
     return id;
+  }
+
+  /**
+   * Registra a posse de uma unidade extra para o usuário logado: valida o comprovante
+   * (magic-bytes), resolve o código da unidade, faz upload e abre o claim PENDING. Não mexe em
+   * {@code User.unitId}.
+   */
+  @Transactional
+  public UUID claimExtraUnit(UUID userId, String unitCode, MultipartFile proof) {
+    String mime;
+    try {
+      mime = magicBytes.detect(proof.getInputStream());
+    } catch (IOException e) {
+      throw new UnitOwnershipException("PROOF_READ_FAILED", "Falha ao ler comprovante.");
+    }
+    if (!magicBytes.isAcceptedForProof(mime)) {
+      throw new UnitOwnershipException(
+          "PROOF_TYPE_INVALID", "Tipo de comprovante inválido. Aceitamos PDF, JPG, PNG ou WEBP.");
+    }
+    Unit unit =
+        unitRepo
+            .findByCode(unitCode)
+            .orElseThrow(
+                () -> new UnitOwnershipException("UNIT_NOT_FOUND", "Unidade não encontrada."));
+    String objectKey;
+    try {
+      objectKey =
+          storage.upload(props.getBucketProofs(), proof.getInputStream(), proof.getSize(), mime);
+    } catch (IOException e) {
+      throw new UnitOwnershipException("PROOF_UPLOAD_FAILED", "Falha ao enviar comprovante.");
+    }
+    return openClaim(userId, unit.getId(), objectKey, proof.getOriginalFilename(), mime);
   }
 
   /**

@@ -11,6 +11,7 @@ import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.recommendation.RecommendationException;
 import br.com.condominio.feature.registration.RegistrationException;
+import br.com.condominio.feature.unit.UnitOwnershipException;
 import br.com.condominio.feature.user.UnitMemberException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -161,6 +162,24 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleInfo(InfoException ex) {
     HttpStatus status =
         "NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(UnitOwnershipException.class)
+  public ResponseEntity<ApiError> handleUnitOwnership(UnitOwnershipException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "UNIT_NOT_FOUND", "CLAIM_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "UNIT_HAS_MASTER", "DUPLICATE_CLAIM" -> HttpStatus.CONFLICT;
+          default -> HttpStatus.BAD_REQUEST;
+        };
     return ResponseEntity.status(status)
         .body(
             ApiError.of(

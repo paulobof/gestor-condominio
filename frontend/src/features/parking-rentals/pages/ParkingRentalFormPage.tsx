@@ -53,9 +53,12 @@ export function ParkingRentalFormPage() {
   }, [id]);
 
   const parsedPrice = (): number | null => {
-    const trimmed = price.trim().replace(',', '.');
-    if (!trimmed) return null;
-    const n = Number(trimmed);
+    const raw = price.trim();
+    if (!raw) return null;
+    // pt-BR: se há vírgula decimal, os pontos são separadores de milhar (ex.: "1.350,00").
+    // Sem vírgula, Number() lida com "350" e "350.00" diretamente.
+    const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+    const n = Number(normalized);
     return Number.isFinite(n) && n > 0 ? n : null;
   };
 
@@ -116,7 +119,7 @@ export function ParkingRentalFormPage() {
                 id="tower"
                 value={tower}
                 onChange={(e) => setTower(e.target.value)}
-                aria-invalid={!tower.trim()}
+                maxLength={40}
                 required
               />
             </div>
@@ -127,7 +130,7 @@ export function ParkingRentalFormPage() {
                 placeholder="Ex.: -1, Térreo, 2"
                 value={floor}
                 onChange={(e) => setFloor(e.target.value)}
-                aria-invalid={!floor.trim()}
+                maxLength={20}
                 required
               />
             </div>
@@ -137,7 +140,7 @@ export function ParkingRentalFormPage() {
                 id="spotNumber"
                 value={spotNumber}
                 onChange={(e) => setSpotNumber(e.target.value)}
-                aria-invalid={!spotNumber.trim()}
+                maxLength={40}
                 required
               />
             </div>

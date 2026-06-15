@@ -65,6 +65,26 @@ describe('ParkingRentalFormPage (novo)', () => {
     );
   });
 
+  it('parseia valor pt-BR com separador de milhar (1.350,00 -> 1350)', async () => {
+    createMock.mockResolvedValue({ id: 'r9' } as never);
+    renderNew();
+
+    await userEvent.type(screen.getByLabelText('Torre'), 'A');
+    await userEvent.type(screen.getByLabelText('Andar'), '-1');
+    await userEvent.type(screen.getByLabelText('Numeração da vaga'), '045');
+    await userEvent.type(screen.getByLabelText('Valor mensal em R$'), '1.350,00');
+    await userEvent.click(screen.getByRole('button', { name: /anunciar vaga/i }));
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith({
+        tower: 'A',
+        floor: '-1',
+        spotNumber: '045',
+        monthlyPrice: 1350,
+      })
+    );
+  });
+
   it('não envia com valor zero/ inválido', async () => {
     renderNew();
     await userEvent.type(screen.getByLabelText('Torre'), 'A');

@@ -114,12 +114,12 @@ export function ParkingRentalDetailPage() {
         <p className="text-xl font-semibold">{brl(r.monthlyPrice)}/mês</p>
       </div>
 
-      {r.authorName && (
+      {(r.authorName || r.authorWhatsapp) && (
         <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Anunciante
           </p>
-          <p className="text-sm font-medium">{r.authorName}</p>
+          {r.authorName && <p className="text-sm font-medium">{r.authorName}</p>}
           {r.authorWhatsapp && (
             <Button asChild className="min-h-[44px]">
               <a

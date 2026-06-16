@@ -89,7 +89,7 @@ openssl rand -base64 24   # APP_ADMIN_INITIAL_PASSWORD
 
 ### Smoke test (login admin + flags)
 
-- [ ] Login admin (`paulo.tamara.casal@gmail.com`) com `APP_ADMIN_INITIAL_PASSWORD` → forçar troca de senha.
+- [ ] Login admin (`contato@wizortech.com.br`, único admin em prod) com `APP_ADMIN_INITIAL_PASSWORD` → o sistema **força a troca de senha** no 1º login (`must_change_password=true` na seed V8).
 - [ ] Cada feature aparece e responde (não-404): FAQ, Informações gerais, Avisos, Classificados, Indicações, Documentos, Vagas (parkingrental), Acessos (accessmanagement), cadastro de proprietário (unitownership).
 - [ ] Upload de comprovante (≤5MB) e foto (≤1MB) funcionam (MinIO presigned).
 - [ ] Envio de uma mensagem WhatsApp de teste (outbox processa).

@@ -43,6 +43,8 @@ export function ClassifiedFormPage() {
   const [status, setStatus] = useState<ClassifiedStatus>('ACTIVE');
   const [photos, setPhotos] = useState<ClassifiedPhoto[]>([]);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  // Fotos selecionadas na criação (sem id ainda): enviadas após criar o anúncio.
+  const [pending, setPending] = useState<{ file: File; url: string }[]>([]);
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -114,8 +116,8 @@ export function ClassifiedFormPage() {
         navigate(`/classificados/${id}`);
       } else {
         const created = await createClassified(body);
-        toast.success('Anúncio criado. Adicione fotos, se desejar.');
-        navigate(`/classificados/${created.id}/editar`, { replace: true });
+        await uploadPending(created.id);
+        navigate(`/classificados/${created.id}`, { replace: true });
       }
     } catch (err) {
       toast.error(backendMessage(err, 'Erro ao salvar o anúncio.'));
@@ -148,6 +150,57 @@ export function ClassifiedFormPage() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const compress = async (file: File): Promise<File> => {
+    try {
+      return await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
+    } catch {
+      return file; // backend valida tamanho/tipo
+    }
+  };
+
+  // Modo criação: apenas guarda o arquivo (com preview) para enviar após criar.
+  const stagePhoto = (file: File | null) => {
+    if (!file) return;
+    if (pending.length >= MAX_PHOTOS) {
+      toast.error(`Máximo de ${MAX_PHOTOS} fotos por anúncio.`);
+      return;
+    }
+    setPending((prev) => [...prev, { file, url: URL.createObjectURL(file) }]);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const removePending = (index: number) => {
+    setPending((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return next;
+    });
+  };
+
+  const uploadPending = async (classifiedId: string) => {
+    if (pending.length === 0) {
+      toast.success('Anúncio criado.');
+      return;
+    }
+    let failed = 0;
+    for (const p of pending) {
+      try {
+        await uploadClassifiedPhoto(classifiedId, await compress(p.file));
+      } catch {
+        failed += 1;
+      }
+      URL.revokeObjectURL(p.url);
+    }
+    if (failed > 0) {
+      toast.error(
+        `Anúncio criado, mas ${failed} foto(s) não puderam ser enviadas. Adicione na edição.`
+      );
+    } else {
+      toast.success('Anúncio criado.');
     }
   };
 
@@ -238,66 +291,95 @@ export function ClassifiedFormPage() {
         </CardContent>
       </Card>
 
-      {isEdit && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Fotos ({photos.length}/{MAX_PHOTOS})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="photo">Adicionar foto</Label>
-              <input
-                id="photo"
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                disabled={uploading || photos.length >= MAX_PHOTOS}
-                className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                onChange={(e) => handleUpload(e.target.files?.[0] ?? null)}
-              />
-              {photos.length >= MAX_PHOTOS && (
-                <p className="text-sm text-muted-foreground">
-                  Limite de {MAX_PHOTOS} fotos atingido.
-                </p>
-              )}
-              {uploading && <p className="text-sm text-muted-foreground">Enviando…</p>}
-            </div>
-            {photos.length > 0 && (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {photos.map((photo) => (
-                  <li key={photo.id} className="space-y-2">
-                    <div className="overflow-hidden rounded-lg border bg-muted">
-                      {photoUrls[photo.id] ? (
-                        <img
-                          src={photoUrls[photo.id]}
-                          alt="Foto do anúncio"
-                          className="aspect-square w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex aspect-square w-full items-center justify-center text-sm text-muted-foreground">
-                          Carregando…
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="min-h-[44px] w-full"
-                      onClick={() => handleRemovePhoto(photo.id)}
-                    >
-                      <Trash2 aria-hidden="true" /> Remover
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">
+            Fotos ({isEdit ? photos.length : pending.length}/{MAX_PHOTOS})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="photo">Adicionar foto</Label>
+            <input
+              id="photo"
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              disabled={uploading || (isEdit ? photos.length : pending.length) >= MAX_PHOTOS}
+              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={(e) => (isEdit ? handleUpload : stagePhoto)(e.target.files?.[0] ?? null)}
+            />
+            {(isEdit ? photos.length : pending.length) >= MAX_PHOTOS && (
+              <p className="text-sm text-muted-foreground">
+                Limite de {MAX_PHOTOS} fotos atingido.
+              </p>
             )}
-          </CardContent>
-        </Card>
-      )}
+            {uploading && <p className="text-sm text-muted-foreground">Enviando…</p>}
+            {!isEdit && (
+              <p className="text-sm text-muted-foreground">
+                As fotos serão enviadas ao criar o anúncio.
+              </p>
+            )}
+          </div>
+
+          {isEdit && photos.length > 0 && (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {photos.map((photo) => (
+                <li key={photo.id} className="space-y-2">
+                  <div className="overflow-hidden rounded-lg border bg-muted">
+                    {photoUrls[photo.id] ? (
+                      <img
+                        src={photoUrls[photo.id]}
+                        alt="Foto do anúncio"
+                        className="aspect-square w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center text-sm text-muted-foreground">
+                        Carregando…
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="min-h-[44px] w-full"
+                    onClick={() => handleRemovePhoto(photo.id)}
+                  >
+                    <Trash2 aria-hidden="true" /> Remover
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!isEdit && pending.length > 0 && (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {pending.map((p, idx) => (
+                <li key={p.url} className="space-y-2">
+                  <div className="overflow-hidden rounded-lg border bg-muted">
+                    <img
+                      src={p.url}
+                      alt="Pré-visualização da foto"
+                      className="aspect-square w-full object-cover"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="min-h-[44px] w-full"
+                    onClick={() => removePending(idx)}
+                  >
+                    <Trash2 aria-hidden="true" /> Remover
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

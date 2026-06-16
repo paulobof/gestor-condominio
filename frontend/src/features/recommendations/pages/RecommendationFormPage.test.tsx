@@ -9,7 +9,9 @@ vi.mock('react-router-dom', async (orig) => {
   const actual = await orig<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => navigateMock };
 });
-vi.mock('browser-image-compression', () => ({ default: vi.fn() }));
+vi.mock('browser-image-compression', () => ({
+  default: vi.fn((file: File) => Promise.resolve(file)),
+}));
 vi.mock('../api/recommendationsApi', () => ({
   createRecommendation: vi.fn(),
   updateRecommendation: vi.fn(),
@@ -23,12 +25,13 @@ vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 
 import { RecommendationFormPage } from './RecommendationFormPage';
-import { createRecommendation } from '../api/recommendationsApi';
+import { createRecommendation, uploadRecommendationPhoto } from '../api/recommendationsApi';
 import { searchTags } from '../api/tagsApi';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/useAuth';
 
 const createMock = vi.mocked(createRecommendation);
+const uploadMock = vi.mocked(uploadRecommendationPhoto);
 const searchTagsMock = vi.mocked(searchTags);
 const toastError = vi.mocked(toast.error);
 const useAuthMock = vi.mocked(useAuth);
@@ -58,6 +61,9 @@ beforeEach(() => {
   searchTagsMock.mockResolvedValue([]);
   createMock.mockResolvedValue({ id: 'new-1' } as never);
   setUserNoUnit(); // padrão: usuário sem unidade
+  // jsdom não implementa as object URLs usadas no preview de fotos.
+  globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview');
+  globalThis.URL.revokeObjectURL = vi.fn();
 });
 
 describe('RecommendationFormPage (criação)', () => {
@@ -69,7 +75,7 @@ describe('RecommendationFormPage (criação)', () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it('cria indicação externa e navega para edição', async () => {
+  it('cria indicação externa sem foto e navega para o detalhe', async () => {
     renderPage();
     await userEvent.type(screen.getByLabelText('Serviço'), 'Encanador Zé');
     await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
@@ -82,8 +88,26 @@ describe('RecommendationFormPage (criação)', () => {
         residentUserId: null,
       })
     );
+    expect(uploadMock).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(navigateMock).toHaveBeenCalledWith('/indicacoes/new-1/editar', { replace: true })
+      expect(navigateMock).toHaveBeenCalledWith('/indicacoes/new-1', { replace: true })
+    );
+  });
+
+  it('permite anexar foto na criação e a envia após criar a indicação', async () => {
+    uploadMock.mockResolvedValue({ id: 'p1', ordering: 0, contentType: 'image/png' } as never);
+    renderPage();
+
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Pintor João');
+    const file = new File(['x'], 'foto.png', { type: 'image/png' });
+    await userEvent.upload(screen.getByLabelText('Adicionar foto'), file);
+    await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
+    expect(uploadMock).toHaveBeenCalledWith('new-1', expect.any(File));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/indicacoes/new-1', { replace: true })
     );
   });
 

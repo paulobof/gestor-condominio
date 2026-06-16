@@ -9,10 +9,12 @@
 
 | Componente | Domínio |
 |---|---|
-| Frontend | `https://www.helbortrilogyhome.com.br` (+ apex `helbortrilogyhome.com.br`) |
-| API | `https://api.helbortrilogyhome.com.br` |
+| Frontend | `https://app.helbortrilogyhome.com.br` (o `www`/apex são página de estacionamento do registrador) |
+| API | `https://api.helbortrilogyhome.com.br` (build arg do frontend: `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br/api` — **com `/api`**) |
 | Cookie domain | `helbortrilogyhome.com.br` |
-| CORS allowed origins | `https://www.helbortrilogyhome.com.br`, `https://helbortrilogyhome.com.br` |
+| CORS allowed origins | `https://app.helbortrilogyhome.com.br` |
+
+> **CSP:** o frontend (`frontend/nginx.conf`) precisa permitir o domínio da API em `connect-src`/`img-src`. Já cobre `*.helbortrilogyhome.com.br` e `*.helbor.paulobof.com.br` (HML). Mudança de domínio exige rebuild do frontend.
 
 ## Estado de release deste go-live
 
@@ -38,8 +40,8 @@
 
 ## 1. DNS
 
-- [ ] `www.helbortrilogyhome.com.br` → frontend (Dokploy).
-- [ ] `helbortrilogyhome.com.br` (apex) → redirect 301 para `www` (ou aponta ao mesmo frontend).
+- [ ] `app.helbortrilogyhome.com.br` → frontend (Dokploy).
+- [ ] (opcional) `www`/apex → redirect 301 para `app` (hoje são página de estacionamento do registrador).
 - [ ] `api.helbortrilogyhome.com.br` → backend (Dokploy).
 - [ ] TLS emitido (Let's Encrypt via Dokploy) para os 3 hosts.
 
@@ -50,7 +52,7 @@ Ordem obrigatória (ver `dokploy-setup.md`):
 1. [ ] **PostgreSQL** — db `gestor_condominio`, user `condominio`, senha do passo 3. Backup diário (retenção 7d + 1 mensal).
 2. [ ] **MinIO** — compose `deploy/dokploy-minio-compose.yml`; `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` do passo 3. Buckets criados pelo backend no boot.
 3. [ ] **Backend** — build path `./backend`, domain `api.helbortrilogyhome.com.br`, healthcheck `/actuator/health/readiness` (30s). Env vars do passo 4. Gerar e anotar **webhook**.
-4. [ ] **Frontend** — build path `./frontend`, domain `www.helbortrilogyhome.com.br`, build arg `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br`. Gerar e anotar **webhook**.
+4. [ ] **Frontend** — build path `./frontend`, domain `app.helbortrilogyhome.com.br`, build arg `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br/api` (**com `/api`**). Gerar e anotar **webhook**.
 5. [ ] **Observabilidade** (só prod, por último) — compose `deploy/dokploy-observability-compose.yml`. Grafana atrás de Basic Auth; Alertmanager com SMTP real.
 
 ## 3. Gerar segredos (nunca commitar)
@@ -70,7 +72,7 @@ openssl rand -base64 24   # APP_ADMIN_INITIAL_PASSWORD
 - [ ] **Backend** — colar de `deploy/dokploy-backend.env.example` (já com domínios reais e **9 flags = true**), substituindo os `GERAR_*` pelos segredos do passo 3.
   - Confirmar: `SPRING_PROFILES_ACTIVE=prod`, `APP_COOKIE_SECURE=true`, **sem** `APP_SEED_FAKE_DATA` (proibido em prod).
   - Confirmar valores reais: `APP_DPO_EMAIL`, `APP_CONTROLLER_CNPJ`, `APP_ALERTS_WHATSAPP_GROUP_JID`.
-- [ ] **Frontend** — `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br` (de `deploy/dokploy-frontend.env.example`).
+- [ ] **Frontend** — `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br/api` (**com `/api`**; de `deploy/dokploy-frontend.env.example`). Trocar este valor exige **rebuild** do frontend (é build arg do Vite).
 
 ## 5. GitHub Secrets & Environments
 
@@ -84,7 +86,7 @@ openssl rand -base64 24   # APP_ADMIN_INITIAL_PASSWORD
 2. [ ] `curl -fs https://api.helbortrilogyhome.com.br/actuator/health/readiness` → `UP`.
 3. [ ] Flyway aplicou até **V37** (checar logs do backend; tabela `flyway_schema_history`).
 4. [ ] Buckets MinIO criados (`residence-proofs`, `classifieds`, `recommendations`, `documents`).
-5. [ ] Frontend carrega em `https://www.helbortrilogyhome.com.br` (sem erro de CORS no console).
+5. [ ] Frontend carrega em `https://app.helbortrilogyhome.com.br` (sem erro de CORS **nem de CSP** no console; a 1ª chamada da página de cadastro é o termo via `GET {API}/api/privacy/document/current`).
 6. [ ] **Swagger desligado** em prod: `https://api.helbortrilogyhome.com.br/swagger-ui.html` → 404.
 
 ### Smoke test (login admin + flags)

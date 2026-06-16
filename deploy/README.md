@@ -2,7 +2,7 @@
 
 Configurações para Dokploy em `panel.paulobof.com.br`. Dois *environments*:
 
-- **prod** — `www.helbortrilogyhome.com.br` / `api.helbortrilogyhome.com.br`.
+- **prod** — `app.helbortrilogyhome.com.br` / `api.helbortrilogyhome.com.br` (o `www` é página de estacionamento do registrador).
 - **hml** — `hml.app.helbor.paulobof.com.br` / `hml.api.helbor.paulobof.com.br`.
 
 ## Serviços por environment

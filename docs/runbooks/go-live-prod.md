@@ -14,7 +14,7 @@
 | Cookie domain | `helbortrilogyhome.com.br` |
 | CORS allowed origins | `https://app.helbortrilogyhome.com.br` |
 
-> **CSP:** o frontend (`frontend/nginx.conf`) precisa permitir o domínio da API em `connect-src`/`img-src`. Já cobre `*.helbortrilogyhome.com.br` e `*.helbor.paulobof.com.br` (HML). Mudança de domínio exige rebuild do frontend.
+> **CSP:** o frontend (`frontend/nginx.conf`) libera o domínio da API em `connect-src`/`img-src` via build arg **`CSP_API_ORIGIN`** (por ambiente). Prod usa só `https://*.helbortrilogyhome.com.br`; HML usa só `https://*.helbor.paulobof.com.br`. Prod **nunca** referencia `helbor.paulobof`. Mudança exige rebuild do frontend.
 
 ## Estado de release deste go-live
 
@@ -52,7 +52,11 @@ Ordem obrigatória (ver `dokploy-setup.md`):
 1. [ ] **PostgreSQL** — db `gestor_condominio`, user `condominio`, senha do passo 3. Backup diário (retenção 7d + 1 mensal).
 2. [ ] **MinIO** — compose `deploy/dokploy-minio-compose.yml`; `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` do passo 3. Buckets criados pelo backend no boot.
 3. [ ] **Backend** — build path `./backend`, domain `api.helbortrilogyhome.com.br`, healthcheck `/actuator/health/readiness` (30s). Env vars do passo 4. Gerar e anotar **webhook**.
-4. [ ] **Frontend** — build path `./frontend`, domain `app.helbortrilogyhome.com.br`, build arg `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br/api` (**com `/api`**). Gerar e anotar **webhook**.
+4. [ ] **Frontend** — build path `./frontend`, domain `app.helbortrilogyhome.com.br`. Build args (ambos exigem rebuild se mudarem):
+   - `VITE_API_BASE_URL=https://api.helbortrilogyhome.com.br/api` (**com `/api`**)
+   - `CSP_API_ORIGIN=https://*.helbortrilogyhome.com.br` (libera a API na CSP; **sem isso o browser bloqueia a API**)
+   - Gerar e anotar **webhook**.
+   - ⚠️ **HML** deve usar `CSP_API_ORIGIN=https://*.helbor.paulobof.com.br` no seu próprio serviço — senão o próximo rebuild de HML quebra a CSP.
 5. [ ] **Observabilidade** (só prod, por último) — compose `deploy/dokploy-observability-compose.yml`. Grafana atrás de Basic Auth; Alertmanager com SMTP real.
 
 ## 3. Gerar segredos (nunca commitar)

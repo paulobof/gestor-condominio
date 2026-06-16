@@ -60,7 +60,7 @@ describe('RegisterMasterPage — submit button gated on password strength', () =
     expect(submitBtn).toBeDisabled();
   });
 
-  it('submit is enabled with a strong password', async () => {
+  it('submit is enabled with a strong password confirmed', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -70,10 +70,28 @@ describe('RegisterMasterPage — submit button gated on password strength', () =
 
     await fillAllFieldsExceptPassword(user);
 
-    // Type a strong password meeting all policy rules
+    // Type a strong password meeting all policy rules and confirm it
     await user.type(screen.getByLabelText('Senha'), 'Senha@1234');
+    await user.type(screen.getByLabelText('Confirmar senha'), 'Senha@1234');
 
     const submitBtn = screen.getByRole('button', { name: 'Enviar cadastro' });
     expect(submitBtn).not.toBeDisabled();
+  });
+
+  it('submit is disabled when the confirmation does not match', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <RegisterMasterPage />
+      </MemoryRouter>
+    );
+
+    await fillAllFieldsExceptPassword(user);
+
+    await user.type(screen.getByLabelText('Senha'), 'Senha@1234');
+    await user.type(screen.getByLabelText('Confirmar senha'), 'Senha@9999');
+
+    expect(screen.getByRole('button', { name: 'Enviar cadastro' })).toBeDisabled();
+    expect(screen.getByText(/as senhas n[ãa]o conferem/i)).toBeInTheDocument();
   });
 });

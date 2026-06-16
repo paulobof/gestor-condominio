@@ -26,6 +26,7 @@ export function RegisterMasterPage() {
   const [unitCode, setUnitCode] = useState<string | null>(null);
   const [hasMaster, setHasMaster] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [consentVersion, setConsentVersion] = useState<string | null>(null);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [proof, setProof] = useState<File | null>(null);
@@ -33,6 +34,9 @@ export function RegisterMasterPage() {
 
   const phoneParsed = parsePhone(phone);
   const phoneValid = isValidPhone(phoneParsed.ddi, phoneParsed.national);
+
+  const passwordsMatch = password === confirmPassword;
+  const confirmMismatch = confirmPassword.length > 0 && !passwordsMatch;
 
   const canSubmit =
     !!fullName &&
@@ -42,6 +46,7 @@ export function RegisterMasterPage() {
     !!unitCode &&
     hasMaster === false &&
     isStrongPassword(password) &&
+    passwordsMatch &&
     !!consentVersion &&
     !!proof;
 
@@ -152,6 +157,18 @@ export function RegisterMasterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <PasswordChecklist value={password} />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                <PasswordInput
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  aria-invalid={confirmMismatch}
+                />
+                {confirmMismatch && (
+                  <p className="mt-1 text-sm text-destructive">As senhas não conferem.</p>
+                )}
               </div>
             </div>
             <label className="flex items-center gap-2 text-sm">

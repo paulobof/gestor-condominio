@@ -8,6 +8,7 @@ import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { PrivacyPage } from '@/features/privacy/pages/PrivacyPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
+import { PublicShell } from '@/components/layout/PublicShell';
 import { PendingRegistrationsPage } from '@/features/admin/pages/PendingRegistrationsPage';
 import { OwnershipClaimsPage } from '@/features/admin/pages/OwnershipClaimsPage';
 import { ClassifiedsListPage } from '@/features/classifieds/pages/ClassifiedsListPage';
@@ -33,12 +34,18 @@ import { DocumentsPage } from '@/features/documents/pages/DocumentsPage';
 import App from './App';
 
 const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register-master', element: <RegisterMasterPage /> },
-  { path: '/register-owner', element: <RegisterOwnerPage /> },
-  { path: '/pending-approval', element: <PendingApprovalPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset', element: <ResetPasswordPage /> },
+  {
+    // Casca pública: aviso de app independente (LGPD) fixo no topo das telas sem login.
+    element: <PublicShell />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register-master', element: <RegisterMasterPage /> },
+      { path: '/register-owner', element: <RegisterOwnerPage /> },
+      { path: '/pending-approval', element: <PendingApprovalPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset', element: <ResetPasswordPage /> },
+    ],
+  },
   {
     // Casca autenticada (top bar + bottom-nav). Todas as rotas internas vivem aqui.
     element: (

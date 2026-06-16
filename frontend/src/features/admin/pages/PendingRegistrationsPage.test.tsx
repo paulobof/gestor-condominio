@@ -55,4 +55,17 @@ describe('PendingRegistrationsPage', () => {
     expect(createObjectURL).toHaveBeenCalledWith(blob);
     expect(open).toHaveBeenCalledWith('blob:fake-url', '_blank', expect.any(String));
   });
+
+  it('exibe a data de nascimento em dd/MM/yyyy (não no ISO invertido)', async () => {
+    listPendingMock.mockResolvedValue({
+      content: [{ ...item, birthDate: '1990-01-02' }],
+      totalElements: 1,
+    } as never);
+
+    render(<PendingRegistrationsPage />);
+    await screen.findByText(/Fulano de Tal/);
+
+    expect(screen.getByText('02/01/1990')).toBeInTheDocument();
+    expect(screen.queryByText('1990-01-02')).not.toBeInTheDocument();
+  });
 });

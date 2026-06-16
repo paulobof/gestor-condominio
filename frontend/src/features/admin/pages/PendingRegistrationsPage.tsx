@@ -12,6 +12,7 @@ import {
   type PendingRegistration,
 } from '../api/adminApi';
 import { Check, X, FileText } from 'lucide-react';
+import { formatDateBR } from '@/lib/date';
 
 export function PendingRegistrationsPage() {
   const [items, setItems] = useState<PendingRegistration[]>([]);
@@ -94,7 +95,7 @@ export function PendingRegistrationsPage() {
                   <strong>Telefone:</strong> {it.phone}
                 </div>
                 <div>
-                  <strong>Nascimento:</strong> {it.birthDate ?? '—'}
+                  <strong>Nascimento:</strong> {formatDateBR(it.birthDate)}
                 </div>
                 <div>
                   <strong>Comprovante:</strong> {it.residenceProofFilename}

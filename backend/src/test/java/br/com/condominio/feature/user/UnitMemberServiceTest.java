@@ -65,6 +65,93 @@ class UnitMemberServiceTest {
     return m;
   }
 
+  // ===== pedidos de acesso à unidade (cadastro sem comprovante) =====
+
+  @Test
+  void listPendingRequests_returnsPendingUsersOfMyUnit() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User pending = mock(User.class);
+    when(pending.getId()).thenReturn(MEMBER);
+    when(pending.getFullName()).thenReturn("Maria Silva");
+    when(pending.getGreetingName()).thenReturn("Maria");
+    when(pending.getPhone()).thenReturn("+5511999999999");
+    when(pending.getUnitId()).thenReturn(UNIT);
+    when(userRepo.findByUnitIdInAndStatusAndIsUnitMasterFalse(
+            List.of(UNIT), UserStatus.PENDING_APPROVAL))
+        .thenReturn(List.of(pending));
+    Unit unit = mock(Unit.class);
+    when(unit.getId()).thenReturn(UNIT);
+    when(unit.getCode()).thenReturn("702C");
+    when(unitRepo.findAllById(List.of(UNIT))).thenReturn(List.of(unit));
+
+    var result = service.listPendingRequests(MASTER);
+
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).fullName()).isEqualTo("Maria Silva");
+    assertThat(result.get(0).unitCode()).isEqualTo("702C");
+  }
+
+  @Test
+  void approveRequest_activatesPendingMemberOfMyUnit() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User pending = mock(User.class);
+    when(pending.getUnitId()).thenReturn(UNIT);
+    when(pending.isUnitMaster()).thenReturn(false);
+    when(pending.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(pending));
+
+    service.approveRequest(MASTER, MEMBER);
+
+    verify(pending).approveAsMember(MASTER);
+  }
+
+  @Test
+  void approveRequest_rejectsRequestFromAnotherUnit() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User pending = mock(User.class);
+    when(pending.getUnitId()).thenReturn(UUID.randomUUID());
+    when(pending.isUnitMaster()).thenReturn(false);
+    when(pending.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(pending));
+
+    assertThatThrownBy(() -> service.approveRequest(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class);
+    verify(pending, never()).approveAsMember(any());
+  }
+
+  @Test
+  void approveRequest_rejectsWhenAlreadyActive() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User active = mock(User.class);
+    when(active.getUnitId()).thenReturn(UNIT);
+    when(active.isUnitMaster()).thenReturn(false);
+    when(active.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(active));
+
+    assertThatThrownBy(() -> service.approveRequest(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class);
+    verify(active, never()).approveAsMember(any());
+  }
+
+  @Test
+  void rejectRequest_marksPendingMemberAsRejected() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User pending = mock(User.class);
+    when(pending.getUnitId()).thenReturn(UNIT);
+    when(pending.isUnitMaster()).thenReturn(false);
+    when(pending.getStatus()).thenReturn(UserStatus.PENDING_APPROVAL);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(pending));
+
+    service.rejectRequest(MASTER, MEMBER, "não conheço");
+
+    verify(pending).reject(MASTER, "não conheço");
+  }
+
   @Test
   void listMyUnitMembers_scopesToMyUnit() {
     User master = masterInUnit();

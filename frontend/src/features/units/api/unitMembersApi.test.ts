@@ -11,6 +11,9 @@ import {
   createMember,
   updateMember,
   deleteMember,
+  listJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
   type CreateMemberPayload,
   type UpdateMemberPayload,
 } from './unitMembersApi';
@@ -96,5 +99,39 @@ describe('unitMembersApi — contrato com o backend', () => {
     del.mockResolvedValue({ data: undefined });
     await deleteMember('m9');
     expect(del).toHaveBeenCalledWith('/units/me/members/m9');
+  });
+
+  it('listJoinRequests faz GET em /units/me/members/requests', async () => {
+    get.mockResolvedValue({
+      data: [
+        {
+          id: 'r1',
+          fullName: 'Maria Souza',
+          greetingName: 'Maria',
+          email: 'maria@x.com',
+          phone: '+5511988887777',
+          unitId: 'u1',
+          unitCode: '702C',
+          requestedAt: '2026-08-20T12:00:00Z',
+        },
+      ],
+    });
+    const out = await listJoinRequests();
+    expect(get).toHaveBeenCalledWith('/units/me/members/requests');
+    expect(out[0].unitCode).toBe('702C');
+  });
+
+  it('approveJoinRequest faz POST no endpoint de aprovacao', async () => {
+    post.mockResolvedValue({ data: null });
+    await approveJoinRequest('r1');
+    expect(post).toHaveBeenCalledWith('/units/me/members/requests/r1/approve');
+  });
+
+  it('rejectJoinRequest envia o motivo no corpo', async () => {
+    post.mockResolvedValue({ data: null });
+    await rejectJoinRequest('r1', 'nao conheco');
+    expect(post).toHaveBeenCalledWith('/units/me/members/requests/r1/reject', {
+      reason: 'nao conheco',
+    });
   });
 });

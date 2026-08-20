@@ -6,6 +6,7 @@ import br.com.condominio.feature.registration.dto.RegisterGuestRequest;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
 import br.com.condominio.feature.registration.dto.RegisterOwnerRequest;
 import br.com.condominio.feature.registration.dto.RegistrationStatusResponse;
+import br.com.condominio.feature.registration.event.UnitJoinRequestedEvent;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitOwnershipService;
@@ -43,25 +44,18 @@ public class RegistrationService {
   private final MinioProperties props;
   private final PermissionGrantService permissionGrants;
   private final UnitOwnershipService ownershipService;
+  private final org.springframework.context.ApplicationEventPublisher events;
 
+  /**
+   * Cadastro do morador, sem comprovante. Quem chega primeiro numa unidade sem master entra ACTIVE
+   * e vira o master dela; os próximos entram PENDING_APPROVAL e são aprovados pelo master (ou, como
+   * válvula de escape, pelo admin em {@code /api/registrations}).
+   */
   @Transactional
-  public RegistrationStatusResponse registerMaster(
-      RegisterMasterRequest req, MultipartFile proof, String clientIp) {
+  public RegistrationStatusResponse registerMaster(RegisterMasterRequest req, String clientIp) {
 
     if (emailRepo.findActiveByEmailIgnoreCase(req.email()).isPresent()) {
       throw new RegistrationException("EMAIL_TAKEN", "Este e-mail já está cadastrado.");
-    }
-
-    String detectedMime;
-    try {
-      detectedMime = magicBytes.detect(proof.getInputStream());
-    } catch (IOException e) {
-      throw new RegistrationException("PROOF_READ_FAILED", "Falha ao ler comprovante.");
-    }
-
-    if (!magicBytes.isAcceptedForProof(detectedMime)) {
-      throw new RegistrationException(
-          "PROOF_TYPE_INVALID", "Tipo de comprovante inválido. Aceitamos PDF, JPG, PNG ou WEBP.");
     }
 
     Unit unit =
@@ -69,10 +63,6 @@ public class RegistrationService {
             .findByCode(req.unitCode())
             .orElseThrow(
                 () -> new RegistrationException("UNIT_NOT_FOUND", "Unidade não encontrada."));
-
-    if (unit.getMasterUserId() != null) {
-      throw new RegistrationException("UNIT_HAS_MASTER", "Esta unidade já possui um master ativo.");
-    }
 
     ConsentDocument consent =
         consentRepo
@@ -82,37 +72,62 @@ public class RegistrationService {
                     new RegistrationException(
                         "CONSENT_VERSION_INVALID", "Versão do termo de privacidade inválida."));
 
-    String objectKey;
-    try {
-      objectKey =
-          storage.upload(
-              props.getBucketProofs(), proof.getInputStream(), proof.getSize(), detectedMime);
-    } catch (IOException e) {
-      throw new RegistrationException("PROOF_UPLOAD_FAILED", "Falha ao enviar comprovante.");
-    }
-
     Role residentRole =
         roleRepo
             .findByName(RoleName.RESIDENT)
             .orElseThrow(() -> new IllegalStateException("RESIDENT role missing"));
 
+    boolean becomesMaster = unit.getMasterUserId() == null;
+
     User user = newInstance(User.class);
-    setUserFields(
-        user, req, unit, objectKey, proof.getOriginalFilename(), detectedMime, consent, clientIp);
+    setUserFields(user, req, unit, becomesMaster, consent, clientIp);
     user = userRepo.save(user);
 
     UserEmail userEmail = newInstance(UserEmail.class);
     setEmail(userEmail, user.getId(), req.email());
     emailRepo.save(userEmail);
 
-    UserRole userRole =
-        new UserRole(new UserRoleId(user.getId(), residentRole.getId()), Instant.now(), null);
-    userRoleRepo.save(userRole);
+    userRoleRepo.save(
+        new UserRole(new UserRoleId(user.getId(), residentRole.getId()), Instant.now(), null));
 
-    log.info(
-        "Master registered: userId={} unitCode={} ip={}", user.getId(), unit.getCode(), clientIp);
+    if (becomesMaster) {
+      unit.assignMaster(user.getId());
+      permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, user.getId());
+      log.info(
+          "Master auto-approved: userId={} unitCode={} ip={}",
+          user.getId(),
+          unit.getCode(),
+          clientIp);
+    } else {
+      notifyMasterOfJoinRequest(unit, user);
+      log.info(
+          "Join request created: userId={} unitCode={} ip={}",
+          user.getId(),
+          unit.getCode(),
+          clientIp);
+    }
 
     return new RegistrationStatusResponse(user.getId(), user.getStatus().name());
+  }
+
+  /** Avisa o master da unidade que há um pedido de acesso esperando por ele. */
+  private void notifyMasterOfJoinRequest(Unit unit, User requester) {
+    userRepo
+        .findById(unit.getMasterUserId())
+        .filter(m -> m.getPhone() != null && !m.getPhone().isBlank())
+        .ifPresent(
+            master ->
+                events.publishEvent(
+                    new UnitJoinRequestedEvent(
+                        requester.getId(),
+                        master.getPhone(),
+                        master.getGreetingName() != null
+                            ? master.getGreetingName()
+                            : master.getFullName(),
+                        requester.getGreetingName() != null
+                            ? requester.getGreetingName()
+                            : requester.getFullName(),
+                        unit.getCode())));
   }
 
   @Transactional
@@ -276,29 +291,22 @@ public class RegistrationService {
       User user,
       RegisterMasterRequest req,
       Unit unit,
-      String objectKey,
-      String originalFilename,
-      String contentType,
+      boolean becomesMaster,
       ConsentDocument consent,
       String clientIp) {
     try {
       setField(user, "unitId", unit.getId());
-      setField(user, "isUnitMaster", true);
+      setField(user, "isUnitMaster", becomesMaster);
       setField(user, "fullName", req.fullName());
       setField(user, "greetingName", req.greetingName());
       setField(user, "phone", req.phone());
-      if (req.gender() != null && !req.gender().isBlank()) {
-        setField(user, "gender", Gender.valueOf(req.gender()));
-      }
-      setField(user, "birthDate", req.birthDate());
       setField(user, "passwordHash", encoder.encode(req.password()));
       setField(user, "passwordPepperVersion", (short) 1);
       setField(user, "mustChangePassword", false);
-      setField(user, "status", UserStatus.PENDING_APPROVAL);
-      setField(user, "residenceProofObjectKey", objectKey);
-      setField(user, "residenceProofFilename", originalFilename);
-      setField(user, "residenceProofContentType", contentType);
-      setField(user, "residenceProofUploadedAt", Instant.now());
+      setField(user, "status", becomesMaster ? UserStatus.ACTIVE : UserStatus.PENDING_APPROVAL);
+      if (becomesMaster) {
+        setField(user, "approvedAt", Instant.now());
+      }
       setField(user, "consentDocumentVersion", consent.getVersion());
       setField(user, "consentAcceptedAt", Instant.now());
       setField(user, "consentAcceptedIp", clientIp);
@@ -346,7 +354,7 @@ public class RegistrationService {
 
   @Transactional
   public Page<PendingRegistrationView> listPending(Pageable pageable) {
-    return userRepo.findPendingMasters(pageable).map(this::toPendingView);
+    return userRepo.findPendingResidents(pageable).map(this::toPendingView);
   }
 
   @Transactional
@@ -356,14 +364,17 @@ public class RegistrationService {
             .findById(userId)
             .orElseThrow(
                 () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
-    user.approveAsMaster(approverId);
-
-    Unit unit = unitRepo.findById(user.getUnitId()).orElseThrow();
-    unit.assignMaster(user.getId());
-
-    permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, approverId);
-
-    log.info("Master approved userId={} by approverId={}", userId, approverId);
+    if (user.isUnitMaster()) {
+      user.approveAsMaster(approverId);
+      Unit unit = unitRepo.findById(user.getUnitId()).orElseThrow();
+      unit.assignMaster(user.getId());
+      permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, approverId);
+      log.info("Master approved userId={} by approverId={}", userId, approverId);
+      return;
+    }
+    // Morador comum: entra na unidade sem gestão e sem mastership (válvula do admin).
+    user.approveAsMember(approverId);
+    log.info("Member approved userId={} by approverId={}", userId, approverId);
   }
 
   @Transactional

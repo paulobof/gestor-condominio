@@ -16,6 +16,11 @@ public enum WhatsAppTemplate {
    * {greetingName}}.
    */
   MEMBER_EMAIL_CHANGED,
+  /**
+   * Pedido de acesso a uma unidade que já tem master — vai para o master. Espera data: {@code
+   * {greetingName, requesterName, unitCode}}.
+   */
+  UNIT_JOIN_REQUEST,
   /** Aviso de atividade pro grupo de admins. Espera data: {@code {text}} (texto já pronto). */
   ACTIVITY_ALERT
 }

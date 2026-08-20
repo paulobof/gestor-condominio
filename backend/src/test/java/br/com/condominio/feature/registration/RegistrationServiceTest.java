@@ -10,6 +10,7 @@ import static org.mockito.Mockito.*;
 import br.com.condominio.feature.consent.ConsentDocument;
 import br.com.condominio.feature.registration.dto.RegisterGuestRequest;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
+import br.com.condominio.feature.registration.event.UnitJoinRequestedEvent;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitOwnershipService;
@@ -24,7 +25,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 class RegistrationServiceTest {
@@ -41,6 +41,7 @@ class RegistrationServiceTest {
   private MinioProperties props;
   private PermissionGrantService permissionGrants;
   private UnitOwnershipService ownershipService;
+  private org.springframework.context.ApplicationEventPublisher events;
   private RegistrationService service;
 
   @BeforeEach
@@ -58,6 +59,7 @@ class RegistrationServiceTest {
     props.setBucketProofs("residence-proofs");
     permissionGrants = mock(PermissionGrantService.class);
     ownershipService = mock(UnitOwnershipService.class);
+    events = mock(org.springframework.context.ApplicationEventPublisher.class);
     service =
         new RegistrationService(
             unitRepo,
@@ -71,14 +73,13 @@ class RegistrationServiceTest {
             encoder,
             props,
             permissionGrants,
-            ownershipService);
+            ownershipService,
+            events);
   }
 
   @Test
-  void registersMasterSuccessfully() {
+  void registerMaster_whenUnitHasNoMaster_activatesImmediatelyAsMaster() {
     when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com")).thenReturn(Optional.empty());
-    when(magicBytes.detect(any())).thenReturn("application/pdf");
-    when(magicBytes.isAcceptedForProof("application/pdf")).thenReturn(true);
     Unit unit = newInstance(Unit.class);
     setField(unit, "id", UUID.randomUUID());
     setField(unit, "code", "702C");
@@ -88,8 +89,6 @@ class RegistrationServiceTest {
     Role role = newInstance(Role.class);
     setField(role, "id", (short) 4);
     when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(role));
-    when(storage.upload(eq("residence-proofs"), any(), anyLong(), eq("application/pdf")))
-        .thenReturn("object-key-uuid");
     when(userRepo.save(any()))
         .thenAnswer(
             inv -> {
@@ -98,48 +97,37 @@ class RegistrationServiceTest {
               return u;
             });
 
-    var req =
-        new RegisterMasterRequest(
-            "Paulo Teste",
-            "Paulo",
-            "paulo@x.com",
-            "+5511999999999",
-            "MALE",
-            LocalDate.of(1990, 1, 1),
-            "702C",
-            "Senha@1234",
-            "1.0.0",
-            true);
-    byte[] pdf = {0x25, 0x50, 0x44, 0x46};
-    MockMultipartFile file =
-        new MockMultipartFile("proof", "comprovante.pdf", "application/pdf", pdf);
+    var resp = service.registerMaster(baseReq(), "127.0.0.1");
 
-    var resp = service.registerMaster(req, file, "127.0.0.1");
-
-    assertThat(resp.status()).isEqualTo("PENDING_APPROVAL");
-    verify(storage)
-        .upload(eq("residence-proofs"), any(), eq((long) pdf.length), eq("application/pdf"));
+    assertThat(resp.status()).isEqualTo("ACTIVE");
+    assertThat(unit.getMasterUserId()).isNotNull();
     verify(emailRepo).save(any());
     verify(userRoleRepo).save(any());
+    verify(permissionGrants).grantIfAbsent(any(), eq(PermissionCode.RESIDENT_MANAGE), any());
+    // Sem comprovante: o storage nao e tocado no cadastro.
+    verify(storage, never()).upload(any(), any(), anyLong(), any());
     verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());
   }
 
   @Test
-  void registerMaster_doesNotOpenOwnershipClaim() {
+  void registerMaster_whenUnitAlreadyHasMaster_createsPendingRequestAndNotifiesMaster() {
+    UUID masterId = UUID.randomUUID();
     when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com")).thenReturn(Optional.empty());
-    when(magicBytes.detect(any())).thenReturn("application/pdf");
-    when(magicBytes.isAcceptedForProof("application/pdf")).thenReturn(true);
     Unit unit = newInstance(Unit.class);
     setField(unit, "id", UUID.randomUUID());
     setField(unit, "code", "702C");
+    setField(unit, "masterUserId", masterId);
     when(unitRepo.findByCode("702C")).thenReturn(Optional.of(unit));
     when(consentRepo.findByVersion("1.0.0")).thenReturn(Optional.of(newConsent("1.0.0")));
     when(encoder.encode(any())).thenReturn("hashed");
     Role role = newInstance(Role.class);
     setField(role, "id", (short) 4);
     when(roleRepo.findByName(RoleName.RESIDENT)).thenReturn(Optional.of(role));
-    when(storage.upload(eq("residence-proofs"), any(), anyLong(), eq("application/pdf")))
-        .thenReturn("object-key-uuid");
+    User master = newInstance(User.class);
+    setField(master, "id", masterId);
+    setField(master, "greetingName", "Ana");
+    setField(master, "phone", "+5511988887777");
+    when(userRepo.findById(masterId)).thenReturn(Optional.of(master));
     when(userRepo.save(any()))
         .thenAnswer(
             inv -> {
@@ -148,25 +136,14 @@ class RegistrationServiceTest {
               return u;
             });
 
-    var req =
-        new RegisterMasterRequest(
-            "Paulo Teste",
-            "Paulo",
-            "paulo@x.com",
-            "+5511999999999",
-            "MALE",
-            LocalDate.of(1990, 1, 1),
-            "702C",
-            "Senha@1234",
-            "1.0.0",
-            true);
-    var file =
-        new MockMultipartFile(
-            "proof", "comprovante.pdf", "application/pdf", new byte[] {0x25, 0x50, 0x44, 0x46});
+    var resp = service.registerMaster(baseReq(), "127.0.0.1");
 
-    service.registerMaster(req, file, "127.0.0.1");
-
-    verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());
+    assertThat(resp.status()).isEqualTo("PENDING_APPROVAL");
+    // O master da unidade nao muda.
+    assertThat(unit.getMasterUserId()).isEqualTo(masterId);
+    // Pedido nao vira master e nao ganha gestao da unidade.
+    verify(permissionGrants, never()).grantIfAbsent(any(), any(), any());
+    verify(events).publishEvent(any(UnitJoinRequestedEvent.class));
   }
 
   @Test
@@ -203,42 +180,9 @@ class RegistrationServiceTest {
     when(emailRepo.findActiveByEmailIgnoreCase("paulo@x.com"))
         .thenReturn(Optional.of(newInstance(UserEmail.class)));
     var req = baseReq();
-    var file =
-        new MockMultipartFile(
-            "proof", "f.pdf", "application/pdf", new byte[] {0x25, 0x50, 0x44, 0x46});
-    assertThatThrownBy(() -> service.registerMaster(req, file, "127.0.0.1"))
+    assertThatThrownBy(() -> service.registerMaster(req, "127.0.0.1"))
         .isInstanceOf(RegistrationException.class)
         .hasMessageContaining("e-mail");
-  }
-
-  @Test
-  void rejectsWhenUnitAlreadyHasMaster() {
-    when(emailRepo.findActiveByEmailIgnoreCase(any())).thenReturn(Optional.empty());
-    Unit unit = newInstance(Unit.class);
-    setField(unit, "id", UUID.randomUUID());
-    setField(unit, "masterUserId", UUID.randomUUID());
-    when(unitRepo.findByCode("702C")).thenReturn(Optional.of(unit));
-    var req = baseReq();
-    var file =
-        new MockMultipartFile(
-            "proof", "f.pdf", "application/pdf", new byte[] {0x25, 0x50, 0x44, 0x46});
-    when(magicBytes.detect(any())).thenReturn("application/pdf");
-    when(magicBytes.isAcceptedForProof(any())).thenReturn(true);
-    assertThatThrownBy(() -> service.registerMaster(req, file, "127.0.0.1"))
-        .isInstanceOf(RegistrationException.class)
-        .hasMessageContaining("master");
-  }
-
-  @Test
-  void rejectsWhenFileTypeNotAccepted() {
-    when(emailRepo.findActiveByEmailIgnoreCase(any())).thenReturn(Optional.empty());
-    when(magicBytes.detect(any())).thenReturn("application/zip");
-    when(magicBytes.isAcceptedForProof("application/zip")).thenReturn(false);
-    var req = baseReq();
-    var file = new MockMultipartFile("proof", "f.zip", "application/zip", new byte[] {0x50, 0x4B});
-    assertThatThrownBy(() -> service.registerMaster(req, file, "127.0.0.1"))
-        .isInstanceOf(RegistrationException.class)
-        .hasMessageContaining("comprovante");
   }
 
   @Test
@@ -250,6 +194,7 @@ class RegistrationServiceTest {
     User user = mock(User.class);
     when(user.getId()).thenReturn(masterUserId);
     when(user.getUnitId()).thenReturn(unitId);
+    when(user.isUnitMaster()).thenReturn(true);
     when(userRepo.findById(masterUserId)).thenReturn(Optional.of(user));
 
     Unit unit = mock(Unit.class);
@@ -259,6 +204,24 @@ class RegistrationServiceTest {
 
     verify(permissionGrants)
         .grantIfAbsent(masterUserId, PermissionCode.RESIDENT_MANAGE, approverId);
+  }
+
+  @Test
+  void approve_whenPendingMember_activatesWithoutMastershipOrPermission() {
+    UUID memberId = UUID.randomUUID();
+    UUID approverId = UUID.randomUUID();
+
+    User user = mock(User.class);
+    when(user.getId()).thenReturn(memberId);
+    when(user.isUnitMaster()).thenReturn(false);
+    when(userRepo.findById(memberId)).thenReturn(Optional.of(user));
+
+    service.approve(memberId, approverId);
+
+    verify(user).approveAsMember(approverId);
+    verify(user, never()).approveAsMaster(any());
+    verify(permissionGrants, never()).grantIfAbsent(any(), any(), any());
+    verify(unitRepo, never()).findById(any());
   }
 
   @Test
@@ -324,16 +287,7 @@ class RegistrationServiceTest {
 
   private RegisterMasterRequest baseReq() {
     return new RegisterMasterRequest(
-        "Paulo",
-        "Paulo",
-        "paulo@x.com",
-        "+5511999999999",
-        "MALE",
-        LocalDate.of(1990, 1, 1),
-        "702C",
-        "Senha@1234",
-        "1.0.0",
-        false);
+        "Paulo", "Paulo", "paulo@x.com", "+5511999999999", "702C", "Senha@1234", "1.0.0", false);
   }
 
   private ConsentDocument newConsent(String v) {

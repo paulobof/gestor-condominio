@@ -2,6 +2,7 @@ package br.com.condominio.feature.user;
 
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.UnitJoinRequestResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
@@ -39,6 +40,35 @@ public class UnitMemberController {
       @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return service.getMemberDetail(me.userId(), id);
   }
+
+  /** Pedidos de acesso à minha unidade, aguardando minha aprovação. */
+  @GetMapping("/requests")
+  @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
+  public List<UnitJoinRequestResponse> listRequests(
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.listPendingRequests(me.userId());
+  }
+
+  @PostMapping("/requests/{id}/approve")
+  @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
+  public ResponseEntity<Void> approveRequest(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    service.approveRequest(me.userId(), id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/requests/{id}/reject")
+  @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
+  public ResponseEntity<Void> rejectRequest(
+      @PathVariable UUID id,
+      @RequestBody(required = false) RejectRequestBody body,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    service.rejectRequest(me.userId(), id, body == null ? null : body.reason());
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Motivo opcional da recusa (visível só no histórico, nunca enviado ao recusado). */
+  public record RejectRequestBody(String reason) {}
 
   @PostMapping
   @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")

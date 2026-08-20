@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -18,13 +17,10 @@ public class RegisterMasterController {
 
   private final RegistrationService service;
 
-  @PostMapping(value = "/register-master", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PostMapping(value = "/register-master", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<RegistrationStatusResponse> registerMaster(
-      @Valid @ModelAttribute RegisterMasterRequest req,
-      @RequestPart("proof") MultipartFile proof,
-      HttpServletRequest request) {
-    String ip = resolveClientIp(request);
-    RegistrationStatusResponse resp = service.registerMaster(req, proof, ip);
+      @Valid @RequestBody RegisterMasterRequest req, HttpServletRequest request) {
+    RegistrationStatusResponse resp = service.registerMaster(req, resolveClientIp(request));
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(resp);
   }
 

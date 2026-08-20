@@ -13,10 +13,18 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findByIdAndStatus(UUID id, UserStatus status);
 
+  /**
+   * Fila de exceção do admin: todo cadastro de morador parado em PENDING_APPROVAL — o master da
+   * unidade que não respondeu, ou o master pendente do fluxo antigo. Proprietários (sem unidade)
+   * ficam de fora; eles têm fila própria em {@code /api/ownership-claims}.
+   */
   @Query(
       "SELECT u FROM User u WHERE u.status = br.com.condominio.feature.user.UserStatus.PENDING_APPROVAL "
-          + "AND u.isUnitMaster = true ORDER BY u.createdAt DESC")
-  Page<User> findPendingMasters(Pageable pageable);
+          + "AND u.unitId IS NOT NULL ORDER BY u.createdAt DESC")
+  Page<User> findPendingResidents(Pageable pageable);
+
+  /** Pedidos de acesso parados nas unidades informadas (visão do master). */
+  List<User> findByUnitIdInAndStatusAndIsUnitMasterFalse(List<UUID> unitIds, UserStatus status);
 
   /**
    * Users ACTIVE com comprovante carregado antes de {@code cutoff} — alvo do {@code

@@ -15,6 +15,7 @@ import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
 import br.com.condominio.feature.user.dto.MyUnitView;
+import br.com.condominio.feature.user.dto.UnitJoinRequestResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
 import br.com.condominio.feature.user.dto.UpdateUnitMemberRequest;
@@ -68,6 +69,7 @@ public class UnitMemberService {
     return userRepo
         .findByUnitIdInAndStatusNotAndIsUnitMasterFalse(myUnits, UserStatus.ANONYMIZED)
         .stream()
+        .filter(u -> u.getStatus() != UserStatus.PENDING_APPROVAL)
         .map(u -> toResponse(u, codeByUnit.get(u.getUnitId())))
         .toList();
   }
@@ -165,6 +167,75 @@ public class UnitMemberService {
         ActivityAction.DELETED, "Morador", unitCode(member.getUnitId()), masterUserId);
     provisioning.softDelete(member, memberId);
     log.info("Master {} excluiu (soft) morador {}", masterUserId, memberId);
+  }
+
+  // ===== pedidos de acesso à unidade =====
+
+  /** Pedidos parados nas minhas unidades — quem se cadastrou informando uma unidade já minha. */
+  @Transactional(readOnly = true)
+  public List<UnitJoinRequestResponse> listPendingRequests(UUID masterUserId) {
+    User master = userRepo.findById(masterUserId).orElse(null);
+    if (master == null) {
+      return List.of();
+    }
+    List<UUID> myUnits = myUnitIds(master);
+    if (myUnits.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, String> codeByUnit = unitCodes(myUnits);
+    return userRepo
+        .findByUnitIdInAndStatusAndIsUnitMasterFalse(myUnits, UserStatus.PENDING_APPROVAL)
+        .stream()
+        .map(
+            u ->
+                new UnitJoinRequestResponse(
+                    u.getId(),
+                    u.getFullName(),
+                    u.getGreetingName(),
+                    emailRepo.findPrimaryByUserId(u.getId()).map(UserEmail::getEmail).orElse(null),
+                    u.getPhone(),
+                    u.getUnitId(),
+                    codeByUnit.get(u.getUnitId()),
+                    u.getCreatedAt()))
+        .toList();
+  }
+
+  /** Aprova o pedido: o morador entra na unidade, sem mastership e sem gestão. */
+  @Transactional
+  public void approveRequest(UUID masterUserId, UUID requestUserId) {
+    User master = requireMaster(masterUserId);
+    User pending = requirePendingRequestInMyUnits(requestUserId, myUnitIds(master));
+    pending.approveAsMember(masterUserId);
+    activityNotifier.notify(
+        ActivityAction.UPDATED, "Pedido de acesso", unitCode(pending.getUnitId()), masterUserId);
+    log.info("Master {} aprovou pedido de acesso {}", masterUserId, requestUserId);
+  }
+
+  /** Recusa o pedido. O usuário fica REJECTED e não entra. */
+  @Transactional
+  public void rejectRequest(UUID masterUserId, UUID requestUserId, String reason) {
+    User master = requireMaster(masterUserId);
+    User pending = requirePendingRequestInMyUnits(requestUserId, myUnitIds(master));
+    pending.reject(masterUserId, reason);
+    activityNotifier.notify(
+        ActivityAction.DELETED, "Pedido de acesso", unitCode(pending.getUnitId()), masterUserId);
+    log.info("Master {} recusou pedido de acesso {}", masterUserId, requestUserId);
+  }
+
+  /** Garante que o pedido existe, está pendente, é de uma unidade minha e não é de um master. */
+  private User requirePendingRequestInMyUnits(UUID requestUserId, List<UUID> myUnits) {
+    User pending =
+        userRepo
+            .findById(requestUserId)
+            .orElseThrow(
+                () -> new UnitMemberException("REQUEST_NOT_FOUND", "Pedido não encontrado."));
+    if (myUnits.isEmpty() || !myUnits.contains(pending.getUnitId()) || pending.isUnitMaster()) {
+      throw new UnitMemberException("REQUEST_NOT_IN_UNIT", "Este pedido não é da sua unidade.");
+    }
+    if (pending.getStatus() != UserStatus.PENDING_APPROVAL) {
+      throw new UnitMemberException("REQUEST_NOT_PENDING", "Este pedido já foi resolvido.");
+    }
+    return pending;
   }
 
   // ===== helpers de escopo =====

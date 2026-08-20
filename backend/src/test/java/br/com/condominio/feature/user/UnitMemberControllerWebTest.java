@@ -52,6 +52,54 @@ class UnitMemberControllerWebTest {
       "{\"fullName\":\"Maria Silva\",\"greetingName\":\"Maria\",\"email\":\"maria@test.com\","
           + "\"phone\":\"abc\",\"whatsappOptIn\":true}";
 
+  // ===== pedidos de acesso à unidade =====
+
+  @Test
+  void listRequests_withPermission_returns200() throws Exception {
+    when(service.listPendingRequests(UID)).thenReturn(List.of());
+    mvc.perform(get("/api/units/me/members/requests").with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void listRequests_withoutPermission_returns403() throws Exception {
+    mvc.perform(get("/api/units/me/members/requests").with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).listPendingRequests(any());
+  }
+
+  @Test
+  void approveRequest_withPermission_returns204() throws Exception {
+    UUID requestId = UUID.randomUUID();
+    mvc.perform(
+            post("/api/units/me/members/requests/" + requestId + "/approve")
+                .with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isNoContent());
+    verify(service).approveRequest(UID, requestId);
+  }
+
+  @Test
+  void approveRequest_withoutPermission_returns403() throws Exception {
+    UUID requestId = UUID.randomUUID();
+    mvc.perform(
+            post("/api/units/me/members/requests/" + requestId + "/approve")
+                .with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).approveRequest(any(), any());
+  }
+
+  @Test
+  void rejectRequest_withPermission_returns204() throws Exception {
+    UUID requestId = UUID.randomUUID();
+    mvc.perform(
+            post("/api/units/me/members/requests/" + requestId + "/reject")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"nao conheco\"}"))
+        .andExpect(status().isNoContent());
+    verify(service).rejectRequest(UID, requestId, "nao conheco");
+  }
+
   @Test
   void listMy_withPermission_returns200() throws Exception {
     when(service.listMyUnitMembers(UID)).thenReturn(List.of());

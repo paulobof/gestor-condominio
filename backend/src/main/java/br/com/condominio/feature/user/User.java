@@ -194,6 +194,23 @@ public class User {
     this.proofVerifiedAt = Instant.now();
   }
 
+  /**
+   * Aprovar morador que pediu acesso a uma unidade que já tem master. Quem aprova é o master (ou o
+   * admin, como válvula). Não há comprovante — logo não marca {@code proofVerifiedAt}.
+   */
+  public void approveAsMember(UUID approverId) {
+    if (this.status != UserStatus.PENDING_APPROVAL) {
+      throw new IllegalStateException(
+          "User not in PENDING_APPROVAL state (current=" + this.status + ")");
+    }
+    if (this.isUnitMaster) {
+      throw new IllegalStateException("Masters must be approved via approveAsMaster");
+    }
+    this.status = UserStatus.ACTIVE;
+    this.approvedByUserId = approverId;
+    this.approvedAt = Instant.now();
+  }
+
   /** Aprovar proprietário (posse verificada). Ativa a conta sem exigir mastership. */
   public void approveAsOwner(UUID approverId) {
     if (this.status != UserStatus.PENDING_APPROVAL) {

@@ -6,30 +6,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnitSelector } from '@/components/UnitSelector';
-import { ProofUploader } from '@/components/ProofUploader';
 import { ConsentBox } from '@/features/consent/ConsentBox';
 import { registerMaster } from '@/features/consent/api/consentApi';
 import { PasswordInput } from '@/components/ui/password-input';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
 import { isStrongPassword } from '@/features/auth/passwordPolicy';
+import { useAuth } from '@/features/auth/useAuth';
 import { parsePhone, isValidPhone } from '@/lib/phone';
 
+/**
+ * Cadastro do morador. Pede só o essencial — sem comprovante de residência.
+ *
+ * Quem chega primeiro numa unidade sem responsável entra na hora e passa a responder por ela.
+ * Quem chega depois vira um pedido que o responsável aprova (ver `RegistrationService`).
+ */
 export function RegisterMasterPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [fullName, setFullName] = useState('');
   const [greetingName, setGreetingName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [gender, setGender] = useState('NOT_INFORMED');
-  const [birthDate, setBirthDate] = useState('');
   const [unitCode, setUnitCode] = useState<string | null>(null);
   const [hasMaster, setHasMaster] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [consentVersion, setConsentVersion] = useState<string | null>(null);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
-  const [proof, setProof] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const phoneParsed = parsePhone(phone);
@@ -44,30 +48,34 @@ export function RegisterMasterPage() {
     !!email &&
     phoneValid &&
     !!unitCode &&
-    hasMaster === false &&
     isStrongPassword(password) &&
     passwordsMatch &&
-    !!consentVersion &&
-    !!proof;
+    !!consentVersion;
 
   const submit = async () => {
-    if (!canSubmit || !proof) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('fullName', fullName);
-      fd.append('greetingName', greetingName);
-      fd.append('email', email);
-      fd.append('phone', phone);
-      fd.append('gender', gender);
-      if (birthDate) fd.append('birthDate', birthDate);
-      fd.append('unitCode', unitCode!);
-      fd.append('password', password);
-      fd.append('consentVersion', consentVersion!);
-      fd.append('whatsappOptIn', whatsappOptIn ? 'true' : 'false');
-      fd.append('proof', proof);
-      await registerMaster(fd);
-      toast.success('Cadastro enviado! Aguarde aprovação do síndico.');
+      const resp = await registerMaster({
+        fullName,
+        greetingName,
+        email,
+        phone,
+        unitCode: unitCode!,
+        password,
+        consentVersion: consentVersion!,
+        whatsappOptIn,
+      });
+
+      if (resp?.status === 'ACTIVE') {
+        // Unidade sem responsável: entra direto, sem passar pela tela de login.
+        await login(email, password);
+        toast.success('Conta criada! Bem-vindo.');
+        navigate('/', { replace: true });
+        return;
+      }
+
+      toast.success('Pedido enviado! O responsável pela sua unidade vai aprovar.');
       navigate('/pending-approval', { replace: true });
     } catch (e) {
       const msg =
@@ -83,11 +91,11 @@ export function RegisterMasterPage() {
     <main className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-2xl my-8">
         <CardHeader>
-          <CardTitle>Cadastro de morador (master)</CardTitle>
+          <CardTitle>Criar minha conta</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <section>
-            <h3 className="font-semibold mb-3">1. Identificação da unidade</h3>
+            <h3 className="font-semibold mb-3">1. Sua unidade</h3>
             <UnitSelector
               value={unitCode}
               onChange={(c, h) => {
@@ -128,27 +136,6 @@ export function RegisterMasterPage() {
                 <Label htmlFor="phone">Telefone (WhatsApp)</Label>
                 <PhoneInput id="phone" value={phone} onChange={setPhone} />
               </div>
-              <div>
-                <Label>Data de nascimento</Label>
-                <Input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Gênero (opcional)</Label>
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2"
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                >
-                  <option value="NOT_INFORMED">Prefiro não informar</option>
-                  <option value="MALE">Masculino</option>
-                  <option value="FEMALE">Feminino</option>
-                  <option value="OTHER">Outro</option>
-                </select>
-              </div>
               <div className="col-span-2">
                 <Label htmlFor="password">Senha</Label>
                 <PasswordInput
@@ -181,18 +168,20 @@ export function RegisterMasterPage() {
             </label>
           </section>
           <section>
-            <h3 className="font-semibold mb-3">3. Comprovante de residência</h3>
-            <ProofUploader value={proof} onChange={setProof} />
-          </section>
-          <section>
-            <h3 className="font-semibold mb-3">4. Termo de privacidade</h3>
+            <h3 className="font-semibold mb-3">3. Termo de privacidade</h3>
             <ConsentBox
               accepted={!!consentVersion}
               onChange={(a, v) => setConsentVersion(a ? v : null)}
             />
           </section>
+          {unitCode && hasMaster && (
+            <p className="rounded-md bg-muted p-3 text-sm" role="status">
+              A unidade <strong>{unitCode}</strong> já tem um responsável cadastrado. Seu acesso
+              precisa da aprovação dele — ele será avisado por WhatsApp assim que você enviar.
+            </p>
+          )}
           <Button onClick={submit} disabled={!canSubmit || submitting} className="w-full">
-            {submitting ? 'Enviando...' : 'Enviar cadastro'}
+            {submitting ? 'Enviando...' : 'Criar minha conta'}
           </Button>
         </CardContent>
       </Card>

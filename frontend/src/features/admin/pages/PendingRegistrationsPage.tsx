@@ -94,18 +94,24 @@ export function PendingRegistrationsPage() {
                 <div>
                   <strong>Telefone:</strong> {it.phone}
                 </div>
-                <div>
-                  <strong>Nascimento:</strong> {formatDateBR(it.birthDate)}
-                </div>
-                <div>
-                  <strong>Comprovante:</strong> {it.residenceProofFilename}
-                </div>
+                {it.birthDate && (
+                  <div>
+                    <strong>Nascimento:</strong> {formatDateBR(it.birthDate)}
+                  </div>
+                )}
+                {it.residenceProofFilename && (
+                  <div>
+                    <strong>Comprovante:</strong> {it.residenceProofFilename}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" onClick={() => handleViewProof(it.userId)}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Ver comprovante
-                </Button>
+                {it.residenceProofFilename && (
+                  <Button variant="outline" onClick={() => handleViewProof(it.userId)}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Ver comprovante
+                  </Button>
+                )}
                 <Button onClick={() => handleApprove(it.userId)}>
                   <Check className="w-4 h-4 mr-2" />
                   Aprovar
@@ -121,7 +127,7 @@ export function PendingRegistrationsPage() {
                   <Input
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Ex.: comprovante ilegível"
+                    placeholder="Ex.: não é morador da unidade"
                   />
                   <div className="flex gap-2">
                     <Button onClick={() => handleReject(it.userId)} disabled={!rejectReason.trim()}>

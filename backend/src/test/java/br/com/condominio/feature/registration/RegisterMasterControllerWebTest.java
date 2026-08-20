@@ -4,7 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,13 +18,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
 /**
- * Contrato HTTP do {@link RegisterMasterController}: cadastro do master é público, multipart
- * (campos + comprovante), retorna 202 PENDING e valida os campos obrigatórios.
+ * Contrato HTTP do {@link RegisterMasterController}: cadastro é público, JSON (sem comprovante),
+ * retorna 202 com o status resolvido pelo service (ACTIVE se a unidade não tinha master,
+ * PENDING_APPROVAL se tinha) e valida os campos obrigatórios.
  */
 @WebMvcTest(controllers = RegisterMasterController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
@@ -34,59 +34,63 @@ class RegisterMasterControllerWebTest {
   @MockBean private RegistrationService service;
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
 
-  private MockMultipartHttpServletRequestBuilder withFields(
-      MockMultipartHttpServletRequestBuilder req, String email) {
-    return (MockMultipartHttpServletRequestBuilder)
-        req.file(new MockMultipartFile("proof", "proof.pdf", "application/pdf", new byte[] {1, 2}))
-            .param("fullName", "Paulo Teste")
-            .param("greetingName", "Paulo")
-            .param("email", email)
-            .param("phone", "11999998888")
-            .param("unitCode", "A-101")
-            .param("password", "Senha@1234")
-            .param("consentVersion", "v3")
-            .param("whatsappOptIn", "true");
+  private String body(String email, String password) {
+    return """
+        {"fullName":"Paulo Teste","greetingName":"Paulo","email":"%s","phone":"11999998888",
+         "unitCode":"A-101","password":"%s","consentVersion":"v3","whatsappOptIn":true}
+        """
+        .formatted(email, password);
   }
 
   @Test
-  void registerMaster_returns202_pending() throws Exception {
-    when(service.registerMaster(any(), any(), any()))
-        .thenReturn(new RegistrationStatusResponse(UUID.randomUUID(), "PENDING"));
+  void registerMaster_returns202_active() throws Exception {
+    when(service.registerMaster(any(), any()))
+        .thenReturn(new RegistrationStatusResponse(UUID.randomUUID(), "ACTIVE"));
 
-    mvc.perform(withFields(multipart("/api/auth/register-master"), "paulo@test.com"))
+    mvc.perform(
+            post("/api/auth/register-master")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("paulo@test.com", "Senha@1234")))
         .andExpect(status().isAccepted())
-        .andExpect(jsonPath("$.status").value("PENDING"));
+        .andExpect(jsonPath("$.status").value("ACTIVE"));
 
-    verify(service).registerMaster(any(), any(), any());
+    verify(service).registerMaster(any(), any());
+  }
+
+  @Test
+  void registerMaster_whenUnitHasMaster_returns202_pending() throws Exception {
+    when(service.registerMaster(any(), any()))
+        .thenReturn(new RegistrationStatusResponse(UUID.randomUUID(), "PENDING_APPROVAL"));
+
+    mvc.perform(
+            post("/api/auth/register-master")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("paulo@test.com", "Senha@1234")))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.status").value("PENDING_APPROVAL"));
   }
 
   @Test
   void registerMaster_invalidEmail_returns400() throws Exception {
-    mvc.perform(withFields(multipart("/api/auth/register-master"), "naoEhEmail"))
+    mvc.perform(
+            post("/api/auth/register-master")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("naoEhEmail", "Senha@1234")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
-    verify(service, never()).registerMaster(any(), any(), any());
+    verify(service, never()).registerMaster(any(), any());
   }
 
   @Test
   void registerMaster_weakPassword_returns400() throws Exception {
     mvc.perform(
-            multipart("/api/auth/register-master")
-                .file(
-                    new MockMultipartFile(
-                        "proof", "proof.pdf", "application/pdf", new byte[] {1, 2}))
-                .param("fullName", "Paulo Teste")
-                .param("greetingName", "Paulo")
-                .param("email", "paulo@test.com")
-                .param("phone", "11999998888")
-                .param("unitCode", "A-101")
-                .param("password", "senha12345")
-                .param("consentVersion", "v3")
-                .param("whatsappOptIn", "true"))
+            post("/api/auth/register-master")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("paulo@test.com", "senha12345")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
-    verify(service, never()).registerMaster(any(), any(), any());
+    verify(service, never()).registerMaster(any(), any());
   }
 }

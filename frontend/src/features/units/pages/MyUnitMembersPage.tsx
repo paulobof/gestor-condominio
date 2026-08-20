@@ -11,8 +11,12 @@ import {
   createMember,
   updateMember,
   deleteMember,
+  listJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
   type UnitMember,
   type MyUnit,
+  type UnitJoinRequest,
 } from '../api/unitMembersApi';
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -38,6 +42,8 @@ export function MyUnitMembersPage() {
   const [editing, setEditing] = useState<UnitMember | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [requests, setRequests] = useState<UnitJoinRequest[]>([]);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
 
   const multiUnit = units.length > 1;
 
@@ -52,9 +58,19 @@ export function MyUnitMembersPage() {
     }
   }, []);
 
+  const loadRequests = useCallback(async () => {
+    if (!canManage) return;
+    try {
+      setRequests(await listJoinRequests());
+    } catch {
+      /* sem permissao ou sem unidade: secao some */
+    }
+  }, [canManage]);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadRequests();
+  }, [load, loadRequests]);
 
   useEffect(() => {
     listMyUnits()
@@ -76,6 +92,25 @@ export function MyUnitMembersPage() {
     }
   };
 
+  const decide = async (req: UnitJoinRequest, approve: boolean) => {
+    setDecidingId(req.id);
+    try {
+      if (approve) {
+        await approveJoinRequest(req.id);
+        toast.success(`${req.fullName} agora tem acesso.`);
+      } else {
+        await rejectJoinRequest(req.id);
+        toast.success('Pedido recusado.');
+      }
+      setRequests((prev) => prev.filter((r) => r.id !== req.id));
+      if (approve) void load();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao responder o pedido.'));
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
   const showList = !editing && !adding;
 
   return (
@@ -88,6 +123,61 @@ export function MyUnitMembersPage() {
         />
         Moradores da minha unidade
       </h1>
+
+      {showList && canManage && requests.length > 0 && (
+        <section aria-labelledby="pedidos-titulo" className="mb-6">
+          <h2 id="pedidos-titulo" className="mb-2 text-lg font-heading font-semibold">
+            Pedidos de acesso ({requests.length})
+          </h2>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Estas pessoas se cadastraram informando a sua unidade. Só entram se você aprovar.
+          </p>
+          <ul className="space-y-2">
+            {requests.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-orange/40 bg-muted/40 px-3 py-2"
+              >
+                <span className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+                  <span className="font-medium">
+                    {r.fullName}
+                    {multiUnit && r.unitCode && (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        {r.unitCode}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+                    {r.email && <span>{r.email}</span>}
+                    {r.phone && <span>{r.phone}</span>}
+                  </span>
+                </span>
+                <span className="flex shrink-0 flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    className="min-h-[44px]"
+                    disabled={decidingId === r.id}
+                    aria-label={`Aprovar ${r.fullName}`}
+                    onClick={() => void decide(r, true)}
+                  >
+                    Aprovar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px]"
+                    disabled={decidingId === r.id}
+                    aria-label={`Recusar ${r.fullName}`}
+                    onClick={() => void decide(r, false)}
+                  >
+                    Recusar
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {showList && (
         <>

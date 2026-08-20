@@ -58,6 +58,18 @@ export interface UpdateMemberPayload {
   birthDate: string | null;
 }
 
+/** Espelha UnitJoinRequestResponse: pedido de acesso aguardando o responsável da unidade. */
+export interface UnitJoinRequest {
+  id: string;
+  fullName: string;
+  greetingName: string | null;
+  email: string | null;
+  phone: string | null;
+  unitId: string | null;
+  unitCode: string | null;
+  requestedAt: string;
+}
+
 export async function listMembers() {
   const r = await api.get('/units/me/members');
   return r.data as UnitMember[];
@@ -85,4 +97,18 @@ export async function updateMember(id: string, payload: UpdateMemberPayload) {
 
 export async function deleteMember(id: string) {
   await api.delete(`/units/me/members/${id}`);
+}
+
+/** Pedidos de acesso à minha unidade, feitos por quem se cadastrou informando ela. */
+export async function listJoinRequests() {
+  const r = await api.get('/units/me/members/requests');
+  return r.data as UnitJoinRequest[];
+}
+
+export async function approveJoinRequest(id: string) {
+  await api.post(`/units/me/members/requests/${id}/approve`);
+}
+
+export async function rejectJoinRequest(id: string, reason?: string) {
+  await api.post(`/units/me/members/requests/${id}/reject`, { reason: reason ?? null });
 }

@@ -15,20 +15,15 @@ export function UnitSelector({ value, onChange }: Props) {
   const [tower, setTower] = useState<string>('');
   const [floor, setFloor] = useState<number | ''>('');
   const [position, setPosition] = useState<number | ''>('');
-  const [hasActiveMaster, setHasActiveMaster] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (tower && floor && position) {
       const code = `${floor}${String(position).padStart(2, '0')}${tower}`;
       lookupUnit(code)
-        .then((r) => {
-          setHasActiveMaster(r.hasActiveMaster);
-          onChange(code, r.hasActiveMaster);
-        })
+        .then((r) => onChange(code, r.hasActiveMaster))
         .catch(() => onChange(null, null));
     } else {
       onChange(null, null);
-      setHasActiveMaster(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tower, floor, position]);
@@ -80,14 +75,9 @@ export function UnitSelector({ value, onChange }: Props) {
           ))}
         </select>
       </div>
-      {value && hasActiveMaster && (
-        <p className="col-span-3 text-sm text-destructive" role="alert">
-          Esta unidade já possui um master. Procure o síndico se você é o morador.
-        </p>
-      )}
-      {value && hasActiveMaster === false && (
-        <p className="col-span-3 text-sm text-success">
-          Unidade disponível: <strong>{value}</strong>
+      {value && (
+        <p className="col-span-3 text-sm text-muted-foreground">
+          Unidade selecionada: <strong>{value}</strong>
         </p>
       )}
     </div>

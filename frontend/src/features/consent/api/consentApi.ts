@@ -13,10 +13,27 @@ export async function fetchCurrent(): Promise<ConsentDoc> {
   return r.data;
 }
 
-export async function registerMaster(form: FormData) {
-  const r = await axios.post(`${baseUrl()}/auth/register-master`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+export interface RegisterMasterPayload {
+  fullName: string;
+  greetingName: string;
+  email: string;
+  phone: string;
+  unitCode: string;
+  password: string;
+  consentVersion: string;
+  whatsappOptIn: boolean;
+}
+
+/**
+ * Cadastro do morador (JSON, sem comprovante). A resposta diz o que aconteceu:
+ * `ACTIVE` = entrou e virou master da unidade; `PENDING_APPROVAL` = a unidade já tinha
+ * master e o pedido foi para a aprovação dele.
+ */
+export async function registerMaster(payload: RegisterMasterPayload) {
+  const r = await axios.post<{ userId: string; status: string }>(
+    `${baseUrl()}/auth/register-master`,
+    payload
+  );
   return r.data;
 }
 

@@ -27,6 +27,30 @@ class WhatsAppMessageRendererTest {
   }
 
   @Test
+  void renderizaUnitJoinRequestParaOMaster() {
+    String msg =
+        renderer.render(
+            WhatsAppTemplate.UNIT_JOIN_REQUEST,
+            Map.of("greetingName", "Ana", "requesterName", "Maria", "unitCode", "702C"));
+    assertThat(msg)
+        .contains("Ana")
+        .contains("Maria")
+        .contains("702C")
+        .contains("Moradores")
+        .contains("HELBOR TRILOGY HOME");
+  }
+
+  @Test
+  void unitJoinRequestSemUnitCodeFalha() {
+    assertThatThrownBy(
+            () ->
+                renderer.render(
+                    WhatsAppTemplate.UNIT_JOIN_REQUEST,
+                    Map.of("greetingName", "Ana", "requesterName", "Maria")))
+        .isInstanceOf(WhatsAppSendException.class);
+  }
+
+  @Test
   void renderizaPasswordChanged() {
     String msg =
         renderer.render(WhatsAppTemplate.PASSWORD_CHANGED, Map.of("greetingName", "Maria"));

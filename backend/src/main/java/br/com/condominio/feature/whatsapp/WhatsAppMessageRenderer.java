@@ -57,6 +57,19 @@ public class WhatsAppMessageRenderer {
               + CONDO
               + " foi atualizado pelo responsável da sua unidade.\n\n"
               + "Não reconhece esta alteração? Fale com a administração imediatamente.";
+      case UNIT_JOIN_REQUEST ->
+          "Olá, "
+              + req(d, "greetingName", template)
+              + "! 🔔\n\n"
+              + req(d, "requesterName", template)
+              + " se cadastrou no "
+              + CONDO
+              + " informando a unidade "
+              + req(d, "unitCode", template)
+              + ", que é a sua.\n\n"
+              + "Só entra depois que você aprovar. Abra o app em *Moradores* para aprovar ou "
+              + "recusar.\n\n"
+              + "Não conhece essa pessoa? Recuse — nada acontece sem você.";
       case ACTIVITY_ALERT -> req(d, "text", template);
     };
   }

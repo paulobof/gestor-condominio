@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
+import { useFeatures } from '@/features/featureflags/useFeatures';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
@@ -29,6 +30,8 @@ interface NavItem {
   brand: Brand;
   end?: boolean;
   requires?: string;
+  /** Nome da feature flag; item some do menu quando ela está desligada no ambiente. */
+  requiresFeature?: string;
 }
 
 interface NavChild {
@@ -51,21 +54,61 @@ type NavEntry = ({ kind: 'item' } & NavItem) | ({ kind: 'group' } & NavGroup);
 
 const ENTRIES: NavEntry[] = [
   { kind: 'item', to: '/', label: 'Início', icon: Home, brand: 'ink', end: true },
-  { kind: 'item', to: '/avisos', label: 'Avisos', icon: Megaphone, brand: 'red' },
-  { kind: 'item', to: '/informacoes', label: 'Informações', icon: Info, brand: 'blue' },
-  { kind: 'item', to: '/faq', label: 'Perguntas Frequentes', icon: BookOpen, brand: 'blue' },
-  { kind: 'item', to: '/documentos', label: 'Documentos', icon: FileText, brand: 'blue' },
-  { kind: 'item', to: '/indicacoes', label: 'Indicações', icon: Lightbulb, brand: 'orange' },
-  { kind: 'item', to: '/classificados', label: 'Classificados', icon: ShoppingBag, brand: 'green' },
   {
-    kind: 'group',
-    label: 'Vagas',
+    kind: 'item',
+    to: '/avisos',
+    label: 'Avisos',
+    icon: Megaphone,
+    brand: 'red',
+    requiresFeature: 'announcements',
+  },
+  {
+    kind: 'item',
+    to: '/informacoes',
+    label: 'Informações',
+    icon: Info,
+    brand: 'blue',
+    requiresFeature: 'generalinfo',
+  },
+  {
+    kind: 'item',
+    to: '/faq',
+    label: 'Perguntas Frequentes',
+    icon: BookOpen,
+    brand: 'blue',
+    requiresFeature: 'faq',
+  },
+  {
+    kind: 'item',
+    to: '/documentos',
+    label: 'Documentos',
+    icon: FileText,
+    brand: 'blue',
+    requiresFeature: 'documents',
+  },
+  {
+    kind: 'item',
+    to: '/indicacoes',
+    label: 'Indicações',
+    icon: Lightbulb,
+    brand: 'orange',
+    requiresFeature: 'recommendations',
+  },
+  {
+    kind: 'item',
+    to: '/classificados',
+    label: 'Classificados',
+    icon: ShoppingBag,
+    brand: 'green',
+    requiresFeature: 'classifieds',
+  },
+  {
+    kind: 'item',
+    to: '/vagas/aluguel',
+    label: 'Aluguel de Vagas',
     icon: SquareParking,
     brand: 'blue',
-    children: [
-      { to: '/vagas/aluguel', label: 'Aluguel de Vagas' },
-      { to: '/vagas/escolha', label: 'Escolha de Vaga', disabled: true, badge: 'Em breve' },
-    ],
+    requiresFeature: 'parkingrental',
   },
   {
     kind: 'item',
@@ -82,6 +125,7 @@ const ENTRIES: NavEntry[] = [
     icon: Building2,
     brand: 'ink',
     requires: 'REGISTRATION_VIEW',
+    requiresFeature: 'unitownership',
   },
   {
     kind: 'item',
@@ -90,6 +134,7 @@ const ENTRIES: NavEntry[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
+    requiresFeature: 'accessmanagement',
   },
   {
     kind: 'item',
@@ -105,6 +150,7 @@ const ENTRIES: NavEntry[] = [
     label: 'Registrar unidade',
     icon: Building2,
     brand: 'ink',
+    requiresFeature: 'unitownership',
   },
 ];
 
@@ -210,14 +256,16 @@ function GroupNav({ group, onNavigate }: { group: NavGroup; onNavigate?: () => v
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
+  const { enabled } = useFeatures();
   const can = (requires?: string) => !requires || (user?.authorities.includes(requires) ?? false);
+  const on = (feature?: string) => !feature || enabled(feature);
 
   return (
     <div className="flex h-full flex-1 flex-col">
       <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
         {ENTRIES.map((entry) => {
           if (entry.kind === 'item') {
-            if (!can(entry.requires)) return null;
+            if (!can(entry.requires) || !on(entry.requiresFeature)) return null;
             return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
           }
           const children = entry.children.filter((c) => can(c.requires));

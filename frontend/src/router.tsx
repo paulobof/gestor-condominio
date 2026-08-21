@@ -6,6 +6,7 @@ import { PendingApprovalPage } from '@/features/auth/pages/PendingApprovalPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { PrivacyPage } from '@/features/privacy/pages/PrivacyPage';
+import { AboutPage } from '@/features/about/pages/AboutPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { PublicShell } from '@/components/layout/PublicShell';
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
     // Casca pública: aviso de app independente (LGPD) fixo no topo das telas sem login.
     element: <PublicShell />,
     children: [
+      { path: '/sobre', element: <AboutPage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register-master', element: <RegisterMasterPage /> },
       { path: '/register-owner', element: <RegisterOwnerPage /> },

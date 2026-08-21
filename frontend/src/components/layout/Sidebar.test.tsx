@@ -1,17 +1,26 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
+vi.mock('@/features/featureflags/useFeatures', () => ({ useFeatures: vi.fn() }));
 
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/features/auth/useAuth';
+import { useFeatures } from '@/features/featureflags/useFeatures';
 
 const useAuthMock = vi.mocked(useAuth);
+const useFeaturesMock = vi.mocked(useFeatures);
+
+/** Por padrão tudo ligado; os testes de flag passam a lista do que está ligado. */
+let enabledFeatures: string[] | null = null;
 
 function renderSidebar(authorities: string[] = [], path = '/') {
   useAuthMock.mockReturnValue({ user: { id: 'u1', authorities } } as never);
+  useFeaturesMock.mockReturnValue({
+    enabled: (name: string) => enabledFeatures === null || enabledFeatures.includes(name),
+    loading: false,
+  });
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Sidebar open={true} onClose={() => {}} />
@@ -19,7 +28,10 @@ function renderSidebar(authorities: string[] = [], path = '/') {
   );
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  enabledFeatures = null;
+});
 
 describe('Sidebar', () => {
   it('mostra os atalhos principais com seus destinos', () => {
@@ -112,34 +124,41 @@ describe('Sidebar', () => {
     expect(link.className).not.toContain('hover:bg-accent');
   });
 
-  it('grupo "Vagas" começa recolhido e expande mostrando os sub-itens', async () => {
+  it('"Aluguel de Vagas" é item direto do menu (sem grupo "Vagas")', () => {
     renderSidebar();
-    // recolhido: o sub-item ainda não está no DOM
+    expect(screen.queryByRole('button', { name: 'Vagas' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
+      'href',
+      '/vagas/aluguel'
+    );
+  });
+
+  it('não oferece mais "Escolha de Vaga" (rota inexistente)', () => {
+    renderSidebar();
+    expect(screen.queryByText(/escolha de vaga/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Em breve')).not.toBeInTheDocument();
+  });
+
+  it('esconde o item quando a feature está desligada no ambiente', () => {
+    enabledFeatures = ['announcements'];
+    renderSidebar(['RESIDENT_MANAGE']);
+
+    expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /classificados/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Aluguel de Vagas' })).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getAllByRole('button', { name: 'Vagas' })[0]);
-
-    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
-      'href',
-      '/vagas/aluguel'
-    );
+    expect(screen.queryByRole('link', { name: /documentos/i })).not.toBeInTheDocument();
+    // itens sem flag continuam: Início e Moradores (permission-gated)
+    expect(screen.getAllByRole('link', { name: /início/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /^moradores$/i })[0]).toBeInTheDocument();
   });
 
-  it('"Escolha de Vaga" aparece desabilitada com selo "Em breve" (não é link)', async () => {
-    renderSidebar();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Vagas' })[0]);
-
-    expect(screen.queryByRole('link', { name: /escolha de vaga/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText('Escolha de Vaga')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('Em breve')[0]).toBeInTheDocument();
-  });
-
-  it('grupo "Vagas" abre automaticamente quando a rota ativa pertence a ele', () => {
-    renderSidebar([], '/vagas/aluguel');
-    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
-      'href',
-      '/vagas/aluguel'
-    );
+  it('esconde "Registrar unidade" e "Pedidos de unidade" com unitownership desligada', () => {
+    enabledFeatures = [];
+    renderSidebar(['REGISTRATION_VIEW']);
+    expect(screen.queryByRole('link', { name: /registrar unidade/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /pedidos de unidade/i })).not.toBeInTheDocument();
+    // a fila de exceção do admin não tem flag: continua disponível
+    expect(screen.getAllByRole('link', { name: /cadastros pendentes/i })[0]).toBeInTheDocument();
   });
 
   it('proprietário (só leitura) não vê itens de escrita/admin', () => {

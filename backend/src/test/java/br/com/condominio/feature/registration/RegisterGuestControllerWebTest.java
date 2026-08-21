@@ -12,6 +12,7 @@ import br.com.condominio.feature.registration.dto.RegistrationStatusResponse;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
+import br.com.condominio.support.MockAuth;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,7 @@ class RegisterGuestControllerWebTest {
 
     mvc.perform(
             post("/api/auth/register-guest")
+                .with(MockAuth.user(UUID.randomUUID()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_JSON.formatted("guest@test.com")))
         .andExpect(status().isAccepted())
@@ -59,6 +61,7 @@ class RegisterGuestControllerWebTest {
   void registerGuest_invalidEmail_returns400() throws Exception {
     mvc.perform(
             post("/api/auth/register-guest")
+                .with(MockAuth.user(UUID.randomUUID()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_JSON.formatted("naoEhEmail")))
         .andExpect(status().isBadRequest())
@@ -76,7 +79,10 @@ class RegisterGuestControllerWebTest {
          "whatsappOptIn":true}
         """;
     mvc.perform(
-            post("/api/auth/register-guest").contentType(MediaType.APPLICATION_JSON).content(weak))
+            post("/api/auth/register-guest")
+                .with(MockAuth.user(UUID.randomUUID()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(weak))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 

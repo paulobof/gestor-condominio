@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
+import { useFeatures } from '@/features/featureflags/useFeatures';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 import { useState } from 'react';
@@ -22,6 +23,8 @@ type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
   const { status, login } = useAuth();
+  const { enabled } = useFeatures();
+  const ownershipEnabled = enabled('unitownership');
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
@@ -112,11 +115,19 @@ export function LoginPage() {
                 >
                   Primeiro acesso? Cadastre-se
                 </Link>
+                {ownershipEnabled && (
+                  <Link
+                    to="/register-owner"
+                    className="block text-muted-foreground hover:text-foreground underline"
+                  >
+                    Sou proprietário (não moro no condomínio)
+                  </Link>
+                )}
                 <Link
-                  to="/register-owner"
+                  to="/sobre"
                   className="block text-muted-foreground hover:text-foreground underline"
                 >
-                  Sou proprietário (não moro no condomínio)
+                  O que é este aplicativo?
                 </Link>
               </div>
             </form>

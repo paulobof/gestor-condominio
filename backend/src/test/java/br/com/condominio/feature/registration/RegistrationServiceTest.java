@@ -103,7 +103,10 @@ class RegistrationServiceTest {
     assertThat(unit.getMasterUserId()).isNotNull();
     verify(emailRepo).save(any());
     verify(userRoleRepo).save(any());
-    verify(permissionGrants).grantIfAbsent(any(), eq(PermissionCode.RESIDENT_MANAGE), any());
+    // grantedBy DEVE ser null: o banco proíbe auto-concessão (chk_grant_self).
+    verify(permissionGrants)
+        .grantIfAbsent(
+            any(), eq(PermissionCode.RESIDENT_MANAGE), org.mockito.ArgumentMatchers.isNull());
     // Sem comprovante: o storage nao e tocado no cadastro.
     verify(storage, never()).upload(any(), any(), anyLong(), any());
     verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());

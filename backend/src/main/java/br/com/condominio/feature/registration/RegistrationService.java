@@ -92,7 +92,9 @@ public class RegistrationService {
 
     if (becomesMaster) {
       unit.assignMaster(user.getId());
-      permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, user.getId());
+      // grantedBy null = concedido pelo próprio cadastro, não por outra pessoa. O banco proíbe
+      // auto-concessão (chk_grant_self em V3), então nunca passe o próprio usuário aqui.
+      permissionGrants.grantIfAbsent(user.getId(), PermissionCode.RESIDENT_MANAGE, null);
       log.info(
           "Master auto-approved: userId={} unitCode={} ip={}",
           user.getId(),

@@ -13,10 +13,11 @@ function renderAbout() {
 }
 
 describe('AboutPage — apresentação pública', () => {
-  it('deixa claro que o app não é oficial', () => {
+  it('deixa claro que o app é independente de quem administra o condomínio', () => {
     renderAbout();
-    expect(screen.getByText(/não é oficial/i)).toBeInTheDocument();
+    expect(screen.getByText(/aplicativo independente/i)).toBeInTheDocument();
     expect(screen.getByText(/feito por um morador/i)).toBeInTheDocument();
+    expect(screen.getByText(/s[íi]ndico ou o conselho/i)).toBeInTheDocument();
   });
 
   it('explica a entrada por unidade e a aprovação de quem já está', () => {

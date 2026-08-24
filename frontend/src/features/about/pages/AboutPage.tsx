@@ -70,11 +70,11 @@ export function AboutPage() {
         </CardContent>
       </Card>
 
-      <Card className="mb-6 border-dashed">
+      <Card className="mb-6">
         <CardContent className="pt-6 text-sm text-muted-foreground">
-          <strong className="block text-foreground">Este aplicativo não é oficial</strong>
-          Foi feito por um morador, por conta própria. Não é da administradora nem do síndico, e não
-          substitui os canais oficiais do condomínio.
+          <strong className="block text-foreground">Aplicativo independente</strong>
+          Feito por um morador, por conta própria. Não tem vínculo oficial com a administração, o
+          síndico ou o conselho, e não substitui os canais oficiais do condomínio.
         </CardContent>
       </Card>
 

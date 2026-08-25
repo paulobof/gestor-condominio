@@ -54,10 +54,7 @@ const router = createBrowserRouter([
     element: <Shell />,
     children: [
       { path: '/', element: <App /> },
-      { path: '/avisos', element: <AnnouncementsListPage /> },
-      { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
       { path: '/informacoes', element: <InfoPage /> },
-      { path: '/faq', element: <FaqPage /> },
       { path: '/documentos', element: <DocumentsPage /> },
       { path: '/indicacoes', element: <RecommendationsListPage /> },
       { path: '/indicacoes/:id', element: <RecommendationDetailPage /> },
@@ -74,6 +71,9 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
+      { path: '/avisos', element: <AnnouncementsListPage /> },
+      { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
+      { path: '/faq', element: <FaqPage /> },
       { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
       { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
       { path: '/admin/acessos', element: <AccessManagementPage /> },

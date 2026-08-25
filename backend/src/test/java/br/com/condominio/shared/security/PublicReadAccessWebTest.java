@@ -54,11 +54,9 @@ class PublicReadAccessWebTest {
   // ===== leitura: aberta ao visitante =====
 
   @Test
-  void anonimo_leAvisos() throws Exception {
-    Page<?> vazio = new PageImpl<>(List.of());
-    org.mockito.Mockito.when(announcementService.list(org.mockito.ArgumentMatchers.any()))
-        .thenAnswer(inv -> vazio);
-    mvc.perform(get("/api/announcements")).andExpect(status().isOk());
+  void anonimo_naoLeAvisos() throws Exception {
+    // Mural fechado a pedido do controlador dos dados (2026-08-25).
+    mvc.perform(get("/api/announcements")).andExpect(status().isUnauthorized());
   }
 
   @Test

@@ -58,15 +58,13 @@ public class SecurityConfig {
                         "/api/privacy/document/current",
                         "/api/features")
                     .permitAll()
-                    // Conteudo do condominio aberto a visitante (decisao do controlador dos dados,
-                    // 2026-08-25): leitura publica. Escrita, area da unidade, admin e dados
-                    // pessoais seguem exigindo sessao. Method security (@PreAuthorize) continua
-                    // valendo por cima — ex.: /api/faq/all so com FAQ_MANAGE.
+                    // Conteudo aberto a visitante (decisao do controlador dos dados, 2026-08-25):
+                    // informacoes gerais, documentos, indicacoes, classificados e tags. Mural de
+                    // avisos e FAQ ficam so para quem tem conta. Escrita, area da unidade, admin e
+                    // dados pessoais tambem exigem sessao.
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/announcements/**",
                         "/api/info-sections/**",
-                        "/api/faq",
                         "/api/documents",
                         "/api/documents/*/file",
                         "/api/classifieds/**",

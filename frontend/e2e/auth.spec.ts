@@ -5,15 +5,24 @@ test.describe('Autenticação', () => {
     mock.user(null); // /auth/refresh falha -> unauthenticated
     await page.goto('/');
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole('link', { name: /criar minha conta/i })).toBeVisible();
+    // A home nao vende cadastro: mostra o conteudo. Entrar fica no topo; o resto pede quando precisa.
+    await expect(page.getByRole('heading', { name: 'HELBOR TRILOGY HOME' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
     await expect(page.getByText('Entrar no sistema')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /criar minha conta/i })).toHaveCount(0);
   });
 
-  test('visitante lê o conteúdo do condomínio sem conta', async ({ page, mock }) => {
+  test('visitante lê o conteúdo aberto sem conta', async ({ page, mock }) => {
+    mock.user(null);
+    await page.goto('/indicacoes');
+    await expect(page).toHaveURL(/\/indicacoes$/);
+    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
+  });
+
+  test('mural exige conta: visitante cai no login', async ({ page, mock }) => {
     mock.user(null);
     await page.goto('/avisos');
-    await expect(page).toHaveURL(/\/avisos$/);
-    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
   });
 
   test('visitante em area que exige conta cai no login', async ({ page, mock }) => {

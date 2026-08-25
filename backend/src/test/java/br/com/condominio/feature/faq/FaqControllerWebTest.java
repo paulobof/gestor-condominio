@@ -142,8 +142,8 @@ class FaqControllerWebTest {
   }
 
   @Test
-  void listPublished_semSessao_ehPublico() throws Exception {
-    mvc.perform(get("/api/faq")).andExpect(status().isOk());
+  void listPublished_semSessao_ehRejeitado() throws Exception {
+    mvc.perform(get("/api/faq")).andExpect(status().is4xxClientError());
   }
 
   @Test

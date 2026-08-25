@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -72,8 +73,10 @@ class AnnouncementControllerWebTest {
   }
 
   @Test
-  void list_semSessao_ehPublico() throws Exception {
-    mvc.perform(get("/api/announcements")).andExpect(status().isOk());
+  void list_semSessao_ehRejeitado() throws Exception {
+    // Mural e so para quem tem conta; o visitante ve o item com cadeado e cai no login.
+    mvc.perform(get("/api/announcements")).andExpect(status().is4xxClientError());
+    verifyNoInteractions(service);
   }
 
   @Test

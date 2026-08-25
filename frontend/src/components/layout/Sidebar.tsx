@@ -15,6 +15,7 @@ import {
   SquareParking,
   ChevronDown,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
@@ -32,6 +33,8 @@ interface NavItem {
   requires?: string;
   /** Nome da feature flag; item some do menu quando ela está desligada no ambiente. */
   requiresFeature?: string;
+  /** Área só para quem tem conta: visitante vê o item com cadeado e cai no login ao clicar. */
+  requiresLogin?: boolean;
 }
 
 interface NavChild {
@@ -61,6 +64,7 @@ const ENTRIES: NavEntry[] = [
     icon: Megaphone,
     brand: 'red',
     requiresFeature: 'announcements',
+    requiresLogin: true,
   },
   {
     kind: 'item',
@@ -77,6 +81,7 @@ const ENTRIES: NavEntry[] = [
     icon: BookOpen,
     brand: 'blue',
     requiresFeature: 'faq',
+    requiresLogin: true,
   },
   {
     kind: 'item',
@@ -161,7 +166,15 @@ const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
 const hsl = (b: Brand, a?: number) =>
   a == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${a})`;
 
-function ItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function ItemLink({
+  item,
+  locked,
+  onNavigate,
+}: {
+  item: NavItem;
+  locked?: boolean;
+  onNavigate?: () => void;
+}) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -185,7 +198,13 @@ function ItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void
             aria-hidden="true"
             style={{ color: hsl(item.brand) }}
           />
-          <span>{item.label}</span>
+          <span className="flex-1">{item.label}</span>
+          {locked && (
+            <Lock
+              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+              aria-label="Requer login"
+            />
+          )}
         </>
       )}
     </NavLink>
@@ -266,7 +285,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         {ENTRIES.map((entry) => {
           if (entry.kind === 'item') {
             if (!can(entry.requires) || !on(entry.requiresFeature)) return null;
-            return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
+            return (
+              <ItemLink
+                key={entry.to}
+                item={entry}
+                locked={!user && entry.requiresLogin}
+                onNavigate={onNavigate}
+              />
+            );
           }
           const children = entry.children.filter((c) => can(c.requires));
           if (children.length === 0) return null;

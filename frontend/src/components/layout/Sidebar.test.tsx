@@ -34,6 +34,31 @@ beforeEach(() => {
 });
 
 describe('Sidebar', () => {
+  it('visitante vê Avisos e FAQ com cadeado; áreas abertas ficam sem', () => {
+    useAuthMock.mockReturnValue({ user: null } as never);
+    useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Sidebar open={true} onClose={() => {}} />
+      </MemoryRouter>
+    );
+
+    const avisos = screen.getAllByRole('link', { name: /avisos/i })[0];
+    expect(avisos.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+    const faq = screen.getAllByRole('link', { name: /perguntas frequentes/i })[0];
+    expect(faq.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+
+    const indicacoes = screen.getAllByRole('link', { name: /indicações/i })[0];
+    expect(indicacoes.querySelector('[aria-label="Requer login"]')).toBeNull();
+    const info = screen.getAllByRole('link', { name: /informações/i })[0];
+    expect(info.querySelector('[aria-label="Requer login"]')).toBeNull();
+  });
+
+  it('morador logado não vê cadeado em lugar nenhum', () => {
+    renderSidebar([]);
+    expect(screen.queryByLabelText('Requer login')).not.toBeInTheDocument();
+  });
+
   it('mostra os atalhos principais com seus destinos', () => {
     renderSidebar();
     // o drawer mobile e a versão desktop renderizam ambos -> usa getAllByRole

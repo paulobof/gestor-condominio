@@ -11,9 +11,9 @@ import {
   UserCog,
   Users,
   SquareParking,
+  Lock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { useFeatures } from '@/features/featureflags/useFeatures';
 
@@ -29,12 +29,15 @@ interface NavItem {
   requires?: string;
   /** Feature flag do módulo; item some quando está desligado no ambiente. */
   feature?: string;
+  /** Área só para quem tem conta: visitante vê o card com cadeado e cai no login ao clicar. */
+  requiresLogin?: boolean;
 }
 
 const NAV: NavItem[] = [
   {
     to: '/avisos',
     feature: 'announcements',
+    requiresLogin: true,
     title: 'Mural de avisos',
     desc: 'Comunicados do condomínio.',
     icon: Megaphone,
@@ -51,6 +54,7 @@ const NAV: NavItem[] = [
   {
     to: '/faq',
     feature: 'faq',
+    requiresLogin: true,
     title: 'Perguntas Frequentes',
     desc: 'Dúvidas comuns do condomínio.',
     icon: BookOpen,
@@ -128,25 +132,9 @@ export default function App() {
           {user ? `Olá, ${user.greetingName || user.fullName} 👋` : 'HELBOR TRILOGY HOME'}
         </h1>
         <p className="text-muted-foreground">
-          {user
-            ? 'Escolha uma área do portal.'
-            : 'Veja o que está acontecendo no condomínio. Crie sua conta para participar.'}
+          {user ? 'Escolha uma área do portal.' : 'Veja o que está acontecendo no condomínio.'}
         </p>
       </div>
-
-      {!user && (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button asChild className="min-h-[44px] sm:flex-none">
-            <Link to="/register-master">Criar minha conta</Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-[44px] sm:flex-none">
-            <Link to="/login">Já tenho conta</Link>
-          </Button>
-          <Button asChild variant="ghost" className="min-h-[44px] sm:flex-none">
-            <Link to="/sobre">O que é este aplicativo?</Link>
-          </Button>
-        </div>
-      )}
 
       <nav aria-label="Áreas do portal">
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -174,10 +162,20 @@ export default function App() {
                       >
                         <Icon className="h-5 w-5" aria-hidden="true" />
                       </span>
-                      <CardTitle className="text-base">{item.title}</CardTitle>
+                      <CardTitle className="flex flex-1 items-center gap-2 text-base">
+                        {item.title}
+                        {!user && item.requiresLogin && (
+                          <Lock
+                            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                            aria-label="Requer login"
+                          />
+                        )}
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground">{item.desc}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {!user && item.requiresLogin ? 'Entre na sua conta para ver.' : item.desc}
+                      </p>
                     </CardContent>
                   </Card>
                 </Link>

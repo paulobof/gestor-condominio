@@ -8,9 +8,16 @@ test.describe('Autenticação', () => {
     await expect(page.getByRole('link', { name: /criar minha conta/i })).toBeVisible();
   });
 
-  test('visitante em rota interna cai no login', async ({ page, mock }) => {
+  test('visitante lê o conteúdo do condomínio sem conta', async ({ page, mock }) => {
     mock.user(null);
     await page.goto('/avisos');
+    await expect(page).toHaveURL(/\/avisos$/);
+    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
+  });
+
+  test('visitante em area que exige conta cai no login', async ({ page, mock }) => {
+    mock.user(null);
+    await page.goto('/minha-unidade/moradores');
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByText('Entrar no sistema')).toBeVisible();
   });

@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -54,9 +53,9 @@ class TagControllerWebTest {
   }
 
   @Test
-  void autocomplete_unauthenticated_isRejected() throws Exception {
-    mvc.perform(get("/api/tags")).andExpect(status().is4xxClientError());
-    verifyNoInteractions(service);
+  void autocomplete_semSessao_ehPublico() throws Exception {
+    // Tags alimentam o filtro de Indicacoes, que e publico.
+    mvc.perform(get("/api/tags")).andExpect(status().isOk());
   }
 
   @Test

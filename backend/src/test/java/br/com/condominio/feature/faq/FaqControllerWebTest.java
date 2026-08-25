@@ -142,8 +142,8 @@ class FaqControllerWebTest {
   }
 
   @Test
-  void listPublished_anonymous_isRejected() throws Exception {
-    mvc.perform(get("/api/faq")).andExpect(status().is4xxClientError());
+  void listPublished_semSessao_ehPublico() throws Exception {
+    mvc.perform(get("/api/faq")).andExpect(status().isOk());
   }
 
   @Test

@@ -54,8 +54,8 @@ class InfoSectionControllerWebTest {
   }
 
   @Test
-  void list_anonymous_isRejected() throws Exception {
-    mvc.perform(get("/api/info-sections")).andExpect(status().is4xxClientError());
+  void list_semSessao_ehPublico() throws Exception {
+    mvc.perform(get("/api/info-sections")).andExpect(status().isOk());
   }
 
   @Test

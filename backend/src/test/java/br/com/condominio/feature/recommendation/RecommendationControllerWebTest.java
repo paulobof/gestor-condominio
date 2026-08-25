@@ -3,9 +3,9 @@ package br.com.condominio.feature.recommendation;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -99,9 +99,11 @@ class RecommendationControllerWebTest {
   }
 
   @Test
-  void list_unauthenticated_isRejected() throws Exception {
-    mvc.perform(get("/api/recommendations")).andExpect(status().is4xxClientError());
-    verifyNoInteractions(service);
+  void list_semSessao_ehPublico() throws Exception {
+    // Leitura aberta a visitante (decisao do controlador dos dados, 2026-08-25): sem sessao, o
+    // service recebe actorId nulo — nao ha "meu voto" para resolver.
+    mvc.perform(get("/api/recommendations")).andExpect(status().isOk());
+    verify(service).list(isNull(), any(), any(), any());
   }
 
   // ---- proteção de PII: canModerate propagado ao service --------------------------

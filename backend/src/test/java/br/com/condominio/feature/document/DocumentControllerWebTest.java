@@ -68,8 +68,8 @@ class DocumentControllerWebTest {
   }
 
   @Test
-  void list_unauthenticated_isRejected() throws Exception {
-    mvc.perform(get("/api/documents")).andExpect(status().is4xxClientError());
+  void list_semSessao_ehPublico() throws Exception {
+    mvc.perform(get("/api/documents")).andExpect(status().isOk());
   }
 
   @Test

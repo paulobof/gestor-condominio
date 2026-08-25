@@ -25,7 +25,6 @@ public class FaqController {
   private final FaqService service;
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public List<FaqView> listPublished() {
     return service.listPublished();
   }

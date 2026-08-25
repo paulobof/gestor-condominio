@@ -21,7 +21,6 @@ public class TagController {
   private final TagService service;
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public List<TagView> autocomplete(@RequestParam(name = "q", required = false) String q) {
     return service.searchForAutocomplete(q);
   }

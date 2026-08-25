@@ -132,8 +132,17 @@ export function RecommendationDetailPage() {
     loadComments();
   }, [loadComments]);
 
+  /** Visitante le tudo, mas curtir e comentar exigem conta — manda para o login em vez de erro. */
+  const requireLogin = () => {
+    if (user) return false;
+    toast.info('Entre na sua conta para participar.');
+    navigate('/login');
+    return true;
+  };
+
   const handleVote = async (value: VoteValue) => {
     if (!id || voting) return;
+    if (requireLogin()) return;
     setVoting(true);
     try {
       setRec(await voteRecommendation(id, value));
@@ -147,6 +156,7 @@ export function RecommendationDetailPage() {
   const handleAddComment = async (e: FormEvent) => {
     e.preventDefault();
     if (!id || !commentText.trim()) return;
+    if (requireLogin()) return;
     setPostingComment(true);
     try {
       await addRecommendationComment(id, commentText.trim());

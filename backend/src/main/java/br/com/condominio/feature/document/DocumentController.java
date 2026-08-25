@@ -35,7 +35,6 @@ public class DocumentController {
   private final DocumentService service;
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public List<DocumentView> list() {
     return service.list();
   }
@@ -52,7 +51,6 @@ public class DocumentController {
   }
 
   @GetMapping("/{id}/file")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<byte[]> download(@PathVariable UUID id) {
     DocumentService.DocumentContent c = service.download(id);
     MediaType contentType =

@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,9 +72,8 @@ class AnnouncementControllerWebTest {
   }
 
   @Test
-  void list_unauthenticated_isRejected() throws Exception {
-    mvc.perform(get("/api/announcements")).andExpect(status().is4xxClientError());
-    verifyNoInteractions(service);
+  void list_semSessao_ehPublico() throws Exception {
+    mvc.perform(get("/api/announcements")).andExpect(status().isOk());
   }
 
   @Test

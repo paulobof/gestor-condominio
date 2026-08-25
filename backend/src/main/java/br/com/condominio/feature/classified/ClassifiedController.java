@@ -27,12 +27,13 @@ public class ClassifiedController {
 
   private final ClassifiedService service;
 
+  /** Visitante (sem sessao) nunca modera. */
   private static boolean canModerate(AuthenticatedUserPrincipal me) {
+    if (me == null) return false;
     return me.authorities().contains("CLASSIFIED_MODERATE");
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public Page<ClassifiedView> list(
       @RequestParam(required = false) ClassifiedStatus status,
       @RequestParam(defaultValue = "0") int page,
@@ -43,7 +44,6 @@ public class ClassifiedController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
   public ClassifiedView get(@PathVariable UUID id) {
     return service.getById(id);
   }
@@ -94,7 +94,6 @@ public class ClassifiedController {
   }
 
   @GetMapping("/{id}/photos/{photoId}/url")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Map<String, Object>> photoUrl(
       @PathVariable UUID id, @PathVariable UUID photoId) {
     String url = service.photoUrl(id, photoId);

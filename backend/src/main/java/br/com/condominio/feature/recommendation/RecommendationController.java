@@ -25,12 +25,13 @@ public class RecommendationController {
 
   private final RecommendationService service;
 
+  /** Visitante (sem sessao) nunca modera. */
   private static boolean canModerate(AuthenticatedUserPrincipal me) {
+    if (me == null) return false;
     return me.authorities().contains("RECOMMENDATION_MODERATE");
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public Page<RecommendationView> list(
       @RequestParam(required = false) String tag,
       @RequestParam(required = false) String search,
@@ -39,14 +40,15 @@ public class RecommendationController {
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     int safePage = Math.max(page, 0);
     int safeSize = Math.min(Math.max(size, 1), 100);
-    return service.list(me.userId(), tag, search, PageRequest.of(safePage, safeSize));
+    // Visitante: sem userId, logo sem "meu voto" — a lista em si e publica.
+    UUID actorId = me == null ? null : me.userId();
+    return service.list(actorId, tag, search, PageRequest.of(safePage, safeSize));
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
   public RecommendationView get(
       @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return service.getById(id, me.userId(), canModerate(me));
+    return service.getById(id, me == null ? null : me.userId(), canModerate(me));
   }
 
   @PostMapping
@@ -103,7 +105,6 @@ public class RecommendationController {
   }
 
   @GetMapping("/{id}/photos/{photoId}/url")
-  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Map<String, Object>> photoUrl(
       @PathVariable UUID id, @PathVariable UUID photoId) {
     return ResponseEntity.ok()
@@ -123,7 +124,6 @@ public class RecommendationController {
   }
 
   @GetMapping("/{id}/comments")
-  @PreAuthorize("isAuthenticated()")
   public List<CommentView> listComments(@PathVariable UUID id) {
     return service.listComments(id);
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LogOut, Menu } from 'lucide-react';
+import { LogIn, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -45,7 +45,7 @@ export function Shell() {
             </Button>
 
             <Link
-              to="/"
+              to={user ? '/' : '/sobre'}
               className="flex items-center gap-2.5"
               aria-label="Início — HELBOR TRILOGY HOME"
             >
@@ -65,7 +65,7 @@ export function Shell() {
 
             <div className="flex items-center gap-1 text-sm">
               <ThemeToggle className="text-white hover:bg-white/10 hover:text-white" />
-              {user && (
+              {user ? (
                 <>
                   <span className="hidden text-white/70 sm:inline">
                     {user.greetingName || user.fullName}
@@ -81,6 +81,19 @@ export function Shell() {
                     <span className="ml-2 hidden sm:inline">Sair</span>
                   </Button>
                 </>
+              ) : (
+                // Visitante: le o conteudo sem conta; a porta de entrada fica sempre a um clique.
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/10 hover:text-white"
+                >
+                  <Link to="/login" aria-label="Entrar">
+                    <LogIn className="h-4 w-4" />
+                    <span className="ml-2">Entrar</span>
+                  </Link>
+                </Button>
               )}
             </div>
           </div>

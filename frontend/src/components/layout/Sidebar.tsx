@@ -256,6 +256,10 @@ function GroupNav({ group, onNavigate }: { group: NavGroup; onNavigate?: () => v
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
+  // Visitante nao tem home autenticada; "Inicio" leva a apresentacao publica.
+  const entries = user
+    ? ENTRIES
+    : ENTRIES.map((e) => (e.kind === 'item' && e.to === '/' ? { ...e, to: '/sobre' } : e));
   const { enabled } = useFeatures();
   const can = (requires?: string) => !requires || (user?.authorities.includes(requires) ?? false);
   const on = (feature?: string) => !feature || enabled(feature);
@@ -263,7 +267,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-1 flex-col">
       <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
-        {ENTRIES.map((entry) => {
+        {entries.map((entry) => {
           if (entry.kind === 'item') {
             if (!can(entry.requires) || !on(entry.requiresFeature)) return null;
             return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;

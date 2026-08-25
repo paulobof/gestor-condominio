@@ -27,7 +27,6 @@ public class InfoSectionController {
   private final InfoSectionService service;
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public List<InfoSectionView> list() {
     return service.list();
   }

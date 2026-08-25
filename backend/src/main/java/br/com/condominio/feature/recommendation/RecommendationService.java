@@ -109,8 +109,8 @@ public class RecommendationService {
     // moderador. Para os demais, NOT_FOUND (não confirma existência).
     if (r.getStatus() != RecommendationStatus.ACTIVE
         && !canModerate
-        && !actorId.equals(r.getRecommendedByUserId())
-        && !actorId.equals(r.getResidentUserId())) {
+        && !java.util.Objects.equals(actorId, r.getRecommendedByUserId())
+        && !java.util.Objects.equals(actorId, r.getResidentUserId())) {
       throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
     }
     return view(r, actorId);
@@ -122,8 +122,9 @@ public class RecommendationService {
     String s = (search == null || search.isBlank()) ? null : search;
     Page<Recommendation> page = repo.search(t, s, pageable);
     List<UUID> ids = page.getContent().stream().map(Recommendation::getId).toList();
+    // userId nulo = visitante: nao ha voto proprio para resolver.
     Map<UUID, VoteValue> myVotes =
-        ids.isEmpty()
+        (ids.isEmpty() || userId == null)
             ? Map.of()
             : voteRepo.findByUserIdAndRecommendationIdIn(userId, ids).stream()
                 .collect(
@@ -347,11 +348,14 @@ public class RecommendationService {
   }
 
   private RecommendationView view(Recommendation r, UUID userId) {
+    // userId nulo = visitante: nao ha voto proprio para resolver.
     VoteValue myVote =
-        voteRepo
-            .findByRecommendationIdAndUserId(r.getId(), userId)
-            .map(RecommendationVote::getValue)
-            .orElse(null);
+        userId == null
+            ? null
+            : voteRepo
+                .findByRecommendationIdAndUserId(r.getId(), userId)
+                .map(RecommendationVote::getValue)
+                .orElse(null);
     long commentCount = commentRepo.countByRecommendationId(r.getId());
     return buildView(r, myVote, commentCount);
   }

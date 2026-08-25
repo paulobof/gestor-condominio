@@ -29,7 +29,6 @@ public class AnnouncementController {
   private final AnnouncementService service;
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
   public Page<AnnouncementView> list(
       @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
     int safePage = Math.max(page, 0);
@@ -38,7 +37,6 @@ public class AnnouncementController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
   public AnnouncementView get(@PathVariable UUID id) {
     return service.getById(id);
   }

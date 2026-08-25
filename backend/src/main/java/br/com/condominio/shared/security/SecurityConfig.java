@@ -59,14 +59,12 @@ public class SecurityConfig {
                         "/api/features")
                     .permitAll()
                     // Conteudo aberto a visitante (decisao do controlador dos dados, 2026-08-25):
-                    // informacoes gerais, documentos, indicacoes, classificados e tags. Mural de
-                    // avisos e FAQ ficam so para quem tem conta. Escrita, area da unidade, admin e
+                    // informacoes gerais, indicacoes, classificados e tags. Mural de avisos, FAQ e
+                    // documentos ficam so para quem tem conta. Escrita, area da unidade, admin e
                     // dados pessoais tambem exigem sessao.
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/info-sections/**",
-                        "/api/documents",
-                        "/api/documents/*/file",
                         "/api/classifieds/**",
                         "/api/recommendations/**",
                         "/api/tags")

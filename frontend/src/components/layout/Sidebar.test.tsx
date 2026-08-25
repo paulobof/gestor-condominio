@@ -43,15 +43,17 @@ describe('Sidebar', () => {
       </MemoryRouter>
     );
 
-    const avisos = screen.getAllByRole('link', { name: /avisos/i })[0];
-    expect(avisos.querySelector('[aria-label="Requer login"]')).toBeTruthy();
-    const faq = screen.getAllByRole('link', { name: /perguntas frequentes/i })[0];
-    expect(faq.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+    // Area com cadeado nao e link: e botao, porque abre o popup de entrada sem tirar
+    // o visitante da pagina em que ele estava.
+    for (const label of [/avisos/i, /perguntas frequentes/i, /documentos/i]) {
+      const locked = screen.getAllByRole('button', { name: label })[0];
+      expect(locked.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+    }
 
-    const indicacoes = screen.getAllByRole('link', { name: /indicações/i })[0];
-    expect(indicacoes.querySelector('[aria-label="Requer login"]')).toBeNull();
-    const info = screen.getAllByRole('link', { name: /informações/i })[0];
-    expect(info.querySelector('[aria-label="Requer login"]')).toBeNull();
+    for (const label of [/indicações/i, /informações/i, /classificados/i]) {
+      const open = screen.getAllByRole('link', { name: label })[0];
+      expect(open.querySelector('[aria-label="Requer login"]')).toBeNull();
+    }
   });
 
   it('morador logado não vê cadeado em lugar nenhum', () => {

@@ -68,8 +68,9 @@ class DocumentControllerWebTest {
   }
 
   @Test
-  void list_semSessao_ehPublico() throws Exception {
-    mvc.perform(get("/api/documents")).andExpect(status().isOk());
+  void list_semSessao_ehRejeitado() throws Exception {
+    // Documentos do condominio so para quem tem conta; visitante ve o item com cadeado.
+    mvc.perform(get("/api/documents")).andExpect(status().is4xxClientError());
   }
 
   @Test

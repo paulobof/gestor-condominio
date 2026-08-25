@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 import { useFeatures } from '@/features/featureflags/useFeatures';
+import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
 
@@ -120,6 +121,7 @@ const hsl = (b: Brand, alpha?: number) =>
 export default function App() {
   const { user } = useAuth();
   const { enabled } = useFeatures();
+  const { promptLogin } = useLoginPrompt();
   const can = (item: NavItem) =>
     !item.requires || (user?.authorities.includes(item.requires) ?? false);
   const on = (item: NavItem) => !item.feature || enabled(item.feature);
@@ -140,12 +142,32 @@ export default function App() {
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const Icon = item.icon;
-            return (
-              <li key={item.to}>
+            const locked = !user && item.requiresLogin;
+            const Wrapper = ({ children }: { children: React.ReactNode }) =>
+              locked ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    promptLogin({
+                      reason: `${item.title} é para quem tem conta.`,
+                      destination: item.to,
+                    })
+                  }
+                  className="block w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {children}
+                </button>
+              ) : (
                 <Link
                   to={item.to}
                   className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
+                  {children}
+                </Link>
+              );
+            return (
+              <li key={item.to}>
+                <Wrapper>
                   <Card
                     className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
                     style={
@@ -164,7 +186,7 @@ export default function App() {
                       </span>
                       <CardTitle className="flex flex-1 items-center gap-2 text-base">
                         {item.title}
-                        {!user && item.requiresLogin && (
+                        {locked && (
                           <Lock
                             className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
                             aria-label="Requer login"
@@ -174,11 +196,11 @@ export default function App() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">
-                        {!user && item.requiresLogin ? 'Entre na sua conta para ver.' : item.desc}
+                        {locked ? 'Entre na sua conta para ver.' : item.desc}
                       </p>
                     </CardContent>
                   </Card>
-                </Link>
+                </Wrapper>
               </li>
             );
           })}

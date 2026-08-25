@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 import { IndependentNotice } from '@/components/branding/IndependentNotice';
 import { Sidebar } from './Sidebar';
+import { LoginPromptProvider } from '@/features/auth/LoginPromptProvider';
 
 /**
  * Casca do app autenticado: top bar de marca (logo HELBOR + tema + sair) e menu LATERAL — fixo no
@@ -26,91 +27,93 @@ export function Shell() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <div className="sticky top-0 z-30">
-        <IndependentNotice />
-        <header
-          className="border-b border-white/10 text-white"
-          style={{ backgroundColor: 'hsl(var(--brand-ink))' }}
-        >
-          <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setNavOpen(true)}
-              aria-label="Abrir menu"
-              className="text-white hover:bg-white/10 hover:text-white lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+    <LoginPromptProvider>
+      <div className="min-h-dvh bg-background text-foreground">
+        <div className="sticky top-0 z-30">
+          <IndependentNotice />
+          <header
+            className="border-b border-white/10 text-white"
+            style={{ backgroundColor: 'hsl(var(--brand-ink))' }}
+          >
+            <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setNavOpen(true)}
+                aria-label="Abrir menu"
+                className="text-white hover:bg-white/10 hover:text-white lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
 
-            <Link
-              to="/"
-              className="flex items-center gap-2.5"
-              aria-label="Início — HELBOR TRILOGY HOME"
-            >
-              <img
-                src="/icon-192.png"
-                alt=""
-                className="h-9 w-9 rounded-lg"
-                width={36}
-                height={36}
-              />
-              <span className="font-heading text-sm font-semibold leading-tight sm:text-base">
-                HELBOR <span className="text-white/70">TRILOGY HOME</span>
-              </span>
-            </Link>
+              <Link
+                to="/"
+                className="flex items-center gap-2.5"
+                aria-label="Início — HELBOR TRILOGY HOME"
+              >
+                <img
+                  src="/icon-192.png"
+                  alt=""
+                  className="h-9 w-9 rounded-lg"
+                  width={36}
+                  height={36}
+                />
+                <span className="font-heading text-sm font-semibold leading-tight sm:text-base">
+                  HELBOR <span className="text-white/70">TRILOGY HOME</span>
+                </span>
+              </Link>
 
-            <div className="flex-1" />
+              <div className="flex-1" />
 
-            <div className="flex items-center gap-1 text-sm">
-              <ThemeToggle className="text-white hover:bg-white/10 hover:text-white" />
-              {user ? (
-                <>
-                  <span className="hidden text-white/70 sm:inline">
-                    {user.greetingName || user.fullName}
-                  </span>
+              <div className="flex items-center gap-1 text-sm">
+                <ThemeToggle className="text-white hover:bg-white/10 hover:text-white" />
+                {user ? (
+                  <>
+                    <span className="hidden text-white/70 sm:inline">
+                      {user.greetingName || user.fullName}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={logout}
+                      aria-label="Sair"
+                      className="text-white hover:bg-white/10 hover:text-white"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span className="ml-2 hidden sm:inline">Sair</span>
+                    </Button>
+                  </>
+                ) : (
+                  // Visitante: le o conteudo sem conta; a porta de entrada fica sempre a um clique.
                   <Button
+                    asChild
                     variant="ghost"
                     size="sm"
-                    onClick={logout}
-                    aria-label="Sair"
                     className="text-white hover:bg-white/10 hover:text-white"
                   >
-                    <LogOut className="h-4 w-4" />
-                    <span className="ml-2 hidden sm:inline">Sair</span>
+                    <Link to="/login" aria-label="Entrar">
+                      <LogIn className="h-4 w-4" />
+                      <span className="ml-2">Entrar</span>
+                    </Link>
                   </Button>
-                </>
-              ) : (
-                // Visitante: le o conteudo sem conta; a porta de entrada fica sempre a um clique.
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/10 hover:text-white"
-                >
-                  <Link to="/login" aria-label="Entrar">
-                    <LogIn className="h-4 w-4" />
-                    <span className="ml-2">Entrar</span>
-                  </Link>
-                </Button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        </header>
-      </div>
+          </header>
+        </div>
 
-      <div className="flex">
-        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
-        <main className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col">
-          <div className="flex-1">
-            <Outlet />
-          </div>
-          <footer className="border-t border-border px-4 py-4">
-            <DeveloperCredit />
-          </footer>
-        </main>
+        <div className="flex">
+          <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+          <main className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <footer className="border-t border-border px-4 py-4">
+              <DeveloperCredit />
+            </footer>
+          </main>
+        </div>
       </div>
-    </div>
+    </LoginPromptProvider>
   );
 }

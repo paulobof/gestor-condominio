@@ -20,6 +20,7 @@ import {
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
 import { useFeatures } from '@/features/featureflags/useFeatures';
+import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
@@ -90,6 +91,7 @@ const ENTRIES: NavEntry[] = [
     icon: FileText,
     brand: 'blue',
     requiresFeature: 'documents',
+    requiresLogin: true,
   },
   {
     kind: 'item',
@@ -176,6 +178,28 @@ function ItemLink({
   onNavigate?: () => void;
 }) {
   const Icon = item.icon;
+  const { promptLogin } = useLoginPrompt();
+
+  if (locked) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          promptLogin({
+            reason: `${item.label} é para quem tem conta.`,
+            destination: item.to,
+          });
+        }}
+        className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+      >
+        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" style={{ color: hsl(item.brand) }} />
+        <span className="flex-1 text-left">{item.label}</span>
+        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Requer login" />
+      </button>
+    );
+  }
+
   return (
     <NavLink
       to={item.to}

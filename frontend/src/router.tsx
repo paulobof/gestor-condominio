@@ -55,7 +55,6 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <App /> },
       { path: '/informacoes', element: <InfoPage /> },
-      { path: '/documentos', element: <DocumentsPage /> },
       { path: '/indicacoes', element: <RecommendationsListPage /> },
       { path: '/indicacoes/:id', element: <RecommendationDetailPage /> },
       { path: '/classificados', element: <ClassifiedsListPage /> },
@@ -74,6 +73,7 @@ const router = createBrowserRouter([
       { path: '/avisos', element: <AnnouncementsListPage /> },
       { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
       { path: '/faq', element: <FaqPage /> },
+      { path: '/documentos', element: <DocumentsPage /> },
       { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
       { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
       { path: '/admin/acessos', element: <AccessManagementPage /> },

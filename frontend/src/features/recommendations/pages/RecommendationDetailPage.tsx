@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth/useAuth';
+import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 import {
   addRecommendationComment,
   deleteRecommendation,
@@ -40,6 +41,7 @@ export function RecommendationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { promptLogin } = useLoginPrompt();
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
@@ -132,11 +134,10 @@ export function RecommendationDetailPage() {
     loadComments();
   }, [loadComments]);
 
-  /** Visitante le tudo, mas curtir e comentar exigem conta — manda para o login em vez de erro. */
+  /** Visitante le tudo; curtir e comentar pedem a conta ali mesmo, sem tirar ele da pagina. */
   const requireLogin = () => {
     if (user) return false;
-    toast.info('Entre na sua conta para participar.');
-    navigate('/login');
+    promptLogin({ reason: 'Entre na sua conta para curtir e comentar.' });
     return true;
   };
 

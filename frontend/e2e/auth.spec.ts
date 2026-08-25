@@ -1,9 +1,16 @@
 import { test, expect } from './support/fixtures';
 
 test.describe('Autenticação', () => {
-  test('redireciona para /login quando não autenticado', async ({ page, mock }) => {
+  test('visitante na entrada vê a apresentação, não o login', async ({ page, mock }) => {
     mock.user(null); // /auth/refresh falha → unauthenticated
     await page.goto('/');
+    await expect(page).toHaveURL(/\/sobre$/);
+    await expect(page.getByRole('link', { name: /criar minha conta/i })).toBeVisible();
+  });
+
+  test('visitante em rota interna cai no login', async ({ page, mock }) => {
+    mock.user(null);
+    await page.goto('/avisos');
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByText('Entrar no sistema')).toBeVisible();
   });

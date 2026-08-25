@@ -13,7 +13,9 @@ import {
   SquareParking,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
+import { useFeatures } from '@/features/featureflags/useFeatures';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
 
@@ -23,13 +25,16 @@ interface NavItem {
   desc: string;
   icon: typeof Home;
   brand: Brand;
-  /** Permissão exigida para ver o item; ausente = qualquer autenticado. */
+  /** Permissão exigida para ver o item; ausente = qualquer visitante. */
   requires?: string;
+  /** Feature flag do módulo; item some quando está desligado no ambiente. */
+  feature?: string;
 }
 
 const NAV: NavItem[] = [
   {
     to: '/avisos',
+    feature: 'announcements',
     title: 'Mural de avisos',
     desc: 'Comunicados do condomínio.',
     icon: Megaphone,
@@ -37,6 +42,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/informacoes',
+    feature: 'generalinfo',
     title: 'Informações',
     desc: 'Informações gerais do condomínio.',
     icon: Info,
@@ -44,6 +50,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/faq',
+    feature: 'faq',
     title: 'Perguntas Frequentes',
     desc: 'Dúvidas comuns do condomínio.',
     icon: BookOpen,
@@ -51,6 +58,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/indicacoes',
+    feature: 'recommendations',
     title: 'Indicações',
     desc: 'Serviços recomendados por moradores.',
     icon: Lightbulb,
@@ -58,6 +66,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/classificados',
+    feature: 'classifieds',
     title: 'Classificados',
     desc: 'Compra e venda entre moradores.',
     icon: ShoppingBag,
@@ -65,6 +74,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/vagas/aluguel',
+    feature: 'parkingrental',
     title: 'Vagas',
     desc: 'Aluguel de vagas entre moradores.',
     icon: SquareParking,
@@ -85,6 +95,7 @@ const NAV: NavItem[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
+    feature: 'accessmanagement',
   },
   {
     to: '/minha-unidade/moradores',
@@ -104,18 +115,38 @@ const hsl = (b: Brand, alpha?: number) =>
 
 export default function App() {
   const { user } = useAuth();
+  const { enabled } = useFeatures();
   const can = (item: NavItem) =>
     !item.requires || (user?.authorities.includes(item.requires) ?? false);
-  const items = NAV.filter(can);
+  const on = (item: NavItem) => !item.feature || enabled(item.feature);
+  const items = NAV.filter((i) => can(i) && on(i));
 
   return (
     <section className="container space-y-6 py-6">
       <div>
         <h1 className="font-heading text-2xl font-semibold">
-          Olá, {user?.greetingName || user?.fullName || 'morador'} 👋
+          {user ? `Olá, ${user.greetingName || user.fullName} 👋` : 'HELBOR TRILOGY HOME'}
         </h1>
-        <p className="text-muted-foreground">Escolha uma área do portal.</p>
+        <p className="text-muted-foreground">
+          {user
+            ? 'Escolha uma área do portal.'
+            : 'Veja o que está acontecendo no condomínio. Crie sua conta para participar.'}
+        </p>
       </div>
+
+      {!user && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild className="min-h-[44px] sm:flex-none">
+            <Link to="/register-master">Criar minha conta</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-[44px] sm:flex-none">
+            <Link to="/login">Já tenho conta</Link>
+          </Button>
+          <Button asChild variant="ghost" className="min-h-[44px] sm:flex-none">
+            <Link to="/sobre">O que é este aplicativo?</Link>
+          </Button>
+        </div>
+      )}
 
       <nav aria-label="Áreas do portal">
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -53,6 +53,7 @@ const router = createBrowserRouter([
     // 2026-08-25). Mesma casca do app; o Shell se vira sem usuario e oferece "Entrar".
     element: <Shell />,
     children: [
+      { path: '/', element: <App /> },
       { path: '/avisos', element: <AnnouncementsListPage /> },
       { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
       { path: '/informacoes', element: <InfoPage /> },
@@ -73,7 +74,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: '/', element: <App /> },
       { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
       { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
       { path: '/admin/acessos', element: <AccessManagementPage /> },

@@ -1,11 +1,12 @@
 import { test, expect } from './support/fixtures';
 
 test.describe('Autenticação', () => {
-  test('visitante na entrada vê a apresentação, não o login', async ({ page, mock }) => {
-    mock.user(null); // /auth/refresh falha → unauthenticated
+  test('visitante entra direto na home, sem tela de senha', async ({ page, mock }) => {
+    mock.user(null); // /auth/refresh falha -> unauthenticated
     await page.goto('/');
-    await expect(page).toHaveURL(/\/sobre$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('link', { name: /criar minha conta/i })).toBeVisible();
+    await expect(page.getByText('Entrar no sistema')).toHaveCount(0);
   });
 
   test('visitante lê o conteúdo do condomínio sem conta', async ({ page, mock }) => {

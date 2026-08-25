@@ -40,13 +40,7 @@ function renderAt(path: string, status: 'loading' | 'authenticated' | 'unauthent
 beforeEach(() => vi.clearAllMocks());
 
 describe('ProtectedRoute', () => {
-  it('visitante na entrada vê a apresentação, não o login', () => {
-    renderAt('/', 'unauthenticated');
-    expect(screen.getByText('apresentação')).toBeInTheDocument();
-    expect(screen.queryByText('tela de login')).not.toBeInTheDocument();
-  });
-
-  it('visitante em rota interna profunda vai para o login', () => {
+  it('visitante em área que exige conta vai para o login', () => {
     renderAt('/avisos', 'unauthenticated');
     expect(screen.getByText('tela de login')).toBeInTheDocument();
   });

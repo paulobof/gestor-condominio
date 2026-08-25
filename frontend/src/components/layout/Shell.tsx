@@ -45,7 +45,7 @@ export function Shell() {
             </Button>
 
             <Link
-              to={user ? '/' : '/sobre'}
+              to="/"
               className="flex items-center gap-2.5"
               aria-label="Início — HELBOR TRILOGY HOME"
             >

@@ -34,9 +34,9 @@ describe('Shell', () => {
     expect(screen.queryByRole('button', { name: /sair/i })).not.toBeInTheDocument();
   });
 
-  it('visitante tem "Início" apontando para a apresentação, não para a home autenticada', () => {
+  it('a home serve visitante e morador — "Início" aponta para a raiz nos dois casos', () => {
     renderShell(null);
-    expect(screen.getAllByRole('link', { name: /início/i })[0]).toHaveAttribute('href', '/sobre');
+    expect(screen.getAllByRole('link', { name: /início/i })[0]).toHaveAttribute('href', '/');
   });
 
   it('autenticado vê o nome e o botão de sair', () => {

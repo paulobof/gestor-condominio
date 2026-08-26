@@ -15,7 +15,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.unitownership.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.unitownership.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class RegisterOwnerController {
 
   private final RegistrationService service;

@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/announcements")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.announcements.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.announcements.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class AnnouncementController {
 
   private final AnnouncementService service;

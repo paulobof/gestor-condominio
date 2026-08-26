@@ -15,7 +15,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/tags")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.recommendations.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.recommendations.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class TagController {
 
   private final TagService service;

@@ -20,7 +20,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/recommendations")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.recommendations.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.recommendations.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class RecommendationController {
 
   private final RecommendationService service;

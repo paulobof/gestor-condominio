@@ -37,7 +37,7 @@ describe('useFeatures', () => {
     expect(screen.getByText('vagas: false')).toBeInTheDocument();
   });
 
-  it('falha de rede degrada para nada ligado (menu curto, nunca link quebrado)', async () => {
+  it('falha de rede assume tudo ligado — o padrão é rodar', async () => {
     get.mockRejectedValue(new Error('offline'));
 
     render(
@@ -47,7 +47,8 @@ describe('useFeatures', () => {
     );
 
     await waitFor(() => expect(screen.getByText('pronto')).toBeInTheDocument());
-    expect(screen.getByText('avisos: false')).toBeInTheDocument();
+    expect(screen.getByText('avisos: true')).toBeInTheDocument();
+    expect(screen.getByText('vagas: true')).toBeInTheDocument();
   });
 
   it('fora do provider assume tudo ligado (o backend é quem barra de verdade)', () => {

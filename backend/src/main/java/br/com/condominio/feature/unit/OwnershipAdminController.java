@@ -25,7 +25,10 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/ownership-claims")
-@ConditionalOnProperty(name = "app.feature.unitownership.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.unitownership.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @RequiredArgsConstructor
 public class OwnershipAdminController {
 

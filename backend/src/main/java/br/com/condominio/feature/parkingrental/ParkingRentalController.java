@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/parking-rentals")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.parkingrental.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.parkingrental.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class ParkingRentalController {
 
   private final ParkingRentalService service;

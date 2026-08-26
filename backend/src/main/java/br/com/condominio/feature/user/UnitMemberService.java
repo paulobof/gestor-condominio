@@ -52,7 +52,7 @@ public class UnitMemberService {
   private final UnitRepository unitRepo;
   private final ActivityNotifier activityNotifier;
 
-  @Value("${app.feature.unitownership.enabled:false}")
+  @Value("${app.feature.unitownership.enabled:true}")
   private boolean unitOwnershipEnabled;
 
   @Transactional(readOnly = true)

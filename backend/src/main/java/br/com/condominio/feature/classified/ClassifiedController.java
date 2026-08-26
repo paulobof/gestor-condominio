@@ -22,7 +22,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/classifieds")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.classifieds.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.classifieds.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class ClassifiedController {
 
   private final ClassifiedService service;

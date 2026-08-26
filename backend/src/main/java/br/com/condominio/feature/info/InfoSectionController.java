@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/info-sections")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.generalinfo.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.generalinfo.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class InfoSectionController {
 
   private final InfoSectionService service;

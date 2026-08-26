@@ -27,7 +27,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/access")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.accessmanagement.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.accessmanagement.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class AccessController {
 
   private final AccessService service;

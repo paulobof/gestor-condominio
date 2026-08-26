@@ -42,9 +42,11 @@ class FeatureControllerWebTest {
   }
 
   @Test
-  void list_defaultsToFalseWhenPropertyAbsent() throws Exception {
+  void list_defaultsToEnabledWhenPropertyAbsent() throws Exception {
+    // Ausencia de variavel significa RODANDO (2026-08-26): desligar e ato explicito no ambiente.
+    // Antes era o contrario, e flag esquecida no Dokploy virava "menu aparece, API 404".
     mvc.perform(get("/api/features"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.unitownership").value(false));
+        .andExpect(jsonPath("$.unitownership").value(true));
   }
 }

@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/faq")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.faq.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.faq.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class FaqController {
 
   private final FaqService service;

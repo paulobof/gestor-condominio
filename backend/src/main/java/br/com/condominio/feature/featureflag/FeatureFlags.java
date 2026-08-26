@@ -16,31 +16,31 @@ import org.springframework.stereotype.Component;
 @Component
 public class FeatureFlags {
 
-  @Value("${app.feature.announcements.enabled:false}")
+  @Value("${app.feature.announcements.enabled:true}")
   private boolean announcements;
 
-  @Value("${app.feature.classifieds.enabled:false}")
+  @Value("${app.feature.classifieds.enabled:true}")
   private boolean classifieds;
 
-  @Value("${app.feature.recommendations.enabled:false}")
+  @Value("${app.feature.recommendations.enabled:true}")
   private boolean recommendations;
 
-  @Value("${app.feature.faq.enabled:false}")
+  @Value("${app.feature.faq.enabled:true}")
   private boolean faq;
 
-  @Value("${app.feature.generalinfo.enabled:false}")
+  @Value("${app.feature.generalinfo.enabled:true}")
   private boolean generalinfo;
 
-  @Value("${app.feature.documents.enabled:false}")
+  @Value("${app.feature.documents.enabled:true}")
   private boolean documents;
 
-  @Value("${app.feature.parkingrental.enabled:false}")
+  @Value("${app.feature.parkingrental.enabled:true}")
   private boolean parkingrental;
 
-  @Value("${app.feature.accessmanagement.enabled:false}")
+  @Value("${app.feature.accessmanagement.enabled:true}")
   private boolean accessmanagement;
 
-  @Value("${app.feature.unitownership.enabled:false}")
+  @Value("${app.feature.unitownership.enabled:true}")
   private boolean unitownership;
 
   /** Mapa nome→ligada, na ordem em que os módulos aparecem para o morador. */

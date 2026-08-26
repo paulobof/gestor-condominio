@@ -29,7 +29,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.documents.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.feature.documents.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class DocumentController {
 
   private final DocumentService service;

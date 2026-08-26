@@ -151,13 +151,26 @@ describe('Sidebar', () => {
     expect(link.className).not.toContain('hover:bg-accent');
   });
 
-  it('"Aluguel de Vagas" é item direto do menu (sem grupo "Vagas")', () => {
+  it('"Vagas" é item direto do menu, sem grupo nem submenu', () => {
     renderSidebar();
-    expect(screen.queryByRole('button', { name: 'Vagas' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Aluguel de Vagas' })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Vagas' })[0]).toHaveAttribute(
       'href',
       '/vagas/aluguel'
     );
+  });
+
+  it('respeita a ordem pedida: Informações, Indicações, Classificados, Avisos, FAQ', () => {
+    renderSidebar();
+    const nav = screen.getAllByRole('navigation')[0];
+    const rotulos = Array.from(nav.querySelectorAll('a, button'))
+      .map((el) => el.textContent?.trim())
+      .filter(Boolean);
+    const posicao = (t: string) => rotulos.findIndex((r) => r?.startsWith(t));
+    expect(posicao('Informações')).toBeLessThan(posicao('Indicações'));
+    expect(posicao('Indicações')).toBeLessThan(posicao('Classificados'));
+    expect(posicao('Classificados')).toBeLessThan(posicao('Avisos'));
+    expect(posicao('Avisos')).toBeLessThan(posicao('Perguntas Frequentes'));
+    expect(posicao('Perguntas Frequentes')).toBeLessThan(posicao('Vagas'));
   });
 
   it('não oferece mais "Escolha de Vaga" (rota inexistente)', () => {

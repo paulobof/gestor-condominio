@@ -116,6 +116,7 @@ const ENTRIES: NavEntry[] = [
     icon: SquareParking,
     brand: 'blue',
     requiresFeature: 'parkingrental',
+    requiresLogin: true,
   },
   {
     kind: 'item',
@@ -158,6 +159,7 @@ const ENTRIES: NavEntry[] = [
     icon: Building2,
     brand: 'ink',
     requiresFeature: 'unitownership',
+    requiresLogin: true,
   },
 ];
 

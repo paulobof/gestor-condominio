@@ -120,3 +120,39 @@ describe('App', () => {
     );
   });
 });
+
+describe('App (visitante)', () => {
+  function renderVisitor() {
+    return render(
+      <MemoryRouter>
+        <AuthContext.Provider
+          value={
+            {
+              status: 'unauthenticated' as const,
+              user: null,
+              login: vi.fn(),
+              logout: vi.fn(),
+            } as never
+          }
+        >
+          <App />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    );
+  }
+
+  it('mostra "Vagas" com cadeado, como botão de login e não como link', () => {
+    renderVisitor();
+    expect(screen.queryByRole('link', { name: /vagas/i })).not.toBeInTheDocument();
+    const card = screen.getByRole('button', { name: /vagas/i });
+    expect(card.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+  });
+
+  it('mantém as áreas abertas como link, sem cadeado', () => {
+    renderVisitor();
+    for (const nome of [/^informações/i, /^indicações/i, /^classificados/i]) {
+      const aberto = screen.getByRole('link', { name: nome });
+      expect(aberto.querySelector('[aria-label="Requer login"]')).toBeNull();
+    }
+  });
+});

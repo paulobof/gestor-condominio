@@ -80,6 +80,7 @@ const NAV: NavItem[] = [
   {
     to: '/vagas/aluguel',
     feature: 'parkingrental',
+    requiresLogin: true,
     title: 'Vagas',
     desc: 'Anuncie: procura, aluguel ou troca de vaga.',
     icon: SquareParking,

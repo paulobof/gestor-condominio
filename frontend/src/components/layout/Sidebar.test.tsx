@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe('Sidebar', () => {
-  it('visitante vê Avisos e FAQ com cadeado; áreas abertas ficam sem', () => {
+  it('visitante vê com cadeado tudo que exige conta; áreas abertas ficam sem', () => {
     useAuthMock.mockReturnValue({ user: null } as never);
     useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });
     render(
@@ -45,7 +45,13 @@ describe('Sidebar', () => {
 
     // Area com cadeado nao e link: e botao, porque abre o popup de entrada sem tirar
     // o visitante da pagina em que ele estava.
-    for (const label of [/avisos/i, /perguntas frequentes/i, /documentos/i]) {
+    for (const label of [
+      /avisos/i,
+      /perguntas frequentes/i,
+      /documentos/i,
+      /vagas/i,
+      /registrar unidade/i,
+    ]) {
       const locked = screen.getAllByRole('button', { name: label })[0];
       expect(locked.querySelector('[aria-label="Requer login"]')).toBeTruthy();
     }

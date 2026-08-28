@@ -15,7 +15,7 @@ const useFeaturesMock = vi.mocked(useFeatures);
 /** Por padrão tudo ligado; os testes de flag passam a lista do que está ligado. */
 let enabledFeatures: string[] | null = null;
 
-function renderSidebar(authorities: string[] = [], path = '/') {
+function renderSidebar(authorities: string[] = ['GENERAL_AREAS_VIEW'], path = '/') {
   useAuthMock.mockReturnValue({ user: { id: 'u1', authorities } } as never);
   useFeaturesMock.mockReturnValue({
     enabled: (name: string) => enabledFeatures === null || enabledFeatures.includes(name),
@@ -92,7 +92,7 @@ describe('Sidebar', () => {
   });
 
   it('marca a rota ativa com aria-current', () => {
-    renderSidebar([], '/avisos');
+    renderSidebar(['GENERAL_AREAS_VIEW'], '/avisos');
     expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toHaveAttribute(
       'aria-current',
       'page'
@@ -143,7 +143,7 @@ describe('Sidebar', () => {
 
   it('usa cor de brand do item no estado ativo (não amarelo fixo)', () => {
     // 'Avisos' tem brand red → style ativo deve referenciar --brand-red, nunca --accent
-    renderSidebar([], '/avisos');
+    renderSidebar(['GENERAL_AREAS_VIEW'], '/avisos');
     const link = screen.getAllByRole('link', { name: /avisos/i })[0];
     const style = link.getAttribute('style') ?? '';
     expect(style).toContain('--brand-red');
@@ -151,7 +151,7 @@ describe('Sidebar', () => {
   });
 
   it('item ativo tem hover:bg-transparent para não vazar amarelo do accent ao navegar', () => {
-    renderSidebar([], '/avisos');
+    renderSidebar(['GENERAL_AREAS_VIEW'], '/avisos');
     const link = screen.getAllByRole('link', { name: /avisos/i })[0];
     expect(link.className).toContain('hover:bg-transparent');
     expect(link.className).not.toContain('hover:bg-accent');
@@ -187,7 +187,7 @@ describe('Sidebar', () => {
 
   it('esconde o item quando a feature está desligada no ambiente', () => {
     enabledFeatures = ['announcements'];
-    renderSidebar(['RESIDENT_MANAGE']);
+    renderSidebar(['RESIDENT_MANAGE', 'GENERAL_AREAS_VIEW']);
 
     expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /classificados/i })).not.toBeInTheDocument();
@@ -205,6 +205,16 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: /pedidos de unidade/i })).not.toBeInTheDocument();
     // a fila de exceção do admin não tem flag: continua disponível
     expect(screen.getAllByRole('link', { name: /cadastros pendentes/i })[0]).toBeInTheDocument();
+  });
+
+  it('convidado (sem GENERAL_AREAS_VIEW) não vê Avisos nem Perguntas Frequentes', () => {
+    renderSidebar([]);
+    for (const rotulo of [/avisos/i, /perguntas frequentes/i]) {
+      expect(screen.queryByRole('link', { name: rotulo })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: rotulo })).not.toBeInTheDocument();
+    }
+    // o que e aberto a qualquer um continua no menu
+    expect(screen.getAllByRole('link', { name: /classificados/i })[0]).toBeInTheDocument();
   });
 
   it('proprietário (só leitura) não vê itens de escrita/admin', () => {

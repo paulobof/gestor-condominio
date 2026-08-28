@@ -48,6 +48,7 @@ class ClassifiedControllerWebTest {
   private static final UUID UID = UUID.randomUUID();
   private static final UUID CID = UUID.randomUUID();
   private static final String MODERATE = "CLASSIFIED_MODERATE";
+  private static final String CREATE = "CONTENT_CREATE";
 
   @Autowired private MockMvc mvc;
   @MockBean private ClassifiedService service;
@@ -84,6 +85,18 @@ class ClassifiedControllerWebTest {
   }
 
   @Test
+  void create_semContentCreate_returns403() throws Exception {
+    // Convidado e proprietario leem os classificados, mas nao publicam: sem CONTENT_CREATE, 403.
+    mvc.perform(
+            post("/api/classifieds")
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Sofá 3 lugares\",\"price\":500.00}"))
+        .andExpect(status().isForbidden());
+    verify(service, never()).create(any(), any());
+  }
+
+  @Test
   void get_returns200() throws Exception {
     when(service.getById(CID)).thenReturn(view());
     mvc.perform(get("/api/classifieds/{id}", CID).with(MockAuth.user(UID)))
@@ -97,7 +110,7 @@ class ClassifiedControllerWebTest {
 
     mvc.perform(
             post("/api/classifieds")
-                .with(MockAuth.user(UID))
+                .with(MockAuth.user(UID, CREATE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Sofá 3 lugares\",\"price\":500.00}"))
         .andExpect(status().isCreated())
@@ -108,7 +121,7 @@ class ClassifiedControllerWebTest {
   void create_blankTitle_returns400() throws Exception {
     mvc.perform(
             post("/api/classifieds")
-                .with(MockAuth.user(UID))
+                .with(MockAuth.user(UID, CREATE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"\"}"))
         .andExpect(status().isBadRequest())

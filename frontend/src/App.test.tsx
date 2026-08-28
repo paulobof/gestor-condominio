@@ -23,7 +23,7 @@ function authValue(authorities: string[]) {
   };
 }
 
-function renderApp(authorities: string[] = ['USER_VIEW']) {
+function renderApp(authorities: string[] = ['USER_VIEW', 'GENERAL_AREAS_VIEW']) {
   return render(
     <MemoryRouter>
       <AuthContext.Provider value={authValue(authorities)}>
@@ -76,8 +76,8 @@ describe('App', () => {
     );
   });
 
-  it('mostra "Perguntas Frequentes" para qualquer autenticado', () => {
-    renderApp(['USER_VIEW']);
+  it('mostra "Perguntas Frequentes" para quem tem GENERAL_AREAS_VIEW', () => {
+    renderApp(['USER_VIEW', 'GENERAL_AREAS_VIEW']);
     expect(screen.getByRole('link', { name: /^perguntas frequentes/i })).toHaveAttribute(
       'href',
       '/faq'
@@ -95,6 +95,13 @@ describe('App', () => {
       'href',
       '/admin/acessos'
     );
+  });
+
+  it('convidado (sem GENERAL_AREAS_VIEW) não vê Mural nem Perguntas Frequentes', () => {
+    renderApp(['USER_VIEW']);
+    expect(screen.queryByRole('link', { name: /mural de avisos/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /perguntas frequentes/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^classificados/i })).toBeInTheDocument();
   });
 
   it('usa cor adaptável (não brand-ink fixo) no card neutro, para contraste no dark', () => {

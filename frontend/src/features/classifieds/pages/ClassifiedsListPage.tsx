@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CreateContentButton } from '@/components/auth/CreateContentButton';
 import { listClassifieds, type Classified, type ClassifiedStatus } from '../api/classifiedsApi';
 
 const STATUS_LABEL: Record<ClassifiedStatus, string> = {
@@ -45,9 +46,12 @@ export function ClassifiedsListPage() {
           />
           Classificados
         </h1>
-        <Button asChild className="min-h-[44px]">
-          <Link to="/classificados/novo">Novo anúncio</Link>
-        </Button>
+        <CreateContentButton
+          to="/classificados/novo"
+          reason="Publicar um anúncio é para quem tem conta."
+        >
+          Novo anúncio
+        </CreateContentButton>
       </div>
       <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
         {(Object.keys(STATUS_LABEL) as ClassifiedStatus[]).map((s) => (

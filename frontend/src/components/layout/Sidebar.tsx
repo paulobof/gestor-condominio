@@ -89,6 +89,7 @@ const ENTRIES: NavEntry[] = [
     icon: Megaphone,
     brand: 'red',
     requiresFeature: 'announcements',
+    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
   },
   {
@@ -98,6 +99,7 @@ const ENTRIES: NavEntry[] = [
     icon: BookOpen,
     brand: 'blue',
     requiresFeature: 'faq',
+    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
   },
   {
@@ -302,7 +304,12 @@ function GroupNav({ group, onNavigate }: { group: NavGroup; onNavigate?: () => v
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
   const { enabled } = useFeatures();
-  const can = (requires?: string) => !requires || (user?.authorities.includes(requires) ?? false);
+  const hasAuthority = (requires?: string) =>
+    !requires || (user?.authorities.includes(requires) ?? false);
+  // Visitante nao e barrado por permission em item com cadeado: ele ve o item e o clique abre o
+  // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o item.
+  const canSee = (item: NavItem) =>
+    user ? hasAuthority(item.requires) : !item.requires || !!item.requiresLogin;
   const on = (feature?: string) => !feature || enabled(feature);
 
   return (
@@ -310,7 +317,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
         {ENTRIES.map((entry) => {
           if (entry.kind === 'item') {
-            if (!can(entry.requires) || !on(entry.requiresFeature)) return null;
+            if (!canSee(entry) || !on(entry.requiresFeature)) return null;
             return (
               <ItemLink
                 key={entry.to}
@@ -320,7 +327,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               />
             );
           }
-          const children = entry.children.filter((c) => can(c.requires));
+          const children = entry.children.filter((c) => hasAuthority(c.requires));
           if (children.length === 0) return null;
           return (
             <GroupNav key={entry.label} group={{ ...entry, children }} onNavigate={onNavigate} />

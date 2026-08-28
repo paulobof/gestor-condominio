@@ -62,6 +62,7 @@ const NAV: NavItem[] = [
   {
     to: '/avisos',
     feature: 'announcements',
+    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
     title: 'Mural de avisos',
     desc: 'Comunicados do condomínio.',
@@ -71,6 +72,7 @@ const NAV: NavItem[] = [
   {
     to: '/faq',
     feature: 'faq',
+    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
     title: 'Perguntas Frequentes',
     desc: 'Dúvidas comuns do condomínio.',
@@ -123,8 +125,12 @@ export default function App() {
   const { user } = useAuth();
   const { enabled } = useFeatures();
   const { promptLogin } = useLoginPrompt();
+  // Visitante nao e barrado por permission em card com cadeado: ele ve o card e o clique abre o
+  // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o card.
   const can = (item: NavItem) =>
-    !item.requires || (user?.authorities.includes(item.requires) ?? false);
+    user
+      ? !item.requires || user.authorities.includes(item.requires)
+      : !item.requires || !!item.requiresLogin;
   const on = (item: NavItem) => !item.feature || enabled(item.feature);
   const items = NAV.filter((i) => can(i) && on(i));
 

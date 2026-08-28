@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 import { IndependentNotice } from '@/components/branding/IndependentNotice';
 import { Sidebar } from './Sidebar';
-import { LoginPromptProvider } from '@/features/auth/LoginPromptProvider';
+import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 
 /**
  * Casca do app autenticado: top bar de marca (logo HELBOR + tema + sair) e menu LATERAL — fixo no
@@ -15,6 +15,7 @@ import { LoginPromptProvider } from '@/features/auth/LoginPromptProvider';
  */
 export function Shell() {
   const { user, logout } = useAuth();
+  const { promptLogin } = useLoginPrompt();
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
 
@@ -27,7 +28,7 @@ export function Shell() {
   }, []);
 
   return (
-    <LoginPromptProvider>
+    <>
       <div className="min-h-dvh bg-background text-foreground">
         <div className="sticky top-0 z-30">
           <IndependentNotice />
@@ -84,17 +85,17 @@ export function Shell() {
                     </Button>
                   </>
                 ) : (
-                  // Visitante: le o conteudo sem conta; a porta de entrada fica sempre a um clique.
+                  // Visitante: le o conteudo sem conta; a porta de entrada fica sempre a um clique —
+                  // e sempre em popup, sem tirar a pessoa da pagina em que ela estava.
                   <Button
-                    asChild
                     variant="ghost"
                     size="sm"
+                    aria-label="Entrar"
+                    onClick={() => promptLogin()}
                     className="text-white hover:bg-white/10 hover:text-white"
                   >
-                    <Link to="/login" aria-label="Entrar">
-                      <LogIn className="h-4 w-4" />
-                      <span className="ml-2">Entrar</span>
-                    </Link>
+                    <LogIn className="h-4 w-4" />
+                    <span className="ml-2">Entrar</span>
                   </Button>
                 )}
               </div>
@@ -114,6 +115,6 @@ export function Shell() {
           </main>
         </div>
       </div>
-    </LoginPromptProvider>
+    </>
   );
 }

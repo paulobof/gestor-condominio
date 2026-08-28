@@ -1,4 +1,5 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
+import { LoginPromptProvider } from '@/features/auth/LoginPromptProvider';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterMasterPage } from '@/features/auth/pages/RegisterMasterPage';
 import { RegisterOwnerPage } from '@/features/auth/pages/RegisterOwnerPage';
@@ -34,63 +35,81 @@ import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingR
 import { DocumentsPage } from '@/features/documents/pages/DocumentsPage';
 import App from './App';
 
+/**
+ * Casca invisivel acima de todas as rotas. O popup de entrada precisa estar disponivel tanto para
+ * as telas publicas quanto para o ProtectedRoute — que pede a conta antes de qualquer casca
+ * montar — para que TODO pedido de login seja popup, nunca um desvio para a tela de senha.
+ */
+function LoginPromptLayout() {
+  return (
+    <LoginPromptProvider>
+      <Outlet />
+    </LoginPromptProvider>
+  );
+}
+
 const router = createBrowserRouter([
   {
-    // Casca pública: aviso de app independente (LGPD) fixo no topo das telas sem login.
-    element: <PublicShell />,
+    element: <LoginPromptLayout />,
     children: [
-      { path: '/sobre', element: <AboutPage /> },
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register-master', element: <RegisterMasterPage /> },
-      { path: '/register-owner', element: <RegisterOwnerPage /> },
-      { path: '/pending-approval', element: <PendingApprovalPage /> },
-      { path: '/forgot-password', element: <ForgotPasswordPage /> },
-      { path: '/reset', element: <ResetPasswordPage /> },
-    ],
-  },
-  {
-    // Leitura do conteudo do condominio: aberta a visitante (decisao do controlador dos dados,
-    // 2026-08-25). Mesma casca do app; o Shell se vira sem usuario e oferece "Entrar".
-    element: <Shell />,
-    children: [
-      { path: '/', element: <App /> },
-      { path: '/informacoes', element: <InfoPage /> },
-      { path: '/indicacoes', element: <RecommendationsListPage /> },
-      { path: '/indicacoes/:id', element: <RecommendationDetailPage /> },
-      { path: '/classificados', element: <ClassifiedsListPage /> },
-      { path: '/classificados/:id', element: <ClassifiedDetailPage /> },
-      { path: '/privacidade', element: <PrivacyPage /> },
-    ],
-  },
-  {
-    // Casca autenticada: escrita, area da unidade, admin e dados pessoais.
-    element: (
-      <ProtectedRoute>
-        <Shell />
-      </ProtectedRoute>
-    ),
-    children: [
-      { path: '/avisos', element: <AnnouncementsListPage /> },
-      { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
-      { path: '/faq', element: <FaqPage /> },
-      { path: '/documentos', element: <DocumentsPage /> },
-      { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
-      { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
-      { path: '/admin/acessos', element: <AccessManagementPage /> },
-      { path: '/classificados/novo', element: <ClassifiedFormPage /> },
-      { path: '/classificados/:id/editar', element: <ClassifiedFormPage /> },
-      { path: '/indicacoes/nova', element: <RecommendationFormPage /> },
-      { path: '/indicacoes/:id/editar', element: <RecommendationFormPage /> },
-      { path: '/avisos/novo', element: <AnnouncementFormPage /> },
-      { path: '/avisos/:id/editar', element: <AnnouncementFormPage /> },
-      { path: '/informacoes/gerenciar', element: <InfoAdminPage /> },
-      { path: '/faq/gerenciar', element: <FaqAdminPage /> },
-      { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
-      { path: '/minha-unidade/registrar', element: <RegisterExtraUnitPage /> },
-      { path: '/vagas/aluguel', element: <ParkingRentalsListPage /> },
-      { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
-      { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },
-      { path: '/vagas/aluguel/:id/editar', element: <ParkingRentalFormPage /> },
+      {
+        // Casca pública: aviso de app independente (LGPD) fixo no topo das telas sem login.
+        element: <PublicShell />,
+        children: [
+          { path: '/sobre', element: <AboutPage /> },
+          { path: '/login', element: <LoginPage /> },
+          { path: '/register-master', element: <RegisterMasterPage /> },
+          { path: '/register-owner', element: <RegisterOwnerPage /> },
+          { path: '/pending-approval', element: <PendingApprovalPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          { path: '/reset', element: <ResetPasswordPage /> },
+        ],
+      },
+      {
+        // Leitura do conteudo do condominio: aberta a visitante (decisao do controlador dos dados,
+        // 2026-08-25). Mesma casca do app; o Shell se vira sem usuario e oferece "Entrar".
+        element: <Shell />,
+        children: [
+          { path: '/', element: <App /> },
+          { path: '/informacoes', element: <InfoPage /> },
+          { path: '/indicacoes', element: <RecommendationsListPage /> },
+          { path: '/indicacoes/:id', element: <RecommendationDetailPage /> },
+          { path: '/classificados', element: <ClassifiedsListPage /> },
+          { path: '/classificados/:id', element: <ClassifiedDetailPage /> },
+          { path: '/privacidade', element: <PrivacyPage /> },
+        ],
+      },
+      {
+        // Casca autenticada: escrita, area da unidade, admin e dados pessoais.
+        element: (
+          <ProtectedRoute>
+            <Shell />
+          </ProtectedRoute>
+        ),
+        children: [
+          { path: '/avisos', element: <AnnouncementsListPage /> },
+          { path: '/avisos/:id', element: <AnnouncementDetailPage /> },
+          { path: '/faq', element: <FaqPage /> },
+          { path: '/documentos', element: <DocumentsPage /> },
+          { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
+          { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
+          { path: '/admin/acessos', element: <AccessManagementPage /> },
+          { path: '/classificados/novo', element: <ClassifiedFormPage /> },
+          { path: '/classificados/:id/editar', element: <ClassifiedFormPage /> },
+          { path: '/indicacoes/nova', element: <RecommendationFormPage /> },
+          { path: '/indicacoes/:id/editar', element: <RecommendationFormPage /> },
+          { path: '/avisos/novo', element: <AnnouncementFormPage /> },
+          { path: '/avisos/:id/editar', element: <AnnouncementFormPage /> },
+          { path: '/informacoes/gerenciar', element: <InfoAdminPage /> },
+          { path: '/faq/gerenciar', element: <FaqAdminPage /> },
+          { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
+          { path: '/minha-unidade/registrar', element: <RegisterExtraUnitPage /> },
+          { path: '/vagas/aluguel', element: <ParkingRentalsListPage /> },
+          { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
+          { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },
+          { path: '/vagas/aluguel/:id/editar', element: <ParkingRentalFormPage /> },
+        ],
+      },
     ],
   },
 ]);

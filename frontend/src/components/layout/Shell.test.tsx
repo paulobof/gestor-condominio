@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -10,27 +11,35 @@ vi.mock('@/components/theme/ThemeToggle', () => ({ ThemeToggle: () => null }));
 import { Shell } from './Shell';
 import { useAuth } from '@/features/auth/useAuth';
 import { useFeatures } from '@/features/featureflags/useFeatures';
+import { LoginPromptContext } from '@/features/auth/LoginPromptProvider';
 
 const useAuthMock = vi.mocked(useAuth);
 const useFeaturesMock = vi.mocked(useFeatures);
 const logout = vi.fn();
 
-function renderShell(user: unknown) {
+function renderShell(user: unknown, promptLogin = vi.fn()) {
   useAuthMock.mockReturnValue({ user, logout } as never);
   useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });
-  return render(
+  render(
     <MemoryRouter>
-      <Shell />
+      <LoginPromptContext.Provider value={{ promptLogin }}>
+        <Shell />
+      </LoginPromptContext.Provider>
     </MemoryRouter>
   );
+  return promptLogin;
 }
 
 beforeEach(() => vi.clearAllMocks());
 
 describe('Shell', () => {
-  it('visitante vê "Entrar" apontando para o login, e nenhum "Sair"', () => {
-    renderShell(null);
-    expect(screen.getByRole('link', { name: /entrar/i })).toHaveAttribute('href', '/login');
+  it('visitante vê "Entrar" como botão que abre o popup, e nenhum "Sair"', async () => {
+    // Todo pedido de entrada e popup: o header nao joga mais o visitante numa tela de senha.
+    const promptLogin = renderShell(null);
+    expect(screen.queryByRole('link', { name: /^entrar$/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /entrar/i }));
+    expect(promptLogin).toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /sair/i })).not.toBeInTheDocument();
   });
 

@@ -7,7 +7,7 @@ test.describe('Autenticação', () => {
     await expect(page).toHaveURL(/\/$/);
     // A home nao vende cadastro: mostra o conteudo. Entrar fica no topo; o resto pede quando precisa.
     await expect(page.getByRole('heading', { name: 'HELBOR TRILOGY HOME' })).toBeVisible();
-    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /entrar/i }).first()).toBeVisible();
     await expect(page.getByText('Entrar no sistema')).toHaveCount(0);
     await expect(page.getByRole('link', { name: /criar minha conta/i })).toHaveCount(0);
   });
@@ -16,20 +16,38 @@ test.describe('Autenticação', () => {
     mock.user(null);
     await page.goto('/indicacoes');
     await expect(page).toHaveURL(/\/indicacoes$/);
-    await expect(page.getByRole('link', { name: /entrar/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /entrar/i }).first()).toBeVisible();
   });
 
-  test('mural exige conta: visitante cai no login', async ({ page, mock }) => {
+  test('mural exige conta: o login vem em popup, sem tirar o visitante do portal', async ({
+    page,
+    mock,
+  }) => {
     mock.user(null);
     await page.goto('/avisos');
-    await expect(page).toHaveURL(/\/login$/);
+    // Nao ha desvio para a tela de senha: volta para a home com o popup de entrada por cima.
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Entrar no sistema')).toHaveCount(0);
   });
 
-  test('visitante em area que exige conta cai no login', async ({ page, mock }) => {
+  test('área da unidade também pede a conta em popup', async ({ page, mock }) => {
     mock.user(null);
     await page.goto('/minha-unidade/moradores');
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByText('Entrar no sistema')).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('dialog')).toBeVisible();
+  });
+
+  test('o "Entrar" do topo abre o popup, sem sair da página', async ({ page, mock }) => {
+    mock.user(null);
+    await page.goto('/indicacoes');
+    await page
+      .getByRole('button', { name: /entrar/i })
+      .first()
+      .click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page).toHaveURL(/\/indicacoes$/);
   });
 
   test('login com credenciais válidas leva à home', async ({ page, mock }) => {

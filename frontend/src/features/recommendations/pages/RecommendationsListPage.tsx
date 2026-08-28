@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreateContentButton } from '@/components/auth/CreateContentButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { listRecommendations, type Recommendation } from '../api/recommendationsApi';
@@ -81,12 +80,9 @@ export function RecommendationsListPage() {
           />
           Indicações
         </h1>
-        <CreateContentButton
-          to="/indicacoes/nova"
-          reason="Indicar um serviço é para quem tem conta."
-        >
-          Nova indicação
-        </CreateContentButton>
+        <Button asChild className="min-h-[44px]">
+          <Link to="/indicacoes/nova">Nova indicação</Link>
+        </Button>
       </div>
 
       <div className="mb-6 space-y-4">

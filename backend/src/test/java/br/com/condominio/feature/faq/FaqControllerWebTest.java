@@ -40,7 +40,6 @@ class FaqControllerWebTest {
   private static final UUID UID = UUID.randomUUID();
   private static final UUID FID = UUID.randomUUID();
   private static final String MANAGE = "FAQ_MANAGE";
-  private static final String VIEW = "GENERAL_AREAS_VIEW";
 
   @Autowired private MockMvc mvc;
   @MockBean private FaqService service;
@@ -55,7 +54,7 @@ class FaqControllerWebTest {
   void listPublished_authenticated_returns200() throws Exception {
     when(service.listPublished()).thenReturn(List.of(view()));
 
-    mvc.perform(get("/api/faq").with(MockAuth.user(UID, VIEW)))
+    mvc.perform(get("/api/faq").with(MockAuth.user(UID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].question").value("O que é o condomínio?"));
   }
@@ -145,12 +144,6 @@ class FaqControllerWebTest {
   @Test
   void listPublished_semSessao_ehRejeitado() throws Exception {
     mvc.perform(get("/api/faq")).andExpect(status().is4xxClientError());
-  }
-
-  @Test
-  void listPublished_semGeneralAreasView_returns403() throws Exception {
-    // Convidado (GUEST) loga mas nao recebe GENERAL_AREAS_VIEW: o FAQ fica fora do alcance dele.
-    mvc.perform(get("/api/faq").with(MockAuth.user(UID))).andExpect(status().isForbidden());
   }
 
   @Test

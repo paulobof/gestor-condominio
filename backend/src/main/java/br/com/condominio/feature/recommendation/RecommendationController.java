@@ -55,7 +55,7 @@ public class RecommendationController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAuthority('CONTENT_CREATE')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<RecommendationView> create(
       @Valid @RequestBody CreateRecommendationRequest body,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {

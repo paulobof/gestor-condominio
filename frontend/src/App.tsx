@@ -62,7 +62,6 @@ const NAV: NavItem[] = [
   {
     to: '/avisos',
     feature: 'announcements',
-    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
     title: 'Mural de avisos',
     desc: 'Comunicados do condomínio.',
@@ -72,7 +71,6 @@ const NAV: NavItem[] = [
   {
     to: '/faq',
     feature: 'faq',
-    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
     title: 'Perguntas Frequentes',
     desc: 'Dúvidas comuns do condomínio.',

@@ -88,7 +88,6 @@ const ENTRIES: NavEntry[] = [
     icon: Megaphone,
     brand: 'red',
     requiresFeature: 'announcements',
-    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
   },
   {
@@ -98,7 +97,6 @@ const ENTRIES: NavEntry[] = [
     icon: BookOpen,
     brand: 'blue',
     requiresFeature: 'faq',
-    requires: 'GENERAL_AREAS_VIEW',
     requiresLogin: true,
   },
   {

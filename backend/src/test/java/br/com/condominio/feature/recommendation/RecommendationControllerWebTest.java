@@ -49,7 +49,6 @@ class RecommendationControllerWebTest {
   private static final UUID UID = UUID.randomUUID();
   private static final UUID RID = UUID.randomUUID();
   private static final String MODERATE = "RECOMMENDATION_MODERATE";
-  private static final String CREATE = "CONTENT_CREATE";
 
   @Autowired private MockMvc mvc;
   @MockBean private RecommendationService service;
@@ -139,7 +138,7 @@ class RecommendationControllerWebTest {
 
     mvc.perform(
             post("/api/recommendations")
-                .with(MockAuth.user(UID, CREATE))
+                .with(MockAuth.user(UID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"serviceName\":\"Encanador Zé\",\"isResident\":false}"))
         .andExpect(status().isCreated())
@@ -150,7 +149,7 @@ class RecommendationControllerWebTest {
   void create_blankServiceName_returns400Validation() throws Exception {
     mvc.perform(
             post("/api/recommendations")
-                .with(MockAuth.user(UID, CREATE))
+                .with(MockAuth.user(UID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"serviceName\":\"\",\"isResident\":false}"))
         .andExpect(status().isBadRequest())
@@ -166,24 +165,12 @@ class RecommendationControllerWebTest {
 
     mvc.perform(
             post("/api/recommendations")
-                .with(MockAuth.userWithUnit(UID, unitId, CREATE))
+                .with(MockAuth.userWithUnit(UID, unitId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"serviceName\":\"Test\",\"isResident\":true}"))
         .andExpect(status().isCreated());
 
     verify(service).create(eq(UID), eq(unitId), eq(true), any());
-  }
-
-  @Test
-  void create_semContentCreate_returns403() throws Exception {
-    // Convidado e proprietario leem as indicacoes, mas nao publicam: sem CONTENT_CREATE, 403.
-    mvc.perform(
-            post("/api/recommendations")
-                .with(MockAuth.user(UID))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"serviceName\":\"Encanador Zé\",\"isResident\":false}"))
-        .andExpect(status().isForbidden());
-    verify(service, never()).create(any(), any(), anyBoolean(), any());
   }
 
   // ---- matriz de autorização: hide exige RECOMMENDATION_MODERATE ------------------

@@ -52,7 +52,7 @@ public class ClassifiedController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAuthority('CONTENT_CREATE')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<ClassifiedView> create(
       @Valid @RequestBody CreateClassifiedRequest body,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {

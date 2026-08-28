@@ -44,7 +44,6 @@ class AnnouncementControllerWebTest {
   private static final UUID UID = UUID.randomUUID();
   private static final UUID AID = UUID.randomUUID();
   private static final String MANAGE = "ANNOUNCEMENT_MANAGE";
-  private static final String VIEW = "GENERAL_AREAS_VIEW";
 
   @Autowired private MockMvc mvc;
   @MockBean private AnnouncementService service;
@@ -66,7 +65,7 @@ class AnnouncementControllerWebTest {
   void list_authenticated_returns200() throws Exception {
     when(service.list(any())).thenReturn(new PageImpl<>(List.of(view()), PageRequest.of(0, 20), 1));
 
-    mvc.perform(get("/api/announcements").with(MockAuth.user(UID, VIEW)))
+    mvc.perform(get("/api/announcements").with(MockAuth.user(UID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].title").value("Manutenção"))
         .andExpect(jsonPath("$.content[0].position").value(0))
@@ -77,14 +76,6 @@ class AnnouncementControllerWebTest {
   void list_semSessao_ehRejeitado() throws Exception {
     // Mural e so para quem tem conta; o visitante ve o item com cadeado e cai no login.
     mvc.perform(get("/api/announcements")).andExpect(status().is4xxClientError());
-    verifyNoInteractions(service);
-  }
-
-  @Test
-  void list_semGeneralAreasView_returns403() throws Exception {
-    // Convidado (GUEST) loga mas nao recebe GENERAL_AREAS_VIEW: o mural fica fora do alcance dele.
-    mvc.perform(get("/api/announcements").with(MockAuth.user(UID)))
-        .andExpect(status().isForbidden());
     verifyNoInteractions(service);
   }
 
@@ -185,7 +176,7 @@ class AnnouncementControllerWebTest {
     when(service.getById(AID))
         .thenThrow(new AnnouncementException("NOT_FOUND", "Aviso não encontrado."));
 
-    mvc.perform(get("/api/announcements/{id}", AID).with(MockAuth.user(UID, VIEW)))
+    mvc.perform(get("/api/announcements/{id}", AID).with(MockAuth.user(UID)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("NOT_FOUND"));
   }

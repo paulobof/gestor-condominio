@@ -28,7 +28,7 @@ public class FaqController {
   private final FaqService service;
 
   @GetMapping
-  @PreAuthorize("hasAuthority('GENERAL_AREAS_VIEW')")
+  @PreAuthorize("isAuthenticated()")
   public List<FaqView> listPublished() {
     return service.listPublished();
   }

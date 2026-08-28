@@ -23,7 +23,7 @@ function authValue(authorities: string[]) {
   };
 }
 
-function renderApp(authorities: string[] = ['USER_VIEW', 'GENERAL_AREAS_VIEW']) {
+function renderApp(authorities: string[] = ['USER_VIEW']) {
   return render(
     <MemoryRouter>
       <AuthContext.Provider value={authValue(authorities)}>
@@ -95,13 +95,6 @@ describe('App', () => {
       'href',
       '/admin/acessos'
     );
-  });
-
-  it('convidado (sem GENERAL_AREAS_VIEW) não vê Mural nem Perguntas Frequentes', () => {
-    renderApp(['USER_VIEW']);
-    expect(screen.queryByRole('link', { name: /mural de avisos/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /perguntas frequentes/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^classificados/i })).toBeInTheDocument();
   });
 
   it('usa cor adaptável (não brand-ink fixo) no card neutro, para contraste no dark', () => {

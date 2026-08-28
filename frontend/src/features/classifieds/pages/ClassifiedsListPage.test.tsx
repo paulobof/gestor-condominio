@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthContext } from '@/features/auth/AuthProvider';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/classifiedsApi', () => ({ listClassifieds: vi.fn() }));
@@ -16,19 +15,10 @@ function page(content: unknown[]) {
   return { content, totalElements: content.length, totalPages: 1, number: 0 } as never;
 }
 
-const auth = {
-  status: 'authenticated' as const,
-  user: { id: 'u1', authorities: ['CONTENT_CREATE'] },
-  login: vi.fn(),
-  logout: vi.fn(),
-};
-
 function renderPage() {
   return render(
     <MemoryRouter>
-      <AuthContext.Provider value={auth as never}>
-        <ClassifiedsListPage />
-      </AuthContext.Provider>
+      <ClassifiedsListPage />
     </MemoryRouter>
   );
 }

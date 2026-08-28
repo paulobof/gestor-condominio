@@ -8,8 +8,7 @@ import java.util.UUID;
 /**
  * Pacote de exportação do titular (LGPD Art. 18, II). Inclui todos os dados pessoais que o sistema
  * mantém — exceto o passwordHash (segredo, não considerado dado pessoal sob LGPD pois é derivação
- * one-way) e o residenceProofObjectKey (referência interna; o arquivo em si o admin pode visualizar
- * via proof-url se ainda existir, ou solicitar ao DPO).
+ * one-way).
  */
 public record PersonalDataExportResponse(
     UUID userId,
@@ -22,7 +21,6 @@ public record PersonalDataExportResponse(
     LocalDate birthDate,
     String status,
     UnitInfo unit,
-    ResidenceProofInfo residenceProof,
     ConsentInfo consent,
     boolean whatsappOptIn,
     Instant whatsappOptInAt,
@@ -32,9 +30,6 @@ public record PersonalDataExportResponse(
     Instant exportedAt) {
 
   public record UnitInfo(UUID unitId, String code, boolean isUnitMaster) {}
-
-  public record ResidenceProofInfo(
-      String filename, String contentType, Instant uploadedAt, Instant verifiedAt) {}
 
   public record ConsentInfo(String documentVersion, Instant acceptedAt) {}
 }

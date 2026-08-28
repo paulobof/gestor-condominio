@@ -13,24 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuditWriter {
 
-  private final ProofAccessLogRepository proofRepo;
   private final SensitiveAccessLogRepository sensitiveRepo;
-
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void logProofAccess(
-      UUID adminUserId, UUID targetUserId, HttpServletRequest request, int ttlSeconds) {
-    ProofAccessLog log =
-        new ProofAccessLog(
-            null,
-            adminUserId,
-            targetUserId,
-            Instant.now(),
-            resolveIp(request),
-            shortenUa(request.getHeader("User-Agent")),
-            ttlSeconds,
-            MDC.get("requestId"));
-    proofRepo.save(log);
-  }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void logSensitiveAccess(

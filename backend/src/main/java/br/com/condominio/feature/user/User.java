@@ -67,21 +67,6 @@ public class User {
   @Enumerated(EnumType.STRING)
   private UserStatus status = UserStatus.PENDING_APPROVAL;
 
-  @Column(name = "residence_proof_object_key")
-  private String residenceProofObjectKey;
-
-  @Column(name = "residence_proof_filename")
-  private String residenceProofFilename;
-
-  @Column(name = "residence_proof_content_type", length = 80)
-  private String residenceProofContentType;
-
-  @Column(name = "residence_proof_uploaded_at")
-  private Instant residenceProofUploadedAt;
-
-  @Column(name = "proof_verified_at")
-  private Instant proofVerifiedAt;
-
   @Column(name = "approved_by_user_id")
   private UUID approvedByUserId;
 
@@ -191,12 +176,11 @@ public class User {
     this.status = UserStatus.ACTIVE;
     this.approvedByUserId = approverId;
     this.approvedAt = Instant.now();
-    this.proofVerifiedAt = Instant.now();
   }
 
   /**
    * Aprovar morador que pediu acesso a uma unidade que já tem master. Quem aprova é o master (ou o
-   * admin, como válvula). Não há comprovante — logo não marca {@code proofVerifiedAt}.
+   * admin, como válvula).
    */
   public void approveAsMember(UUID approverId) {
     if (this.status != UserStatus.PENDING_APPROVAL) {
@@ -220,7 +204,6 @@ public class User {
     this.status = UserStatus.ACTIVE;
     this.approvedByUserId = approverId;
     this.approvedAt = Instant.now();
-    this.proofVerifiedAt = Instant.now();
   }
 
   /** Rejeitar cadastro pendente. */
@@ -247,18 +230,14 @@ public class User {
   }
 
   /**
-   * Anonimiza o usuário (LGPD Art. 18). Substitui PII por placeholders, limpa referência ao
-   * comprovante (object key será apagado fora da transação pelo listener), revoga consent timestamp
-   * e marca {@code anonymized_at}. Preserva FKs históricas (proof_access_log, sensitive_access_log,
-   * user_role) para rastreabilidade legal. Idempotente: aplicar duas vezes não muda nada.
-   *
-   * @return o object key do comprovante a ser purgado do MinIO (null se nenhum)
+   * Anonimiza o usuário (LGPD Art. 18). Substitui PII por placeholders, revoga consent timestamp e
+   * marca {@code anonymized_at}. Preserva FKs históricas (sensitive_access_log, user_role) para
+   * rastreabilidade legal. Idempotente: aplicar duas vezes não muda nada.
    */
-  public String anonymize() {
+  public void anonymize() {
     if (this.status == UserStatus.ANONYMIZED) {
-      return null;
+      return;
     }
-    String objectKeyToPurge = this.residenceProofObjectKey;
     this.fullName = "Usuário Removido";
     this.greetingName = "Usuário Removido";
     this.phone = null;
@@ -267,14 +246,9 @@ public class User {
     this.birthDate = null;
     this.passwordHash = "__ANONYMIZED__";
     this.mustChangePassword = false;
-    this.residenceProofObjectKey = null;
-    this.residenceProofFilename = null;
-    this.residenceProofContentType = null;
-    // Mantém residenceProofUploadedAt para historicidade do fluxo.
     this.consentAcceptedIp = null;
     this.whatsappOptIn = false;
     this.status = UserStatus.ANONYMIZED;
     this.anonymizedAt = Instant.now();
-    return objectKeyToPurge;
   }
 }

@@ -3,7 +3,6 @@ package br.com.condominio.feature.privacy;
 import br.com.condominio.feature.auth.RefreshTokenRepository;
 import br.com.condominio.feature.privacy.dto.PersonalDataExportResponse;
 import br.com.condominio.feature.privacy.dto.ProcessingActivityView;
-import br.com.condominio.feature.privacy.event.UserAnonymizedEvent;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRoleRepository;
@@ -17,7 +16,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +37,6 @@ public class PrivacyService {
   private final RefreshTokenRepository refreshTokenRepo;
   private final ProcessingActivitiesProvider activitiesProvider;
   private final PasswordEncoder passwordEncoder;
-  private final ApplicationEventPublisher events;
 
   @Transactional(readOnly = true)
   public PersonalDataExportResponse exportSelf(UUID userId) {
@@ -63,14 +60,6 @@ public class PrivacyService {
                         new PersonalDataExportResponse.UnitInfo(
                             u.getId(), u.getCode(), user.isUnitMaster()))
                 .orElse(null);
-    PersonalDataExportResponse.ResidenceProofInfo proofInfo =
-        user.getResidenceProofUploadedAt() == null
-            ? null
-            : new PersonalDataExportResponse.ResidenceProofInfo(
-                user.getResidenceProofFilename(),
-                user.getResidenceProofContentType(),
-                user.getResidenceProofUploadedAt(),
-                user.getProofVerifiedAt());
     PersonalDataExportResponse.ConsentInfo consentInfo =
         new PersonalDataExportResponse.ConsentInfo(
             user.getConsentDocumentVersion(), user.getConsentAcceptedAt());
@@ -85,7 +74,6 @@ public class PrivacyService {
         user.getBirthDate(),
         user.getStatus().name(),
         unitInfo,
-        proofInfo,
         consentInfo,
         user.isWhatsappOptIn(),
         user.getWhatsappOptInAt(),
@@ -112,22 +100,17 @@ public class PrivacyService {
     log.info("privacy.optIn.updated userId={} optIn={}", userId, optIn);
   }
 
-  /**
-   * Anonimiza o titular (Art. 18, IV LGPD). Exige confirmação dupla (senha + texto). Após commit,
-   * dispara {@link UserAnonymizedEvent} para o listener purgar o comprovante do MinIO fora da
-   * transação.
-   */
+  /** Anonimiza o titular (Art. 18, IV LGPD). Exige confirmação dupla (senha + texto). */
   @Transactional
   public void anonymizeSelf(UUID userId, String currentPassword) {
     User user = userRepo.findById(userId).orElseThrow(() -> notFound(userId));
     if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
       throw new PrivacyException("INVALID_PASSWORD", "Senha incorreta.");
     }
-    String objectKeyToPurge = user.anonymize();
+    user.anonymize();
     userRepo.save(user);
     refreshTokenRepo.revokeAllByUserId(userId, "self_anonymize");
-    events.publishEvent(new UserAnonymizedEvent(userId, objectKeyToPurge));
-    log.info("privacy.anonymized userId={} hadProof={}", userId, objectKeyToPurge != null);
+    log.info("privacy.anonymized userId={}", userId);
   }
 
   private static PrivacyException notFound(UUID userId) {

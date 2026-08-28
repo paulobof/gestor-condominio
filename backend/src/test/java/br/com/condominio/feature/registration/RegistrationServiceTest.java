@@ -3,7 +3,6 @@ package br.com.condominio.feature.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -14,8 +13,6 @@ import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.*;
-import br.com.condominio.storage.FileStorage;
-import br.com.condominio.storage.MinioProperties;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,9 +28,7 @@ class RegistrationServiceTest {
   private RoleRepository roleRepo;
   private UserRoleRepository userRoleRepo;
   private ConsentDocumentRepository consentRepo;
-  private FileStorage storage;
   private PasswordEncoder encoder;
-  private MinioProperties props;
   private PermissionGrantService permissionGrants;
   private org.springframework.context.ApplicationEventPublisher events;
   private RegistrationService service;
@@ -46,10 +41,7 @@ class RegistrationServiceTest {
     roleRepo = mock(RoleRepository.class);
     userRoleRepo = mock(UserRoleRepository.class);
     consentRepo = mock(ConsentDocumentRepository.class);
-    storage = mock(FileStorage.class);
     encoder = mock(PasswordEncoder.class);
-    props = new MinioProperties();
-    props.setBucketProofs("residence-proofs");
     permissionGrants = mock(PermissionGrantService.class);
     events = mock(org.springframework.context.ApplicationEventPublisher.class);
     service =
@@ -60,9 +52,7 @@ class RegistrationServiceTest {
             roleRepo,
             userRoleRepo,
             consentRepo,
-            storage,
             encoder,
-            props,
             permissionGrants,
             events);
   }
@@ -97,8 +87,6 @@ class RegistrationServiceTest {
     verify(permissionGrants)
         .grantIfAbsent(
             any(), eq(PermissionCode.RESIDENT_MANAGE), org.mockito.ArgumentMatchers.isNull());
-    // Sem comprovante: o storage nao e tocado no cadastro.
-    verify(storage, never()).upload(any(), any(), anyLong(), any());
   }
 
   @Test
@@ -136,35 +124,6 @@ class RegistrationServiceTest {
     // Pedido nao vira master e nao ganha gestao da unidade.
     verify(permissionGrants, never()).grantIfAbsent(any(), any(), any());
     verify(events).publishEvent(any(UnitJoinRequestedEvent.class));
-  }
-
-  @Test
-  void getProofContent_returnsStoredBytesContentTypeAndFilename() {
-    UUID id = UUID.randomUUID();
-    User user = mock(User.class);
-    when(user.getResidenceProofObjectKey()).thenReturn("obj-key");
-    when(user.getResidenceProofContentType()).thenReturn("image/png");
-    when(user.getResidenceProofFilename()).thenReturn("comprovante.png");
-    when(userRepo.findById(id)).thenReturn(Optional.of(user));
-    byte[] bytes = {1, 2, 3, 4};
-    when(storage.getObject("residence-proofs", "obj-key")).thenReturn(bytes);
-
-    RegistrationService.ProofContent pc = service.getProofContent(id);
-
-    assertThat(pc.content()).isEqualTo(bytes);
-    assertThat(pc.contentType()).isEqualTo("image/png");
-    assertThat(pc.filename()).isEqualTo("comprovante.png");
-  }
-
-  @Test
-  void getProofContent_whenNoProof_throws() {
-    UUID id = UUID.randomUUID();
-    User user = mock(User.class);
-    when(user.getResidenceProofObjectKey()).thenReturn(null);
-    when(userRepo.findById(id)).thenReturn(Optional.of(user));
-
-    assertThatThrownBy(() -> service.getProofContent(id)).isInstanceOf(RegistrationException.class);
-    verify(storage, never()).getObject(any(), any());
   }
 
   @Test

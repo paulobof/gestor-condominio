@@ -1,6 +1,5 @@
 package br.com.condominio.feature.user;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,17 +24,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /** Pedidos de acesso parados nas unidades informadas (visão do master). */
   List<User> findByUnitIdInAndStatusAndIsUnitMasterFalse(List<UUID> unitIds, UserStatus status);
-
-  /**
-   * Users ACTIVE com comprovante carregado antes de {@code cutoff} — alvo do {@code
-   * ProofRetentionScheduler} (purga após 180 dias da aprovação).
-   */
-  @Query(
-      "SELECT u FROM User u "
-          + "WHERE u.status = br.com.condominio.feature.user.UserStatus.ACTIVE "
-          + "  AND u.residenceProofObjectKey IS NOT NULL "
-          + "  AND u.approvedAt < :cutoff")
-  List<User> findApprovedWithProofBefore(@Param("cutoff") Instant cutoff);
 
   /**
    * Moradores de uma unidade: não-master, em qualquer status exceto o informado (ex.: ANONYMIZED).

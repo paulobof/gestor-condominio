@@ -11,10 +11,8 @@ public class MinioProperties {
   private String endpoint;
   private String accessKey;
   private String secretKey;
-  private String bucketProofs = "residence-proofs";
   private String bucketClassifieds = "classifieds";
   private String bucketRecommendations = "recommendations";
   private String bucketDocuments = "documents";
-  private int presignedTtlProofsSeconds = 300;
   private int presignedTtlPhotosSeconds = 600;
 }

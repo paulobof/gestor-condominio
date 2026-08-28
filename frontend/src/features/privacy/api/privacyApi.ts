@@ -11,12 +11,6 @@ export interface PersonalDataExport {
   birthDate: string | null;
   status: string;
   unit: { unitId: string; code: string; isUnitMaster: boolean } | null;
-  residenceProof: {
-    filename: string | null;
-    contentType: string | null;
-    uploadedAt: string | null;
-    verifiedAt: string | null;
-  } | null;
   consent: { documentVersion: string | null; acceptedAt: string | null };
   whatsappOptIn: boolean;
   whatsappOptInAt: string | null;

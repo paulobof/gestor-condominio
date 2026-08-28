@@ -9,8 +9,6 @@ import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.*;
-import br.com.condominio.storage.FileStorage;
-import br.com.condominio.storage.MinioProperties;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +30,7 @@ public class RegistrationService {
   private final RoleRepository roleRepo;
   private final UserRoleRepository userRoleRepo;
   private final ConsentDocumentRepository consentRepo;
-  private final FileStorage storage;
   private final PasswordEncoder encoder;
-  private final MinioProperties props;
   private final PermissionGrantService permissionGrants;
   private final org.springframework.context.ApplicationEventPublisher events;
 
@@ -222,49 +218,8 @@ public class RegistrationService {
             .orElseThrow(
                 () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
     user.reject(approverId, reason);
-    if (user.getResidenceProofObjectKey() != null) {
-      try {
-        storage.delete(props.getBucketProofs(), user.getResidenceProofObjectKey());
-      } catch (Exception e) {
-        log.warn("Failed to delete proof for rejected user {}: {}", userId, e.getMessage());
-      }
-    }
     log.info("Master rejected userId={} by approverId={} reason='{}'", userId, approverId, reason);
   }
-
-  @Transactional
-  public String getProofPresignedUrl(UUID userId) {
-    User user =
-        userRepo
-            .findById(userId)
-            .orElseThrow(
-                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
-    if (user.getResidenceProofObjectKey() == null) {
-      throw new RegistrationException("NO_PROOF", "Usuário não tem comprovante.");
-    }
-    return storage.presignedGetUrl(
-        props.getBucketProofs(),
-        user.getResidenceProofObjectKey(),
-        java.time.Duration.ofSeconds(props.getPresignedTtlProofsSeconds()));
-  }
-
-  /** Conteúdo do comprovante para streaming direto pelo backend (MinIO permanece privado). */
-  @Transactional
-  public ProofContent getProofContent(UUID userId) {
-    User user =
-        userRepo
-            .findById(userId)
-            .orElseThrow(
-                () -> new RegistrationException("USER_NOT_FOUND", "Usuário não encontrado"));
-    if (user.getResidenceProofObjectKey() == null) {
-      throw new RegistrationException("NO_PROOF", "Usuário não tem comprovante.");
-    }
-    byte[] content = storage.getObject(props.getBucketProofs(), user.getResidenceProofObjectKey());
-    return new ProofContent(
-        content, user.getResidenceProofContentType(), user.getResidenceProofFilename());
-  }
-
-  public record ProofContent(byte[] content, String contentType, String filename) {}
 
   private PendingRegistrationView toPendingView(User u) {
     String email =
@@ -285,8 +240,6 @@ public class RegistrationService {
         unitCode,
         u.getGender() == null ? null : u.getGender().name(),
         u.getBirthDate(),
-        u.getResidenceProofFilename(),
-        u.getResidenceProofUploadedAt(),
         u.getCreatedAt());
   }
 }

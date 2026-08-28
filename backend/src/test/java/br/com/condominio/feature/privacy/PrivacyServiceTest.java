@@ -2,12 +2,10 @@ package br.com.condominio.feature.privacy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import br.com.condominio.feature.auth.RefreshTokenRepository;
-import br.com.condominio.feature.privacy.event.UserAnonymizedEvent;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.UnitRepository;
@@ -21,7 +19,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -35,7 +32,6 @@ class PrivacyServiceTest {
   private RefreshTokenRepository refreshTokenRepo;
   private ProcessingActivitiesProvider activitiesProvider;
   private PasswordEncoder encoder;
-  private ApplicationEventPublisher events;
   private PrivacyService service;
 
   @BeforeEach
@@ -48,7 +44,6 @@ class PrivacyServiceTest {
     refreshTokenRepo = mock(RefreshTokenRepository.class);
     activitiesProvider = mock(ProcessingActivitiesProvider.class);
     encoder = mock(PasswordEncoder.class);
-    events = mock(ApplicationEventPublisher.class);
     service =
         new PrivacyService(
             userRepo,
@@ -58,8 +53,7 @@ class PrivacyServiceTest {
             unitRepo,
             refreshTokenRepo,
             activitiesProvider,
-            encoder,
-            events);
+            encoder);
   }
 
   @Test
@@ -112,14 +106,13 @@ class PrivacyServiceTest {
         .isInstanceOf(PrivacyException.class)
         .extracting("code")
         .isEqualTo("INVALID_PASSWORD");
-    verifyNoInteractions(events);
+    verifyNoInteractions(refreshTokenRepo);
   }
 
   @Test
-  void anonymizeSelfSucessoMudaStatusRevogaRefreshEPublicaEvento() {
+  void anonymizeSelfSucessoMudaStatusERevogaRefresh() {
     UUID id = UUID.randomUUID();
     User u = makeUser(id);
-    ReflectionTestUtils.setField(u, "residenceProofObjectKey", "some-key");
     when(userRepo.findById(id)).thenReturn(Optional.of(u));
     when(encoder.matches("Senha@1234", "current-hash")).thenReturn(true);
 
@@ -127,9 +120,7 @@ class PrivacyServiceTest {
 
     assertThat(u.getStatus()).isEqualTo(UserStatus.ANONYMIZED);
     assertThat(u.getFullName()).isEqualTo("Usuário Removido");
-    assertThat(u.getResidenceProofObjectKey()).isNull();
     verify(refreshTokenRepo).revokeAllByUserId(eq(id), eq("self_anonymize"));
-    verify(events).publishEvent(any(UserAnonymizedEvent.class));
   }
 
   // ============ helpers ============

@@ -1,15 +1,11 @@
 package br.com.condominio.feature.registration;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,8 +27,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Contrato HTTP do {@link RegistrationAdminController}: matriz de permissões (REGISTRATION_VIEW p/
- * listar, REGISTRATION_APPROVE p/ aprovar/rejeitar, RESIDENCE_PROOF_VIEW p/ URL do comprovante) —
- * 403 sem a permission — e trilha de auditoria nos acessos sensíveis.
+ * listar, REGISTRATION_APPROVE p/ aprovar/rejeitar) — 403 sem a permission — e trilha de auditoria
+ * nos acessos sensíveis.
  */
 @WebMvcTest(controllers = RegistrationAdminController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
@@ -104,56 +100,5 @@ class RegistrationAdminControllerWebTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     verify(service, never()).reject(any(), any(), any());
-  }
-
-  // ---- proofUrl: RESIDENCE_PROOF_VIEW ---------------------------------------------
-
-  @Test
-  void proofUrl_withProofView_returns200_noReferrer_andAudits() throws Exception {
-    when(service.getProofPresignedUrl(REG)).thenReturn("https://minio/proof-signed");
-
-    mvc.perform(
-            get("/api/registrations/{id}/proof-url", REG)
-                .with(MockAuth.user(UID, "RESIDENCE_PROOF_VIEW")))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.url").value("https://minio/proof-signed"))
-        .andExpect(jsonPath("$.ttlSeconds").value(300))
-        .andExpect(header().string("Referrer-Policy", containsString("no-referrer")));
-
-    verify(auditWriter).logProofAccess(any(), any(), any(), anyInt());
-  }
-
-  @Test
-  void proofUrl_withoutPermission_returns403() throws Exception {
-    mvc.perform(get("/api/registrations/{id}/proof-url", REG).with(MockAuth.user(UID)))
-        .andExpect(status().isForbidden());
-    verify(service, never()).getProofPresignedUrl(any());
-  }
-
-  // ---- proof (streaming): RESIDENCE_PROOF_VIEW ------------------------------------
-
-  @Test
-  void proof_withProofView_returns200_streamsContent_noReferrer_andAudits() throws Exception {
-    byte[] bytes = "fake-image-bytes".getBytes();
-    when(service.getProofContent(REG))
-        .thenReturn(new RegistrationService.ProofContent(bytes, "image/png", "comprovante.png"));
-
-    mvc.perform(
-            get("/api/registrations/{id}/proof", REG)
-                .with(MockAuth.user(UID, "RESIDENCE_PROOF_VIEW")))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType("image/png"))
-        .andExpect(content().bytes(bytes))
-        .andExpect(header().string("Content-Disposition", containsString("inline")))
-        .andExpect(header().string("Referrer-Policy", containsString("no-referrer")));
-
-    verify(auditWriter).logProofAccess(any(), any(), any(), anyInt());
-  }
-
-  @Test
-  void proof_withoutPermission_returns403() throws Exception {
-    mvc.perform(get("/api/registrations/{id}/proof", REG).with(MockAuth.user(UID)))
-        .andExpect(status().isForbidden());
-    verify(service, never()).getProofContent(any());
   }
 }

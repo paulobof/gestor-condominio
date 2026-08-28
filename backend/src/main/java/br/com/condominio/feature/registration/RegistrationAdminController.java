@@ -5,13 +5,10 @@ import br.com.condominio.feature.registration.dto.*;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,42 +49,5 @@ public class RegistrationAdminController {
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     service.reject(id, me.userId(), body.reason());
     return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/{id}/proof-url")
-  @PreAuthorize("hasAuthority('RESIDENCE_PROOF_VIEW')")
-  public ResponseEntity<Map<String, Object>> proofUrl(
-      @PathVariable UUID id,
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me,
-      HttpServletRequest request) {
-    String url = service.getProofPresignedUrl(id);
-    auditWriter.logProofAccess(me.userId(), id, request, 300);
-    return ResponseEntity.ok()
-        .header("Referrer-Policy", "no-referrer")
-        .body(Map.of("url", url, "ttlSeconds", 300));
-  }
-
-  /**
-   * Stream do comprovante pelo próprio backend (MinIO permanece privado): download autenticado e
-   * auditado, sem expor URL pré-assinada de PII. Substitui o uso de {@code /proof-url} no frontend.
-   */
-  @GetMapping("/{id}/proof")
-  @PreAuthorize("hasAuthority('RESIDENCE_PROOF_VIEW')")
-  public ResponseEntity<byte[]> proof(
-      @PathVariable UUID id,
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me,
-      HttpServletRequest request) {
-    RegistrationService.ProofContent proof = service.getProofContent(id);
-    auditWriter.logProofAccess(me.userId(), id, request, 0);
-    MediaType contentType =
-        proof.contentType() != null
-            ? MediaType.parseMediaType(proof.contentType())
-            : MediaType.APPLICATION_OCTET_STREAM;
-    String filename = proof.filename() != null ? proof.filename() : "comprovante";
-    return ResponseEntity.ok()
-        .contentType(contentType)
-        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-        .header("Referrer-Policy", "no-referrer")
-        .body(proof.content());
   }
 }

@@ -12,6 +12,4 @@ public record PendingRegistrationView(
     String unitCode,
     String gender,
     LocalDate birthDate,
-    String residenceProofFilename,
-    Instant residenceProofUploadedAt,
     Instant createdAt) {}

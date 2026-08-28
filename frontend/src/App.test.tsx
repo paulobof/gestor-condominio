@@ -76,8 +76,8 @@ describe('App', () => {
     );
   });
 
-  it('mostra "Perguntas Frequentes" para quem tem GENERAL_AREAS_VIEW', () => {
-    renderApp(['USER_VIEW', 'GENERAL_AREAS_VIEW']);
+  it('mostra "Perguntas Frequentes" para qualquer autenticado', () => {
+    renderApp(['USER_VIEW']);
     expect(screen.getByRole('link', { name: /^perguntas frequentes/i })).toHaveAttribute(
       'href',
       '/faq'

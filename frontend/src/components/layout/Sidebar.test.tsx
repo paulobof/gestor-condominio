@@ -181,7 +181,7 @@ describe('Sidebar', () => {
 
   it('esconde o item quando a feature está desligada no ambiente', () => {
     enabledFeatures = ['announcements'];
-    renderSidebar(['RESIDENT_MANAGE', 'GENERAL_AREAS_VIEW']);
+    renderSidebar(['RESIDENT_MANAGE']);
 
     expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /classificados/i })).not.toBeInTheDocument();

@@ -30,8 +30,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private final ObjectMapper objectMapper;
   private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
   private final Map<String, Bucket> refreshBuckets = new ConcurrentHashMap<>();
-  private final Map<String, Bucket> registerGuestBuckets = new ConcurrentHashMap<>();
-  private final Map<String, Bucket> registerOwnerBuckets = new ConcurrentHashMap<>();
 
   public RateLimitFilter(RateLimitProperties props, ObjectMapper objectMapper) {
     this.props = props;
@@ -58,16 +56,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
           refreshBuckets.computeIfAbsent(
               clientIp(request),
               k -> newBucket(props.getRefreshPerMinPerIp(), Duration.ofMinutes(1)));
-    } else if ("/api/auth/register-guest".equals(path)) {
-      bucket =
-          registerGuestBuckets.computeIfAbsent(
-              clientIp(request),
-              k -> newBucket(props.getRegisterGuestPerMinPerIp(), Duration.ofMinutes(1)));
-    } else if ("/api/auth/register-owner".equals(path)) {
-      bucket =
-          registerOwnerBuckets.computeIfAbsent(
-              clientIp(request),
-              k -> newBucket(props.getRegisterGuestPerMinPerIp(), Duration.ofMinutes(1)));
     }
     if (bucket != null && !bucket.tryConsume(1)) {
       writeTooManyRequests(response, path);

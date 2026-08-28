@@ -47,6 +47,6 @@ class FeatureControllerWebTest {
     // Antes era o contrario, e flag esquecida no Dokploy virava "menu aparece, API 404".
     mvc.perform(get("/api/features"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.unitownership").value(true));
+        .andExpect(jsonPath("$.accessmanagement").value(true));
   }
 }

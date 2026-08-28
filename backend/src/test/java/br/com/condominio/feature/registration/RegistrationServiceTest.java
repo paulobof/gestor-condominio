@@ -8,19 +8,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import br.com.condominio.feature.consent.ConsentDocument;
-import br.com.condominio.feature.registration.dto.RegisterGuestRequest;
 import br.com.condominio.feature.registration.dto.RegisterMasterRequest;
 import br.com.condominio.feature.registration.event.UnitJoinRequestedEvent;
 import br.com.condominio.feature.role.*;
 import br.com.condominio.feature.unit.Unit;
-import br.com.condominio.feature.unit.UnitOwnershipService;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.*;
 import br.com.condominio.storage.FileStorage;
-import br.com.condominio.storage.MagicBytesValidator;
 import br.com.condominio.storage.MinioProperties;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,11 +32,9 @@ class RegistrationServiceTest {
   private UserRoleRepository userRoleRepo;
   private ConsentDocumentRepository consentRepo;
   private FileStorage storage;
-  private MagicBytesValidator magicBytes;
   private PasswordEncoder encoder;
   private MinioProperties props;
   private PermissionGrantService permissionGrants;
-  private UnitOwnershipService ownershipService;
   private org.springframework.context.ApplicationEventPublisher events;
   private RegistrationService service;
 
@@ -53,12 +47,10 @@ class RegistrationServiceTest {
     userRoleRepo = mock(UserRoleRepository.class);
     consentRepo = mock(ConsentDocumentRepository.class);
     storage = mock(FileStorage.class);
-    magicBytes = mock(MagicBytesValidator.class);
     encoder = mock(PasswordEncoder.class);
     props = new MinioProperties();
     props.setBucketProofs("residence-proofs");
     permissionGrants = mock(PermissionGrantService.class);
-    ownershipService = mock(UnitOwnershipService.class);
     events = mock(org.springframework.context.ApplicationEventPublisher.class);
     service =
         new RegistrationService(
@@ -69,11 +61,9 @@ class RegistrationServiceTest {
             userRoleRepo,
             consentRepo,
             storage,
-            magicBytes,
             encoder,
             props,
             permissionGrants,
-            ownershipService,
             events);
   }
 
@@ -109,7 +99,6 @@ class RegistrationServiceTest {
             any(), eq(PermissionCode.RESIDENT_MANAGE), org.mockito.ArgumentMatchers.isNull());
     // Sem comprovante: o storage nao e tocado no cadastro.
     verify(storage, never()).upload(any(), any(), anyLong(), any());
-    verify(ownershipService, never()).openClaim(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -225,67 +214,6 @@ class RegistrationServiceTest {
     verify(user, never()).approveAsMaster(any());
     verify(permissionGrants, never()).grantIfAbsent(any(), any(), any());
     verify(unitRepo, never()).findById(any());
-  }
-
-  @Test
-  void registersGuestSuccessfully_activeNoUnitNoProof() {
-    when(emailRepo.findActiveByEmailIgnoreCase("guest@x.com"))
-        .thenReturn(java.util.Optional.empty());
-    when(consentRepo.findByVersion("1.0.0")).thenReturn(java.util.Optional.of(newConsent("1.0.0")));
-    when(encoder.encode(any())).thenReturn("hashed");
-    Role guestRole = newInstance(Role.class);
-    setField(guestRole, "id", (short) 7);
-    when(roleRepo.findByName(RoleName.GUEST)).thenReturn(java.util.Optional.of(guestRole));
-    when(userRepo.save(any()))
-        .thenAnswer(
-            inv -> {
-              User u = inv.getArgument(0);
-              setField(u, "id", UUID.randomUUID());
-              return u;
-            });
-
-    var req =
-        new RegisterGuestRequest(
-            "Convidado Teste",
-            "Convidado",
-            "guest@x.com",
-            "+5511988887777",
-            "NOT_INFORMED",
-            LocalDate.of(1995, 5, 5),
-            "Senha@1234",
-            "1.0.0",
-            true,
-            null);
-
-    var resp = service.registerGuest(req, "127.0.0.1");
-
-    assertThat(resp.status()).isEqualTo("ACTIVE");
-    verify(emailRepo).save(any());
-    verify(userRoleRepo).save(any());
-    // Nunca toca em storage/unit (sem comprovante, sem unidade).
-    verify(storage, never()).upload(any(), any(), anyLong(), any());
-    verify(unitRepo, never()).findByCode(any());
-  }
-
-  @Test
-  void registerGuest_rejectsWhenEmailTaken() {
-    when(emailRepo.findActiveByEmailIgnoreCase("guest@x.com"))
-        .thenReturn(java.util.Optional.of(newInstance(UserEmail.class)));
-    var req =
-        new RegisterGuestRequest(
-            "Convidado",
-            "Convidado",
-            "guest@x.com",
-            "+5511988887777",
-            null,
-            null,
-            "Senha@1234",
-            "1.0.0",
-            false,
-            null);
-    assertThatThrownBy(() -> service.registerGuest(req, "127.0.0.1"))
-        .isInstanceOf(RegistrationException.class)
-        .hasMessageContaining("e-mail");
   }
 
   private RegisterMasterRequest baseReq() {

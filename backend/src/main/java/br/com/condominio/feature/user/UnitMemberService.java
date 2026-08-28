@@ -10,7 +10,6 @@ import br.com.condominio.feature.role.UserRole;
 import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.Unit;
-import br.com.condominio.feature.unit.UnitOwnershipRepository;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
@@ -27,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,12 +46,8 @@ public class UnitMemberService {
   private final RoleRepository roleRepo;
   private final UserProvisioning provisioning;
   private final ApplicationEventPublisher eventPublisher;
-  private final UnitOwnershipRepository ownershipRepo;
   private final UnitRepository unitRepo;
   private final ActivityNotifier activityNotifier;
-
-  @Value("${app.feature.unitownership.enabled:true}")
-  private boolean unitOwnershipEnabled;
 
   @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
@@ -274,17 +268,8 @@ public class UnitMemberService {
     return member;
   }
 
-  /**
-   * Unidades sob gestão do master. Com a flag on e posses APPROVED, usa-as (multi-unidade); caso
-   * contrário, faz fallback para a unidade única do {@code User.unitId} (comportamento atual).
-   */
+  /** Unidades sob gestão do master: a unidade única do {@code User.unitId}. */
   private List<UUID> myUnitIds(User master) {
-    if (unitOwnershipEnabled) {
-      List<UUID> approved = ownershipRepo.findApprovedUnitIdsByUser(master.getId());
-      if (!approved.isEmpty()) {
-        return approved;
-      }
-    }
     return master.getUnitId() == null ? List.of() : List.of(master.getUnitId());
   }
 

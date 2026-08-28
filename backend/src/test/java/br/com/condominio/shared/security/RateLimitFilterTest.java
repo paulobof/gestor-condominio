@@ -12,58 +12,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 class RateLimitFilterTest {
 
   @Test
-  void registerGuest_exceedingLimit_returns429() throws Exception {
-    RateLimitProperties props = new RateLimitProperties();
-    props.setRegisterGuestPerMinPerIp(2);
-    RateLimitFilter filter =
-        new RateLimitFilter(props, new ObjectMapper().registerModule(new JavaTimeModule()));
-
-    for (int i = 0; i < 2; i++) {
-      MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/register-guest");
-      req.setServletPath("/api/auth/register-guest");
-      req.setRemoteAddr("9.9.9.9");
-      MockHttpServletResponse res = new MockHttpServletResponse();
-      MockFilterChain chain = new MockFilterChain();
-      filter.doFilter(req, res, chain);
-      assertThat(res.getStatus()).isNotEqualTo(429);
-    }
-
-    MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/register-guest");
-    req.setServletPath("/api/auth/register-guest");
-    req.setRemoteAddr("9.9.9.9");
-    MockHttpServletResponse res = new MockHttpServletResponse();
-    MockFilterChain chain = new MockFilterChain();
-    filter.doFilter(req, res, chain);
-    assertThat(res.getStatus()).isEqualTo(429);
-  }
-
-  @Test
-  void registerOwner_exceedingLimit_returns429() throws Exception {
-    RateLimitProperties props = new RateLimitProperties();
-    props.setRegisterGuestPerMinPerIp(2);
-    RateLimitFilter filter =
-        new RateLimitFilter(props, new ObjectMapper().registerModule(new JavaTimeModule()));
-
-    for (int i = 0; i < 2; i++) {
-      MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/register-owner");
-      req.setServletPath("/api/auth/register-owner");
-      req.setRemoteAddr("8.8.8.8");
-      MockHttpServletResponse res = new MockHttpServletResponse();
-      MockFilterChain chain = new MockFilterChain();
-      filter.doFilter(req, res, chain);
-      assertThat(res.getStatus()).isNotEqualTo(429);
-    }
-
-    MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/register-owner");
-    req.setServletPath("/api/auth/register-owner");
-    req.setRemoteAddr("8.8.8.8");
-    MockHttpServletResponse res = new MockHttpServletResponse();
-    MockFilterChain chain = new MockFilterChain();
-    filter.doFilter(req, res, chain);
-    assertThat(res.getStatus()).isEqualTo(429);
-  }
-
-  @Test
   void login_exceedingLimit_returns429() throws Exception {
     RateLimitProperties props = new RateLimitProperties();
     props.setLoginPerMinPerIp(2);

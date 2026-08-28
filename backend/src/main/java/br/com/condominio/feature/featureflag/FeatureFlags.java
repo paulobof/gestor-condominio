@@ -40,9 +40,6 @@ public class FeatureFlags {
   @Value("${app.feature.accessmanagement.enabled:true}")
   private boolean accessmanagement;
 
-  @Value("${app.feature.unitownership.enabled:true}")
-  private boolean unitownership;
-
   /** Mapa nome→ligada, na ordem em que os módulos aparecem para o morador. */
   public Map<String, Boolean> asMap() {
     Map<String, Boolean> m = new LinkedHashMap<>();
@@ -54,7 +51,6 @@ public class FeatureFlags {
     m.put("classifieds", classifieds);
     m.put("parkingrental", parkingrental);
     m.put("accessmanagement", accessmanagement);
-    m.put("unitownership", unitownership);
     return m;
   }
 }

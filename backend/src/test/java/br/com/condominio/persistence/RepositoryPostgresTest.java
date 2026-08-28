@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import br.com.condominio.feature.recommendation.RecommendationRepository;
-import br.com.condominio.feature.unit.OwnershipStatus;
 import br.com.condominio.feature.unit.Unit;
-import br.com.condominio.feature.unit.UnitOwnershipRepository;
 import br.com.condominio.feature.unit.UnitRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +43,6 @@ class RepositoryPostgresTest {
 
   @Autowired private RecommendationRepository recommendations;
   @Autowired private UnitRepository units;
-  @Autowired private UnitOwnershipRepository ownerships;
   @Autowired private br.com.condominio.feature.access.AccessUserRepository accessUsers;
 
   @Test
@@ -88,35 +85,5 @@ class RepositoryPostgresTest {
     units.flush();
 
     assertThat(units.findById(unit.getId())).isEmpty(); // @SQLRestriction filtra soft-deletados
-  }
-
-  @Test
-  void unitOwnershipFinders_runAgainstPostgres() {
-    java.util.UUID anyUser = java.util.UUID.randomUUID();
-    java.util.UUID anyUnit = java.util.UUID.randomUUID();
-
-    assertThatCode(() -> ownerships.findByUserIdAndStatus(anyUser, OwnershipStatus.APPROVED))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> ownerships.findByUnitIdAndStatus(anyUnit, OwnershipStatus.APPROVED))
-        .doesNotThrowAnyException();
-    assertThatCode(
-            () ->
-                ownerships.findByStatusOrderByCreatedAtAsc(
-                    OwnershipStatus.PENDING, PageRequest.of(0, 20)))
-        .doesNotThrowAnyException();
-
-    assertThat(ownerships.findByUserIdAndStatus(anyUser, OwnershipStatus.APPROVED)).isEmpty();
-
-    // Finders adicionados em PR-A (escopo multi-unidade / aprovação por claim).
-    assertThatCode(() -> ownerships.findApprovedUnitIdsByUser(anyUser)).doesNotThrowAnyException();
-    assertThatCode(() -> ownerships.existsByUnitIdAndStatus(anyUnit, OwnershipStatus.APPROVED))
-        .doesNotThrowAnyException();
-    assertThatCode(
-            () ->
-                ownerships.findByIdAndStatus(java.util.UUID.randomUUID(), OwnershipStatus.PENDING))
-        .doesNotThrowAnyException();
-
-    assertThat(ownerships.findApprovedUnitIdsByUser(anyUser)).isEmpty();
-    assertThat(ownerships.existsByUnitIdAndStatus(anyUnit, OwnershipStatus.APPROVED)).isFalse();
   }
 }

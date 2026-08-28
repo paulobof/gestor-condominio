@@ -142,8 +142,6 @@ app:
       enabled: ${APP_FEATURE_GENERALINFO_ENABLED:true}
     parkingrental:
       enabled: ${APP_FEATURE_PARKINGRENTAL_ENABLED:true}
-    unitownership:
-      enabled: ${APP_FEATURE_UNITOWNERSHIP_ENABLED:true}
     documents:
       enabled: ${APP_FEATURE_DOCUMENTS_ENABLED:true}
     accessmanagement:

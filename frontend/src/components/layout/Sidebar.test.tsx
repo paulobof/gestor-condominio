@@ -45,13 +45,7 @@ describe('Sidebar', () => {
 
     // Area com cadeado nao e link: e botao, porque abre o popup de entrada sem tirar
     // o visitante da pagina em que ele estava.
-    for (const label of [
-      /avisos/i,
-      /perguntas frequentes/i,
-      /documentos/i,
-      /vagas/i,
-      /registrar unidade/i,
-    ]) {
+    for (const label of [/avisos/i, /perguntas frequentes/i, /documentos/i, /vagas/i]) {
       const locked = screen.getAllByRole('button', { name: label })[0];
       expect(locked.querySelector('[aria-label="Requer login"]')).toBeTruthy();
     }
@@ -198,12 +192,12 @@ describe('Sidebar', () => {
     expect(screen.getAllByRole('link', { name: /^moradores$/i })[0]).toBeInTheDocument();
   });
 
-  it('esconde "Registrar unidade" e "Pedidos de unidade" com unitownership desligada', () => {
-    enabledFeatures = [];
-    renderSidebar(['REGISTRATION_VIEW']);
+  it('não oferece mais posse de unidade a ninguém', () => {
+    renderSidebar(['REGISTRATION_VIEW', 'ROLE_ASSIGN', 'RESIDENT_MANAGE']);
     expect(screen.queryByRole('link', { name: /registrar unidade/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /registrar unidade/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /pedidos de unidade/i })).not.toBeInTheDocument();
-    // a fila de exceção do admin não tem flag: continua disponível
+    // a fila de excecao do admin continua
     expect(screen.getAllByRole('link', { name: /cadastros pendentes/i })[0]).toBeInTheDocument();
   });
 

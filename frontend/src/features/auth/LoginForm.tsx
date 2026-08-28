@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { useAuth } from '@/features/auth/useAuth';
-import { useFeatures } from '@/features/featureflags/useFeatures';
 
 const schema = z.object({
   email: z.string().min(1, 'Informe seu e-mail').email('E-mail inválido'),
@@ -25,8 +24,6 @@ type FormValues = z.infer<typeof schema>;
  */
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const { login } = useAuth();
-  const { enabled } = useFeatures();
-  const ownershipEnabled = enabled('unitownership');
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -94,14 +91,6 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         >
           Primeiro acesso? Cadastre-se
         </Link>
-        {ownershipEnabled && (
-          <Link
-            to="/register-owner"
-            className="block text-muted-foreground hover:text-foreground underline"
-          >
-            Sou proprietário (não moro no condomínio)
-          </Link>
-        )}
         <Link to="/sobre" className="block text-muted-foreground hover:text-foreground underline">
           O que é este aplicativo?
         </Link>

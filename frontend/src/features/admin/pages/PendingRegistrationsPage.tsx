@@ -6,12 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   approveRegistration,
-  getProofBlob,
   listPending,
   rejectRegistration,
   type PendingRegistration,
 } from '../api/adminApi';
-import { Check, X, FileText } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { formatDateBR } from '@/lib/date';
 
 export function PendingRegistrationsPage() {
@@ -59,18 +58,6 @@ export function PendingRegistrationsPage() {
     }
   };
 
-  const handleViewProof = async (id: string) => {
-    try {
-      const blob = await getProofBlob(id);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      // libera o object URL depois que a aba teve tempo de carregar
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      toast.error('Erro ao abrir o comprovante.');
-    }
-  };
-
   return (
     <main className="container py-8 space-y-6">
       <h1 className="text-2xl font-heading font-semibold">Cadastros pendentes</h1>
@@ -99,19 +86,8 @@ export function PendingRegistrationsPage() {
                     <strong>Nascimento:</strong> {formatDateBR(it.birthDate)}
                   </div>
                 )}
-                {it.residenceProofFilename && (
-                  <div>
-                    <strong>Comprovante:</strong> {it.residenceProofFilename}
-                  </div>
-                )}
               </div>
               <div className="flex gap-2 flex-wrap">
-                {it.residenceProofFilename && (
-                  <Button variant="outline" onClick={() => handleViewProof(it.userId)}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Ver comprovante
-                  </Button>
-                )}
                 <Button onClick={() => handleApprove(it.userId)}>
                   <Check className="w-4 h-4 mr-2" />
                   Aprovar

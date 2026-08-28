@@ -8,8 +8,6 @@ export interface PendingRegistration {
   unitCode: string;
   gender: string | null;
   birthDate: string | null;
-  residenceProofFilename: string;
-  residenceProofUploadedAt: string;
   createdAt: string;
 }
 
@@ -24,13 +22,4 @@ export async function approveRegistration(userId: string) {
 
 export async function rejectRegistration(userId: string, reason: string) {
   await api.post(`/registrations/${userId}/reject`, { reason });
-}
-
-/**
- * Baixa o comprovante pelo backend (download autenticado e auditado; o MinIO
- * permanece privado). Retorna o conteúdo como Blob para abrir/visualizar.
- */
-export async function getProofBlob(userId: string): Promise<Blob> {
-  const r = await api.get(`/registrations/${userId}/proof`, { responseType: 'blob' });
-  return r.data as Blob;
 }

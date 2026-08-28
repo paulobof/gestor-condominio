@@ -2,7 +2,6 @@ import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { LoginPromptProvider } from '@/features/auth/LoginPromptProvider';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterMasterPage } from '@/features/auth/pages/RegisterMasterPage';
-import { RegisterOwnerPage } from '@/features/auth/pages/RegisterOwnerPage';
 import { PendingApprovalPage } from '@/features/auth/pages/PendingApprovalPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
@@ -12,7 +11,6 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { PublicShell } from '@/components/layout/PublicShell';
 import { PendingRegistrationsPage } from '@/features/admin/pages/PendingRegistrationsPage';
-import { OwnershipClaimsPage } from '@/features/admin/pages/OwnershipClaimsPage';
 import { ClassifiedsListPage } from '@/features/classifieds/pages/ClassifiedsListPage';
 import { ClassifiedDetailPage } from '@/features/classifieds/pages/ClassifiedDetailPage';
 import { ClassifiedFormPage } from '@/features/classifieds/pages/ClassifiedFormPage';
@@ -28,7 +26,6 @@ import { InfoPage } from '@/features/generalinfo/pages/InfoPage';
 import { InfoAdminPage } from '@/features/generalinfo/pages/InfoAdminPage';
 import { AccessManagementPage } from '@/features/access/pages/AccessManagementPage';
 import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
-import { RegisterExtraUnitPage } from '@/features/units/pages/RegisterExtraUnitPage';
 import { ParkingRentalsListPage } from '@/features/parking-rentals/pages/ParkingRentalsListPage';
 import { ParkingRentalDetailPage } from '@/features/parking-rentals/pages/ParkingRentalDetailPage';
 import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingRentalFormPage';
@@ -59,7 +56,6 @@ const router = createBrowserRouter([
           { path: '/sobre', element: <AboutPage /> },
           { path: '/login', element: <LoginPage /> },
           { path: '/register-master', element: <RegisterMasterPage /> },
-          { path: '/register-owner', element: <RegisterOwnerPage /> },
           { path: '/pending-approval', element: <PendingApprovalPage /> },
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/reset', element: <ResetPasswordPage /> },
@@ -92,7 +88,6 @@ const router = createBrowserRouter([
           { path: '/faq', element: <FaqPage /> },
           { path: '/documentos', element: <DocumentsPage /> },
           { path: '/admin/registrations', element: <PendingRegistrationsPage /> },
-          { path: '/admin/ownership-claims', element: <OwnershipClaimsPage /> },
           { path: '/admin/acessos', element: <AccessManagementPage /> },
           { path: '/classificados/novo', element: <ClassifiedFormPage /> },
           { path: '/classificados/:id/editar', element: <ClassifiedFormPage /> },
@@ -103,7 +98,6 @@ const router = createBrowserRouter([
           { path: '/informacoes/gerenciar', element: <InfoAdminPage /> },
           { path: '/faq/gerenciar', element: <FaqAdminPage /> },
           { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
-          { path: '/minha-unidade/registrar', element: <RegisterExtraUnitPage /> },
           { path: '/vagas/aluguel', element: <ParkingRentalsListPage /> },
           { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
           { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },

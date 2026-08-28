@@ -215,8 +215,8 @@ export function PrivacyPage() {
               <CardTitle className="text-lg text-destructive">Anonimizar minha conta</CardTitle>
             </div>
             <CardDescription>
-              Direito ao apagamento (Art. 18, IV). Substituímos seu nome, e-mail, telefone e
-              comprovante por dados anônimos. <strong>Esta ação é irreversível.</strong>
+              Direito ao apagamento (Art. 18, IV). Substituímos seu nome, e-mail e telefone por
+              dados anônimos. <strong>Esta ação é irreversível.</strong>
             </CardDescription>
           </CardHeader>
           <CardContent>

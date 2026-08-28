@@ -11,7 +11,6 @@ import {
   FileText,
   UserCog,
   Users,
-  Building2,
   SquareParking,
   ChevronDown,
   ChevronRight,
@@ -130,15 +129,6 @@ const ENTRIES: NavEntry[] = [
   },
   {
     kind: 'item',
-    to: '/admin/ownership-claims',
-    label: 'Pedidos de unidade',
-    icon: Building2,
-    brand: 'ink',
-    requires: 'REGISTRATION_VIEW',
-    requiresFeature: 'unitownership',
-  },
-  {
-    kind: 'item',
     to: '/admin/acessos',
     label: 'Gestão de usuários',
     icon: UserCog,
@@ -153,15 +143,6 @@ const ENTRIES: NavEntry[] = [
     icon: Users,
     brand: 'ink',
     requires: 'RESIDENT_MANAGE',
-  },
-  {
-    kind: 'item',
-    to: '/minha-unidade/registrar',
-    label: 'Registrar unidade',
-    icon: Building2,
-    brand: 'ink',
-    requiresFeature: 'unitownership',
-    requiresLogin: true,
   },
 ];
 

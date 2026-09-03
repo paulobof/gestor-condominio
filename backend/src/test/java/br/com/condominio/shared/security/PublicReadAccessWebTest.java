@@ -66,7 +66,6 @@ class PublicReadAccessWebTest {
     Page<?> vazio = new PageImpl<>(List.of());
     org.mockito.Mockito.when(
             recommendationService.list(
-                org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()))

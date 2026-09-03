@@ -40,13 +40,10 @@ public class RecommendationController {
       @RequestParam(required = false) String tag,
       @RequestParam(required = false) String search,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size,
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+      @RequestParam(defaultValue = "20") int size) {
     int safePage = Math.max(page, 0);
     int safeSize = Math.min(Math.max(size, 1), 100);
-    // Visitante: sem userId, logo sem "meu voto" — a lista em si e publica.
-    UUID actorId = me == null ? null : me.userId();
-    return service.list(actorId, tag, search, PageRequest.of(safePage, safeSize));
+    return service.list(tag, search, PageRequest.of(safePage, safeSize));
   }
 
   @GetMapping("/{id}")

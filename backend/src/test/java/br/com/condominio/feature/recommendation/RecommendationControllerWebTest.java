@@ -8,14 +8,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
+import br.com.condominio.feature.recommendation.dto.ReviewRequest;
+import br.com.condominio.feature.recommendation.dto.ReviewView;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -84,11 +88,16 @@ class RecommendationControllerWebTest {
         0);
   }
 
+  private ReviewView reviewView() {
+    return new ReviewView(
+        REVIEW_ID, "LIKE", 5, "Serviço muito bom.", Instant.now(), true, null, null);
+  }
+
   // ---- flag + autenticação básica -------------------------------------------------
 
   @Test
   void list_authenticated_returns200() throws Exception {
-    when(service.list(any(), any(), any(), any()))
+    when(service.list(any(), any(), any()))
         .thenReturn(
             new PageImpl<>(List.of(view(RecommendationStatus.ACTIVE)), PageRequest.of(0, 20), 1));
 
@@ -100,10 +109,9 @@ class RecommendationControllerWebTest {
 
   @Test
   void list_semSessao_ehPublico() throws Exception {
-    // Leitura aberta a visitante (decisao do controlador dos dados, 2026-08-25): sem sessao, o
-    // service recebe actorId nulo — nao ha "meu voto" para resolver.
+    // Leitura aberta a visitante (decisao do controlador dos dados, 2026-08-25).
     mvc.perform(get("/api/recommendations")).andExpect(status().isOk());
-    verify(service).list(isNull(), any(), any(), any());
+    verify(service).list(any(), any(), any());
   }
 
   // ---- proteção de PII: canModerate propagado ao service --------------------------
@@ -280,6 +288,48 @@ class RecommendationControllerWebTest {
   void listReviews_semSessao_ehPublico() throws Exception {
     when(reviewService.list(eq(RID), isNull(), isNull(), eq(false))).thenReturn(List.of());
     mvc.perform(get("/api/recommendations/{id}/reviews", RID)).andExpect(status().isOk());
+  }
+
+  @Test
+  void editReview_semSessao_ehRejeitado() throws Exception {
+    mvc.perform(
+            put("/api/recommendations/{id}/reviews/{rev}", RID, REVIEW_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
+        .andExpect(status().is4xxClientError());
+    verifyNoInteractions(reviewService);
+  }
+
+  @Test
+  void editReview_comSessao_delegaParaOServico() throws Exception {
+    ReviewRequest req = new ReviewRequest(ReviewSentiment.LIKE, 5, "Serviço muito bom.");
+    when(reviewService.edit(eq(RID), eq(REVIEW_ID), eq(UID), eq(req))).thenReturn(reviewView());
+
+    mvc.perform(
+            put("/api/recommendations/{id}/reviews/{rev}", RID, REVIEW_ID)
+                .with(MockAuth.userWithUnit(UID, UNIT_ID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
+        .andExpect(status().isOk());
+
+    verify(reviewService).edit(RID, REVIEW_ID, UID, req);
+  }
+
+  @Test
+  void deleteReview_semSessao_ehRejeitado() throws Exception {
+    mvc.perform(delete("/api/recommendations/{id}/reviews/{rev}", RID, REVIEW_ID))
+        .andExpect(status().is4xxClientError());
+    verifyNoInteractions(reviewService);
+  }
+
+  @Test
+  void deleteReview_comSessao_delegaParaOServico() throws Exception {
+    mvc.perform(
+            delete("/api/recommendations/{id}/reviews/{rev}", RID, REVIEW_ID)
+                .with(MockAuth.userWithUnit(UID, UNIT_ID)))
+        .andExpect(status().isNoContent());
+
+    verify(reviewService).delete(RID, REVIEW_ID, UID);
   }
 
   @Test

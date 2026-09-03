@@ -112,7 +112,7 @@ public class RecommendationService {
   }
 
   @Transactional
-  public Page<RecommendationView> list(UUID userId, String tag, String search, Pageable pageable) {
+  public Page<RecommendationView> list(String tag, String search, Pageable pageable) {
     String t = (tag == null || tag.isBlank()) ? null : tag;
     String s = (search == null || search.isBlank()) ? null : search;
     Page<Recommendation> page = repo.search(t, s, pageable);

@@ -104,15 +104,19 @@ public class RecommendationReviewService {
 
   private List<ReviewView> toViews(
       List<RecommendationReview> reviews, UUID actorId, UUID actorUnitId, boolean canModerate) {
+    // PII (nome, unidade) só é buscada para quem tem direito de vê-la: escopa o lote às
+    // avaliações reveladas, nunca a todas — senão carrega nome/unidade de todo mundo à toa.
+    List<RecommendationReview> revealable =
+        reviews.stream().filter(r -> reveals(r, actorUnitId, canModerate)).toList();
     Set<UUID> authorIds =
-        reviews.stream().map(RecommendationReview::getAuthorUserId).collect(Collectors.toSet());
+        revealable.stream().map(RecommendationReview::getAuthorUserId).collect(Collectors.toSet());
     Map<UUID, String> names =
         authorIds.isEmpty()
             ? Map.of()
             : userRepo.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(User::getId, User::getFullName));
     Set<UUID> unitIds =
-        reviews.stream().map(RecommendationReview::getUnitId).collect(Collectors.toSet());
+        revealable.stream().map(RecommendationReview::getUnitId).collect(Collectors.toSet());
     Map<UUID, String> codes =
         unitIds.isEmpty()
             ? Map.of()
@@ -123,6 +127,10 @@ public class RecommendationReviewService {
         .toList();
   }
 
+  private boolean reveals(RecommendationReview r, UUID actorUnitId, boolean canModerate) {
+    return canModerate || (actorUnitId != null && actorUnitId.equals(r.getUnitId()));
+  }
+
   private ReviewView toView(
       RecommendationReview r,
       UUID actorId,
@@ -131,7 +139,7 @@ public class RecommendationReviewService {
       Map<UUID, String> names,
       Map<UUID, String> codes) {
     boolean mine = r.getAuthorUserId().equals(actorId);
-    boolean reveal = canModerate || (actorUnitId != null && actorUnitId.equals(r.getUnitId()));
+    boolean reveal = reveals(r, actorUnitId, canModerate);
     return new ReviewView(
         r.getId(),
         r.getSentiment().name(),

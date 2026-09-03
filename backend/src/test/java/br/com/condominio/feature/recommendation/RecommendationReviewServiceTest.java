@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class RecommendationReviewServiceTest {
@@ -216,10 +217,12 @@ class RecommendationReviewServiceTest {
 
   @Test
   void list_paraModerador_revelaAutorEApartamento() {
+    // actorUnitId = OUTRA_UNIT (nao a da avaliacao): isola a revelacao por permissao de
+    // moderacao, sem se apoiar na revelacao por "mesma unidade" tambem.
     when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
         .thenReturn(List.of(reviewBy(OTHER_USER, UNIT)));
 
-    List<ReviewView> views = service.list(RID, ACTOR, UNIT, true);
+    List<ReviewView> views = service.list(RID, ACTOR, OUTRA_UNIT, true);
 
     assertThat(views.get(0).authorName()).isEqualTo("Ana Moradora");
     assertThat(views.get(0).unitCode()).isEqualTo("402A");
@@ -262,6 +265,41 @@ class RecommendationReviewServiceTest {
         .thenReturn(List.of(hiddenReview(ReviewSentiment.DISLIKE, 1)));
 
     assertThat(service.list(RID, ACTOR, UNIT, false)).isEmpty();
+  }
+
+  @Test
+  void list_semNinguemComDireitoDeVer_naoConsultaUsuarioNemUnidade() {
+    // Ninguem naquela chamada tem direito ao nome/unidade: nao ha por que trafegar PII de
+    // ninguem, entao os repositorios de usuario e unidade nem devem ser acionados.
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
+        .thenReturn(List.of(reviewBy(OTHER_USER, UNIT)));
+
+    service.list(RID, ACTOR, OUTRA_UNIT, false);
+
+    verify(userRepo, never()).findAllById(any());
+    verify(unitRepo, never()).findAllById(any());
+  }
+
+  @Test
+  void list_buscaEmLoteApenasOsIdsDasAvaliacoesReveladas() {
+    UUID autorNaoRevelavel = UUID.randomUUID();
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
+        .thenReturn(
+            List.of(
+                reviewBy(OTHER_USER, UNIT), // mesma unidade do ator: revelavel
+                reviewBy(autorNaoRevelavel, OUTRA_UNIT))); // unidade diferente: nao revelavel
+
+    service.list(RID, ACTOR, UNIT, false);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Iterable<UUID>> authorIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
+    verify(userRepo).findAllById(authorIdsCaptor.capture());
+    assertThat(authorIdsCaptor.getValue()).containsExactlyInAnyOrder(OTHER_USER);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Iterable<UUID>> unitIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
+    verify(unitRepo).findAllById(unitIdsCaptor.capture());
+    assertThat(unitIdsCaptor.getValue()).containsExactlyInAnyOrder(UNIT);
   }
 
   @Test

@@ -7,7 +7,6 @@ import br.com.condominio.feature.tag.Tag;
 import br.com.condominio.feature.tag.TagService;
 import br.com.condominio.feature.tag.dto.TagView;
 import br.com.condominio.feature.unit.UnitRepository;
-import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.storage.FileStorage;
 import br.com.condominio.storage.MagicBytesValidator;
@@ -18,10 +17,8 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,8 +40,6 @@ public class RecommendationService {
   private final MinioProperties props;
   private final UserRepository userRepo;
   private final UnitRepository unitRepo;
-  private final RecommendationVoteRepository voteRepo;
-  private final RecommendationCommentRepository commentRepo;
   private final ActivityNotifier activityNotifier;
 
   @Transactional
@@ -97,7 +92,7 @@ public class RecommendationService {
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
     activityNotifier.notify(ActivityAction.CREATED, "Indicação", r.getServiceName(), authorId);
-    return view(r, authorId);
+    return buildView(r);
   }
 
   // @Transactional nas leituras: view() acessa r.getTags() (@ManyToMany lazy); sem sessão aberta
@@ -113,7 +108,7 @@ public class RecommendationService {
         && !java.util.Objects.equals(actorId, r.getResidentUserId())) {
       throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
     }
-    return view(r, actorId);
+    return buildView(r);
   }
 
   @Transactional
@@ -121,25 +116,7 @@ public class RecommendationService {
     String t = (tag == null || tag.isBlank()) ? null : tag;
     String s = (search == null || search.isBlank()) ? null : search;
     Page<Recommendation> page = repo.search(t, s, pageable);
-    List<UUID> ids = page.getContent().stream().map(Recommendation::getId).toList();
-    // userId nulo = visitante: nao ha voto proprio para resolver.
-    Map<UUID, VoteValue> myVotes =
-        (ids.isEmpty() || userId == null)
-            ? Map.of()
-            : voteRepo.findByUserIdAndRecommendationIdIn(userId, ids).stream()
-                .collect(
-                    Collectors.toMap(
-                        RecommendationVote::getRecommendationId, RecommendationVote::getValue));
-    Map<UUID, Long> commentCounts =
-        ids.isEmpty()
-            ? Map.of()
-            : commentRepo.countByRecommendationIdIn(ids).stream()
-                .collect(
-                    Collectors.toMap(
-                        RecommendationCommentRepository.CommentCount::getRid,
-                        RecommendationCommentRepository.CommentCount::getCnt));
-    return page.map(
-        r -> buildView(r, myVotes.get(r.getId()), commentCounts.getOrDefault(r.getId(), 0L)));
+    return page.map(this::buildView);
   }
 
   @Transactional
@@ -162,7 +139,7 @@ public class RecommendationService {
     repo.save(r);
     replaceHours(id, req.openingHours());
     activityNotifier.notify(ActivityAction.UPDATED, "Indicação", r.getServiceName(), actorId);
-    return view(r, actorId);
+    return buildView(r);
   }
 
   @Transactional
@@ -272,95 +249,7 @@ public class RecommendationService {
     return r;
   }
 
-  // ---- Votos (like/dislike) e comentários ----------------------------------------
-
-  /** Define/alterna o voto do usuário: mesmo valor remove (toggle off); valor diferente troca. */
-  @Transactional
-  public RecommendationView vote(UUID id, UUID userId, VoteValue value) {
-    Recommendation r = load(id);
-    voteRepo
-        .findByRecommendationIdAndUserId(id, userId)
-        .ifPresentOrElse(
-            existing -> {
-              if (existing.getValue() == value) {
-                voteRepo.delete(existing); // toggle off
-              } else {
-                existing.changeValue(value);
-                voteRepo.save(existing);
-              }
-            },
-            () -> voteRepo.save(RecommendationVote.create(id, userId, value)));
-    int likes = (int) voteRepo.countByRecommendationIdAndValue(id, VoteValue.LIKE);
-    int dislikes = (int) voteRepo.countByRecommendationIdAndValue(id, VoteValue.DISLIKE);
-    r.updateVoteCounts(likes, dislikes);
-    repo.save(r);
-    return view(r, userId);
-  }
-
-  @Transactional
-  public List<CommentView> listComments(UUID id) {
-    load(id);
-    List<RecommendationComment> comments =
-        commentRepo.findByRecommendationIdOrderByCreatedAtAsc(id);
-    Set<UUID> authorIds =
-        comments.stream().map(RecommendationComment::getAuthorUserId).collect(Collectors.toSet());
-    Map<UUID, String> names =
-        authorIds.isEmpty()
-            ? Map.of()
-            : userRepo.findAllById(authorIds).stream()
-                .collect(Collectors.toMap(User::getId, User::getFullName));
-    return comments.stream()
-        .map(
-            c ->
-                new CommentView(
-                    c.getId(),
-                    c.getAuthorUserId(),
-                    names.get(c.getAuthorUserId()),
-                    c.getText(),
-                    c.getCreatedAt()))
-        .toList();
-  }
-
-  @Transactional
-  public CommentView addComment(UUID id, UUID userId, String text) {
-    load(id);
-    RecommendationComment c =
-        commentRepo.save(RecommendationComment.create(id, userId, text.strip()));
-    String name =
-        userRepo.findAllById(List.of(userId)).stream()
-            .findFirst()
-            .map(User::getFullName)
-            .orElse(null);
-    return new CommentView(c.getId(), c.getAuthorUserId(), name, c.getText(), c.getCreatedAt());
-  }
-
-  @Transactional
-  public void deleteComment(UUID id, UUID commentId, UUID userId, boolean canModerate) {
-    RecommendationComment c =
-        commentRepo
-            .findByIdAndRecommendationId(commentId, id)
-            .orElseThrow(
-                () -> new RecommendationException("NOT_FOUND", "Comentário não encontrado."));
-    if (!c.getAuthorUserId().equals(userId) && !canModerate) {
-      throw new RecommendationException("FORBIDDEN", "Sem permissão sobre este comentário.");
-    }
-    commentRepo.delete(c);
-  }
-
-  private RecommendationView view(Recommendation r, UUID userId) {
-    // userId nulo = visitante: nao ha voto proprio para resolver.
-    VoteValue myVote =
-        userId == null
-            ? null
-            : voteRepo
-                .findByRecommendationIdAndUserId(r.getId(), userId)
-                .map(RecommendationVote::getValue)
-                .orElse(null);
-    long commentCount = commentRepo.countByRecommendationId(r.getId());
-    return buildView(r, myVote, commentCount);
-  }
-
-  private RecommendationView buildView(Recommendation r, VoteValue myVote, long commentCount) {
+  private RecommendationView buildView(Recommendation r) {
     List<TagView> tags = r.getTags().stream().map(TagView::of).toList();
     List<OpeningHoursDto> hours =
         hoursRepo.findByOwnerIdOrderByDayOfWeek(r.getId()).stream()
@@ -373,7 +262,6 @@ public class RecommendationService {
         photoRepo.findByRecommendationIdOrderByOrdering(r.getId()).stream()
             .map(p -> new RecommendationPhotoView(p.getId(), p.getOrdering(), p.getContentType()))
             .toList();
-    return RecommendationView.of(
-        r, tags, hours, photos, myVote == null ? null : myVote.name(), commentCount);
+    return RecommendationView.of(r, tags, hours, photos);
   }
 }

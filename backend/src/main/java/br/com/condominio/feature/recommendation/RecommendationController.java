@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class RecommendationController {
 
   private final RecommendationService service;
+  private final RecommendationReviewService reviewService;
 
   /** Visitante (sem sessao) nunca modera. */
   private static boolean canModerate(AuthenticatedUserPrincipal me) {
@@ -115,39 +116,50 @@ public class RecommendationController {
         .body(Map.of("url", service.photoUrl(id, photoId)));
   }
 
-  // ---- Votos (like/dislike) e comentários ----------------------------------------
+  // ---- Avaliações (like/dislike + nota + comentário) -------------------------------
 
-  @PostMapping("/{id}/vote")
-  @PreAuthorize("isAuthenticated()")
-  public RecommendationView vote(
-      @PathVariable UUID id,
-      @Valid @RequestBody VoteRequest body,
-      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return service.vote(id, me.userId(), body.value());
+  @GetMapping("/{id}/reviews")
+  public List<ReviewView> listReviews(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    boolean canModerate = me != null && me.authorities().contains("RECOMMENDATION_MODERATE");
+    return reviewService.list(
+        id, me == null ? null : me.userId(), me == null ? null : me.unitId(), canModerate);
   }
 
-  @GetMapping("/{id}/comments")
-  public List<CommentView> listComments(@PathVariable UUID id) {
-    return service.listComments(id);
+  @PostMapping("/{id}/reviews")
+  @PreAuthorize("isAuthenticated()")
+  @ResponseStatus(HttpStatus.CREATED)
+  public ReviewView createReview(
+      @PathVariable UUID id,
+      @Valid @RequestBody ReviewRequest req,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return reviewService.create(id, me.userId(), me.unitId(), req);
   }
 
-  @PostMapping("/{id}/comments")
+  @PutMapping("/{id}/reviews/{reviewId}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<CommentView> addComment(
+  public ReviewView editReview(
       @PathVariable UUID id,
-      @Valid @RequestBody CommentRequest body,
+      @PathVariable UUID reviewId,
+      @Valid @RequestBody ReviewRequest req,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(service.addComment(id, me.userId(), body.text()));
+    return reviewService.edit(id, reviewId, me.userId(), req);
   }
 
-  @DeleteMapping("/{id}/comments/{commentId}")
+  @DeleteMapping("/{id}/reviews/{reviewId}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Void> deleteComment(
+  public ResponseEntity<Void> deleteReview(
       @PathVariable UUID id,
-      @PathVariable UUID commentId,
+      @PathVariable UUID reviewId,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    service.deleteComment(id, commentId, me.userId(), canModerate(me));
+    reviewService.delete(id, reviewId, me.userId());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{id}/reviews/{reviewId}/hide")
+  @PreAuthorize("hasAuthority('RECOMMENDATION_MODERATE')")
+  public ResponseEntity<Void> hideReview(@PathVariable UUID id, @PathVariable UUID reviewId) {
+    reviewService.hide(id, reviewId);
     return ResponseEntity.noContent().build();
   }
 }

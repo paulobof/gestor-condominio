@@ -9,6 +9,7 @@ import br.com.condominio.feature.announcement.AnnouncementService;
 import br.com.condominio.feature.classified.ClassifiedController;
 import br.com.condominio.feature.classified.ClassifiedService;
 import br.com.condominio.feature.recommendation.RecommendationController;
+import br.com.condominio.feature.recommendation.RecommendationReviewService;
 import br.com.condominio.feature.recommendation.RecommendationService;
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Fronteira leitura-publica x escrita-autenticada, decidida pelo controlador dos dados em
- * 2026-08-25: visitante lê o conteúdo do condomínio sem sessão, mas publicar, votar e comentar
- * seguem exigindo conta.
+ * 2026-08-25: visitante lê o conteúdo do condomínio sem sessão, mas publicar e avaliar seguem
+ * exigindo conta.
  *
  * <p>Este teste existe para que reabrir/fechar uma área seja uma decisão explícita: qualquer
  * mudança em {@link SecurityConfig} que vaze escrita para anônimo quebra aqui.
@@ -49,6 +50,7 @@ class PublicReadAccessWebTest {
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
   @MockBean private AnnouncementService announcementService;
   @MockBean private RecommendationService recommendationService;
+  @MockBean private RecommendationReviewService recommendationReviewService;
   @MockBean private ClassifiedService classifiedService;
 
   // ===== leitura: aberta ao visitante =====
@@ -73,10 +75,15 @@ class PublicReadAccessWebTest {
   }
 
   @Test
-  void anonimo_leComentariosDaIndicacao() throws Exception {
-    org.mockito.Mockito.when(recommendationService.listComments(org.mockito.ArgumentMatchers.any()))
+  void anonimo_leAvaliacoesDaIndicacao() throws Exception {
+    org.mockito.Mockito.when(
+            recommendationReviewService.list(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(false)))
         .thenReturn(List.of());
-    mvc.perform(get("/api/recommendations/" + UUID.randomUUID() + "/comments"))
+    mvc.perform(get("/api/recommendations/" + UUID.randomUUID() + "/reviews"))
         .andExpect(status().isOk());
   }
 
@@ -103,20 +110,11 @@ class PublicReadAccessWebTest {
   }
 
   @Test
-  void anonimo_naoVota() throws Exception {
+  void anonimo_naoAvaliaIndicacao() throws Exception {
     mvc.perform(
-            post("/api/recommendations/" + UUID.randomUUID() + "/vote")
+            post("/api/recommendations/" + UUID.randomUUID() + "/reviews")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"value\":\"LIKE\"}"))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @Test
-  void anonimo_naoComenta() throws Exception {
-    mvc.perform(
-            post("/api/recommendations/" + UUID.randomUUID() + "/comments")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"text\":\"oi\"}"))
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
         .andExpect(status().isUnauthorized());
   }
 

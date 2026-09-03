@@ -31,17 +31,13 @@ public record RecommendationView(
     UUID ownerUnitId,
     String ownerUnitCode,
     int likeCount,
-    int dislikeCount,
-    String myVote,
-    long commentCount) {
+    int dislikeCount) {
 
   public static RecommendationView of(
       Recommendation r,
       List<TagView> tags,
       List<OpeningHoursDto> openingHours,
-      List<RecommendationPhotoView> photos,
-      String myVote,
-      long commentCount) {
+      List<RecommendationPhotoView> photos) {
     return new RecommendationView(
         r.getId(),
         r.getServiceName(),
@@ -66,8 +62,6 @@ public record RecommendationView(
         r.getOwnerUnitId(),
         r.getOwnerUnitCode(),
         r.getLikeCount(),
-        r.getDislikeCount(),
-        myVote,
-        commentCount);
+        r.getDislikeCount());
   }
 }

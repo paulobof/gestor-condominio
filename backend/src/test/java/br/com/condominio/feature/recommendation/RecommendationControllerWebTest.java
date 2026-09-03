@@ -6,15 +6,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.condominio.feature.recommendation.dto.CommentView;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
@@ -47,11 +46,14 @@ import org.springframework.test.web.servlet.MockMvc;
 class RecommendationControllerWebTest {
 
   private static final UUID UID = UUID.randomUUID();
+  private static final UUID UNIT_ID = UUID.randomUUID();
   private static final UUID RID = UUID.randomUUID();
+  private static final UUID REVIEW_ID = UUID.randomUUID();
   private static final String MODERATE = "RECOMMENDATION_MODERATE";
 
   @Autowired private MockMvc mvc;
   @MockBean private RecommendationService service;
+  @MockBean private RecommendationReviewService reviewService;
   @MockBean private JwtService jwtService; // dependência do JwtAuthenticationConverter
 
   private RecommendationView view(RecommendationStatus status) {
@@ -79,9 +81,7 @@ class RecommendationControllerWebTest {
         null,
         null,
         0,
-        0,
-        null,
-        0L);
+        0);
   }
 
   // ---- flag + autenticação básica -------------------------------------------------
@@ -242,77 +242,52 @@ class RecommendationControllerWebTest {
         .andExpect(jsonPath("$.code").value("PHOTO_INVALID_TYPE"));
   }
 
-  // ---- votos e comentários --------------------------------------------------------
+  // ---- avaliações -------------------------------------------------------------------
 
   @Test
-  void vote_returns200_andPropagatesValue() throws Exception {
-    when(service.vote(eq(RID), eq(UID), eq(VoteValue.LIKE)))
-        .thenReturn(view(RecommendationStatus.ACTIVE));
-
+  void createReview_semSessao_ehRejeitado() throws Exception {
     mvc.perform(
-            post("/api/recommendations/{id}/vote", RID)
-                .with(MockAuth.user(UID))
+            post("/api/recommendations/{id}/reviews", RID)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"value\":\"LIKE\"}"))
-        .andExpect(status().isOk());
-
-    verify(service).vote(RID, UID, VoteValue.LIKE);
-  }
-
-  @Test
-  void vote_unauthenticated_isRejected() throws Exception {
-    mvc.perform(
-            post("/api/recommendations/{id}/vote", RID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"value\":\"LIKE\"}"))
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
         .andExpect(status().is4xxClientError());
-    verify(service, never()).vote(any(), any(), any());
+    verifyNoInteractions(reviewService);
   }
 
   @Test
-  void listComments_returns200() throws Exception {
-    when(service.listComments(RID))
-        .thenReturn(
-            List.of(new CommentView(UUID.randomUUID(), UID, "Fulano", "Oi", Instant.now())));
-
-    mvc.perform(get("/api/recommendations/{id}/comments", RID).with(MockAuth.user(UID)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].text").value("Oi"));
-  }
-
-  @Test
-  void addComment_returns201() throws Exception {
-    UUID cid = UUID.randomUUID();
-    when(service.addComment(eq(RID), eq(UID), eq("Top!")))
-        .thenReturn(new CommentView(cid, UID, "Fulano", "Top!", Instant.now()));
-
+  void createReview_comentarioCurto_returns400() throws Exception {
     mvc.perform(
-            post("/api/recommendations/{id}/comments", RID)
-                .with(MockAuth.user(UID))
+            post("/api/recommendations/{id}/reviews", RID)
+                .with(MockAuth.userWithUnit(UID, UNIT_ID))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"text\":\"Top!\"}"))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.text").value("Top!"));
-  }
-
-  @Test
-  void addComment_blank_returns400() throws Exception {
-    mvc.perform(
-            post("/api/recommendations/{id}/comments", RID)
-                .with(MockAuth.user(UID))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"text\":\"\"}"))
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"ok\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-    verify(service, never()).addComment(any(), any(), any());
+    verifyNoInteractions(reviewService);
   }
 
   @Test
-  void deleteComment_returns204_andPassesCanModerate() throws Exception {
-    UUID cid = UUID.randomUUID();
+  void createReview_notaForaDeEscala_returns400() throws Exception {
     mvc.perform(
-            delete("/api/recommendations/{id}/comments/{cid}", RID, cid).with(MockAuth.user(UID)))
-        .andExpect(status().isNoContent());
-    verify(service).deleteComment(RID, cid, UID, false);
+            post("/api/recommendations/{id}/reviews", RID)
+                .with(MockAuth.userWithUnit(UID, UNIT_ID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sentiment\":\"LIKE\",\"rating\":9,\"text\":\"Serviço muito bom.\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void listReviews_semSessao_ehPublico() throws Exception {
+    when(reviewService.list(eq(RID), isNull(), isNull(), eq(false))).thenReturn(List.of());
+    mvc.perform(get("/api/recommendations/{id}/reviews", RID)).andExpect(status().isOk());
+  }
+
+  @Test
+  void hideReview_semModerate_returns403() throws Exception {
+    mvc.perform(
+            post("/api/recommendations/{id}/reviews/{rev}/hide", RID, REVIEW_ID)
+                .with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(reviewService);
   }
 }

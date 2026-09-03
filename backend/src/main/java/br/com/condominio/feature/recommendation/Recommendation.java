@@ -185,12 +185,6 @@ public class Recommendation {
     status = RecommendationStatus.HIDDEN;
   }
 
-  /** Atualiza os contadores denormalizados de votos (recomputados de recommendation_vote). */
-  public void updateVoteCounts(int likeCount, int dislikeCount) {
-    this.likeCount = likeCount;
-    this.dislikeCount = dislikeCount;
-  }
-
   /** Contadores desnormalizados, recalculados a partir das avaliações ATIVAS. */
   public void updateReviewCounts(int likeCount, int dislikeCount, int reviewCount, int ratingSum) {
     this.likeCount = likeCount;

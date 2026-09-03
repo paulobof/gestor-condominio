@@ -70,6 +70,12 @@ public class Recommendation {
   @Column(name = "dislike_count", nullable = false)
   private int dislikeCount;
 
+  @Column(name = "review_count", nullable = false)
+  private int reviewCount;
+
+  @Column(name = "rating_sum", nullable = false)
+  private int ratingSum;
+
   @Column(name = "owner_unit_id", updatable = false)
   private UUID ownerUnitId;
 
@@ -183,5 +189,13 @@ public class Recommendation {
   public void updateVoteCounts(int likeCount, int dislikeCount) {
     this.likeCount = likeCount;
     this.dislikeCount = dislikeCount;
+  }
+
+  /** Contadores desnormalizados, recalculados a partir das avaliações ATIVAS. */
+  public void updateReviewCounts(int likeCount, int dislikeCount, int reviewCount, int ratingSum) {
+    this.likeCount = likeCount;
+    this.dislikeCount = dislikeCount;
+    this.reviewCount = reviewCount;
+    this.ratingSum = ratingSum;
   }
 }

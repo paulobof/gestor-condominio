@@ -1,7 +1,5 @@
 package br.com.condominio.feature.recommendation.dto;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -13,8 +11,6 @@ public record UpdateRecommendationRequest(
     @Size(max = 20) String phone,
     @Size(max = 255) String addressLine,
     @Size(max = 40) String priceRange,
-    @Min(1) @Max(5) Integer rating,
-    String comment,
     List<String> tagSlugs,
     List<OpeningHoursDto> openingHours,
     @Size(max = 255) @Pattern(regexp = "^$|https?://.*", message = "URL deve começar com https://")

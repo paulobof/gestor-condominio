@@ -70,8 +70,6 @@ class RecommendationControllerWebTest {
         null,
         null,
         null,
-        5,
-        "ótimo",
         UID,
         status,
         Instant.now(),
@@ -84,6 +82,8 @@ class RecommendationControllerWebTest {
         null,
         null,
         null,
+        0,
+        0,
         0,
         0);
   }

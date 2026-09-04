@@ -11,6 +11,7 @@ import br.com.condominio.feature.activity.ActivityNotifier;
 import br.com.condominio.feature.recommendation.dto.CreateRecommendationRequest;
 import br.com.condominio.feature.recommendation.dto.RecommendationPhotoView;
 import br.com.condominio.feature.recommendation.dto.RecommendationView;
+import br.com.condominio.feature.recommendation.dto.ReviewRequest;
 import br.com.condominio.feature.recommendation.dto.UpdateRecommendationRequest;
 import br.com.condominio.feature.tag.TagService;
 import br.com.condominio.feature.unit.UnitRepository;
@@ -38,6 +39,7 @@ class RecommendationServiceTest {
   private UserRepository userRepo;
   private UnitRepository unitRepo;
   private ActivityNotifier activityNotifier;
+  private RecommendationReviewService reviewService;
   private RecommendationService service;
 
   private final UUID author = UUID.randomUUID();
@@ -56,6 +58,7 @@ class RecommendationServiceTest {
     userRepo = mock(UserRepository.class);
     unitRepo = mock(UnitRepository.class);
     activityNotifier = mock(ActivityNotifier.class);
+    reviewService = mock(RecommendationReviewService.class);
     service =
         new RecommendationService(
             repo,
@@ -67,13 +70,29 @@ class RecommendationServiceTest {
             props,
             userRepo,
             unitRepo,
-            activityNotifier);
-    when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
+            activityNotifier,
+            reviewService);
+    when(repo.save(any(Recommendation.class)))
+        .thenAnswer(
+            i -> {
+              // Espelha o gerador de UUID do Hibernate: id fica disponível já em save(), antes do
+              // flush. Sem isso, r.getId() fica null neste mock e a chamada a reviewService falha.
+              Recommendation r = i.getArgument(0);
+              if (r.getId() == null) {
+                ReflectionTestUtils.setField(r, "id", UUID.randomUUID());
+              }
+              return r;
+            });
     when(photoRepo.findByRecommendationIdOrderByOrdering(any())).thenReturn(List.of());
     when(hoursRepo.findByOwnerIdOrderByDayOfWeek(any())).thenReturn(List.of());
   }
 
   private CreateRecommendationRequest req(boolean isResident, UUID residentId) {
+    return reqWithReview(isResident, residentId, null, null, null);
+  }
+
+  private CreateRecommendationRequest reqWithReview(
+      boolean isResident, UUID residentId, ReviewSentiment sentiment, Integer rating, String text) {
     return new CreateRecommendationRequest(
         "Pintor",
         "João",
@@ -82,8 +101,9 @@ class RecommendationServiceTest {
         residentId,
         "Rua X",
         "R$80/h",
-        5,
-        "ok",
+        sentiment,
+        rating,
+        text,
         List.of(),
         List.of(),
         null,
@@ -103,8 +123,6 @@ class RecommendationServiceTest {
             null,
             "Rua X",
             "R$80/h",
-            5,
-            "ok",
             null,
             null,
             null,
@@ -136,10 +154,11 @@ class RecommendationServiceTest {
 
   @Test
   void create_residentSouEu_resolvesAuthorUnit() {
-    // "sou eu" path: morador marca a si próprio
+    // "sou eu" path: morador marca a si próprio; autor tem unidade, então precisa avaliar.
     UUID unitId = UUID.randomUUID();
     when(unitRepo.findCodeById(unitId)).thenReturn(Optional.of("T1-A-101"));
-    CreateRecommendationRequest req = req(true, null); // residentUserId=null
+    CreateRecommendationRequest req =
+        reqWithReview(true, null, ReviewSentiment.LIKE, 5, "Serviço muito bom, recomendo.");
     RecommendationView v = service.create(author, unitId, true, req);
     assertThat(v.isResident()).isTrue();
     assertThat(v.ownerUnitId()).isEqualTo(unitId);
@@ -179,7 +198,9 @@ class RecommendationServiceTest {
 
   @Test
   void create_external_noOwnerUnit() {
-    CreateRecommendationRequest req = req(false, null);
+    // Autor tem unidade (2º arg não nulo), mesmo indicando um serviço externo: precisa avaliar.
+    CreateRecommendationRequest req =
+        reqWithReview(false, null, ReviewSentiment.LIKE, 5, "Serviço muito bom, recomendo.");
     RecommendationView v = service.create(author, UUID.randomUUID(), false, req);
     assertThat(v.ownerUnitId()).isNull();
     assertThat(v.ownerUnitCode()).isNull();
@@ -198,6 +219,7 @@ class RecommendationServiceTest {
             null,
             null,
             null,
+            null,
             List.of(),
             List.of(),
             "https://instagram.com/joao",
@@ -206,6 +228,40 @@ class RecommendationServiceTest {
             null);
     RecommendationView v = service.create(author, null, false, req);
     assertThat(v.instagramUrl()).isEqualTo("https://instagram.com/joao");
+  }
+
+  // ---- primeira avaliação vinda junto da criação -----------------------------------
+
+  @Test
+  void create_comUnidade_criaIndicacaoEPrimeiraAvaliacao() {
+    UUID unitId = UUID.randomUUID();
+    CreateRecommendationRequest req =
+        reqWithReview(false, null, ReviewSentiment.LIKE, 5, "Serviço muito bom, recomendo.");
+
+    service.create(author, unitId, true, req);
+
+    verify(reviewService).create(any(UUID.class), eq(author), eq(unitId), any(ReviewRequest.class));
+  }
+
+  @Test
+  void create_semUnidade_criaIndicacaoSemAvaliacao() {
+    CreateRecommendationRequest req = req(false, null); // sem sentiment/rating/text
+
+    service.create(author, null, false, req);
+
+    verifyNoInteractions(reviewService);
+  }
+
+  @Test
+  void create_comUnidadeMasSemAvaliacao_lancaErroDeDominio() {
+    // morador tem unidade, entao nota e comentario sao obrigatorios
+    UUID unitId = UUID.randomUUID();
+    CreateRecommendationRequest req = req(false, null); // sem sentiment/rating/text
+
+    assertThatThrownBy(() -> service.create(author, unitId, true, req))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_REQUIRED");
   }
 
   @Test
@@ -220,8 +276,7 @@ class RecommendationServiceTest {
                     stranger,
                     false,
                     new UpdateRecommendationRequest(
-                        "X", null, null, null, null, null, null, List.of(), List.of(), null, null,
-                        null, null)))
+                        "X", null, null, null, null, List.of(), List.of(), null, null, null, null)))
         .isInstanceOf(RecommendationException.class)
         .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
   }
@@ -237,8 +292,7 @@ class RecommendationServiceTest {
             stranger,
             true,
             new UpdateRecommendationRequest(
-                "Novo", null, null, null, null, null, null, List.of(), List.of(), null, null, null,
-                null));
+                "Novo", null, null, null, null, List.of(), List.of(), null, null, null, null));
     assertThat(v.serviceName()).isEqualTo("Novo");
   }
 

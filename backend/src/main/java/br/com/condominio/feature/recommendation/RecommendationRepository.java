@@ -20,7 +20,9 @@ public interface RecommendationRepository extends JpaRepository<Recommendation, 
         and (:search is null
              or lower(r.serviceName) like lower(concat('%', cast(:search as string), '%'))
              or lower(r.professionalName) like lower(concat('%', cast(:search as string), '%')))
-      order by r.resident desc, r.likeCount desc, r.createdAt desc
+      order by r.resident desc,
+               (r.ratingSum + 10.5) / (r.reviewCount + 3) desc,
+               r.createdAt desc
       """)
   Page<Recommendation> search(String tag, String search, Pageable pageable);
 }

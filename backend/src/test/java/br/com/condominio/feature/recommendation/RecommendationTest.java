@@ -18,8 +18,6 @@ class RecommendationTest {
         null,
         "Rua X",
         "R$80/h",
-        5,
-        "ótimo",
         null,
         null,
         null,
@@ -38,8 +36,6 @@ class RecommendationTest {
         residentId,
         "Apto 101",
         "R$80/h",
-        5,
-        "ótimo",
         null,
         null,
         null,
@@ -73,8 +69,6 @@ class RecommendationTest {
             null,
             "Apto",
             "R$80/h",
-            5,
-            "ok",
             null,
             null,
             null,
@@ -100,7 +94,7 @@ class RecommendationTest {
   }
 
   @Test
-  void edit_updatesFields_andNarrowsRating() {
+  void edit_updatesFields() {
     Recommendation r = external();
     r.edit(
         "Eletricista",
@@ -108,21 +102,11 @@ class RecommendationTest {
         "11888887777",
         "Rua Y",
         "R$120/h",
-        4,
-        "boa",
         "https://instagram.com/maria",
         null,
         null,
         null);
     assertThat(r.getServiceName()).isEqualTo("Eletricista");
-    assertThat(r.getRating()).isEqualTo((short) 4);
     assertThat(r.getInstagramUrl()).isEqualTo("https://instagram.com/maria");
-  }
-
-  @Test
-  void edit_withNullRating_keepsNull() {
-    Recommendation r = external();
-    r.edit("Pintor", "João", "11999990000", "Rua X", "R$80/h", null, "ok", null, null, null, null);
-    assertThat(r.getRating()).isNull();
   }
 }

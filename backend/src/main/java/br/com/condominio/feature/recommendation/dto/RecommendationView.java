@@ -16,8 +16,6 @@ public record RecommendationView(
     UUID residentUserId,
     String addressLine,
     String priceRange,
-    Integer rating,
-    String comment,
     UUID recommendedByUserId,
     RecommendationStatus status,
     Instant createdAt,
@@ -31,7 +29,9 @@ public record RecommendationView(
     UUID ownerUnitId,
     String ownerUnitCode,
     int likeCount,
-    int dislikeCount) {
+    int dislikeCount,
+    int reviewCount,
+    int ratingSum) {
 
   public static RecommendationView of(
       Recommendation r,
@@ -47,8 +47,6 @@ public record RecommendationView(
         r.getResidentUserId(),
         r.getAddressLine(),
         r.getPriceRange(),
-        r.getRating() == null ? null : r.getRating().intValue(),
-        r.getComment(),
         r.getRecommendedByUserId(),
         r.getStatus(),
         r.getCreatedAt(),
@@ -62,6 +60,8 @@ public record RecommendationView(
         r.getOwnerUnitId(),
         r.getOwnerUnitCode(),
         r.getLikeCount(),
-        r.getDislikeCount());
+        r.getDislikeCount(),
+        r.getReviewCount(),
+        r.getRatingSum());
   }
 }

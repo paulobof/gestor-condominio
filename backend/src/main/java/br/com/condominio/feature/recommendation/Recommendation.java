@@ -47,11 +47,6 @@ public class Recommendation {
   @Column(name = "price_range", length = 40)
   private String priceRange;
 
-  @Column private Short rating;
-
-  @Column(columnDefinition = "text")
-  private String comment;
-
   @Column(name = "instagram_url", length = 255)
   private String instagramUrl;
 
@@ -119,8 +114,6 @@ public class Recommendation {
       UUID residentUserId,
       String addressLine,
       String priceRange,
-      Integer rating,
-      String comment,
       String instagramUrl,
       String facebookUrl,
       String whatsappUrl,
@@ -136,8 +129,6 @@ public class Recommendation {
     r.residentUserId = residentUserId;
     r.addressLine = addressLine;
     r.priceRange = priceRange;
-    r.rating = rating == null ? null : rating.shortValue();
-    r.comment = comment;
     r.instagramUrl = instagramUrl;
     r.facebookUrl = facebookUrl;
     r.whatsappUrl = whatsappUrl;
@@ -154,8 +145,6 @@ public class Recommendation {
       String phone,
       String addressLine,
       String priceRange,
-      Integer rating,
-      String comment,
       String instagramUrl,
       String facebookUrl,
       String whatsappUrl,
@@ -165,8 +154,6 @@ public class Recommendation {
     this.phone = phone;
     this.addressLine = addressLine;
     this.priceRange = priceRange;
-    this.rating = rating == null ? null : rating.shortValue();
-    this.comment = comment;
     this.instagramUrl = instagramUrl;
     this.facebookUrl = facebookUrl;
     this.whatsappUrl = whatsappUrl;

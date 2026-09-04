@@ -41,10 +41,16 @@ public class RecommendationService {
   private final UserRepository userRepo;
   private final UnitRepository unitRepo;
   private final ActivityNotifier activityNotifier;
+  private final RecommendationReviewService reviewService;
 
   @Transactional
   public RecommendationView create(
       UUID authorId, UUID authorUnitId, boolean authorIsResident, CreateRecommendationRequest req) {
+    if (authorUnitId != null
+        && (req.sentiment() == null || req.rating() == null || req.text() == null)) {
+      throw new RecommendationException(
+          "REVIEW_REQUIRED", "Morador com unidade precisa avaliar a indicação ao criá-la.");
+    }
     UUID ownerUnitId = null;
     String ownerUnitCode = null;
     if (req.isResident()) {
@@ -80,8 +86,6 @@ public class RecommendationService {
             req.residentUserId(),
             req.addressLine(),
             req.priceRange(),
-            req.rating(),
-            req.comment(),
             req.instagramUrl(),
             req.facebookUrl(),
             req.whatsappUrl(),
@@ -91,6 +95,13 @@ public class RecommendationService {
     applyTags(r, req.tagSlugs());
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
+    if (authorUnitId != null) {
+      reviewService.create(
+          r.getId(),
+          authorId,
+          authorUnitId,
+          new ReviewRequest(req.sentiment(), req.rating(), req.text()));
+    }
     activityNotifier.notify(ActivityAction.CREATED, "Indicação", r.getServiceName(), authorId);
     return buildView(r);
   }
@@ -129,8 +140,6 @@ public class RecommendationService {
         req.phone(),
         req.addressLine(),
         req.priceRange(),
-        req.rating(),
-        req.comment(),
         req.instagramUrl(),
         req.facebookUrl(),
         req.whatsappUrl(),

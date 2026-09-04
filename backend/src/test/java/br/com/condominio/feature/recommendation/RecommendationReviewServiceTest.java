@@ -56,8 +56,6 @@ class RecommendationReviewServiceTest {
             null,
             "Rua X",
             "R$80/h",
-            5,
-            "ok",
             null,
             null,
             null,

@@ -150,7 +150,16 @@ public class RecommendationReviewService {
   }
 
   private boolean reveals(RecommendationReview r, UUID actorUnitId, boolean canModerate) {
-    return canModerate || (actorUnitId != null && actorUnitId.equals(r.getUnitId()));
+    return canModerate || sameUnit(r, actorUnitId);
+  }
+
+  /**
+   * Só a metade "mesma unidade" de {@link #reveals}, sem o motivo "modera". É o que o frontend usa
+   * pra saber se o PRÓPRIO apartamento já avaliou — nunca confundir com {@code reveals}, que também
+   * é true pra quem modera avaliação de qualquer unidade.
+   */
+  private boolean sameUnit(RecommendationReview r, UUID actorUnitId) {
+    return actorUnitId != null && actorUnitId.equals(r.getUnitId());
   }
 
   private ReviewView toView(
@@ -170,7 +179,8 @@ public class RecommendationReviewService {
         r.getCreatedAt(),
         mine,
         reveal ? names.get(r.getAuthorUserId()) : null,
-        reveal ? codes.get(r.getUnitId()) : null);
+        reveal ? codes.get(r.getUnitId()) : null,
+        sameUnit(r, actorUnitId));
   }
 
   /** Recalcula os quatro contadores a partir das avaliações ATIVAS. Oculta não conta. */

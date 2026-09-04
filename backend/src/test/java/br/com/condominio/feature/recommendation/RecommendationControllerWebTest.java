@@ -90,7 +90,7 @@ class RecommendationControllerWebTest {
 
   private ReviewView reviewView() {
     return new ReviewView(
-        REVIEW_ID, "LIKE", 5, "Serviço muito bom.", Instant.now(), true, null, null);
+        REVIEW_ID, "LIKE", 5, "Serviço muito bom.", Instant.now(), true, null, null, true);
   }
 
   // ---- flag + autenticação básica -------------------------------------------------

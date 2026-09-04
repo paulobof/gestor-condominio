@@ -261,6 +261,9 @@ class RecommendationReviewServiceTest {
 
     assertThat(views.get(0).authorName()).isEqualTo("Ana Moradora");
     assertThat(views.get(0).unitCode()).isEqualTo("402A");
+    // authorName veio por moderacao, nao por unidade: sameUnit tem que ficar falso, senao um
+    // morador-moderador cujo proprio apartamento nao avaliou perde o formulario na tela.
+    assertThat(views.get(0).sameUnit()).isFalse();
   }
 
   @Test
@@ -281,6 +284,7 @@ class RecommendationReviewServiceTest {
 
     assertThat(views.get(0).authorName()).isEqualTo("Ana Moradora");
     assertThat(views.get(0).mine()).isFalse();
+    assertThat(views.get(0).sameUnit()).isTrue();
   }
 
   @Test
@@ -292,6 +296,7 @@ class RecommendationReviewServiceTest {
 
     assertThat(views.get(0).authorName()).isNull();
     assertThat(views.get(0).unitCode()).isNull();
+    assertThat(views.get(0).sameUnit()).isFalse();
   }
 
   @Test

@@ -137,6 +137,10 @@ export type ReviewSentiment = 'LIKE' | 'DISLIKE';
  * Avaliação como o app a exibe. `authorName`/`unitCode` vêm nulos para quase todo mundo — só
  * quem tem RECOMMENDATION_MODERATE ou mora na mesma unidade da avaliação os recebe preenchidos.
  * Essa decisão é do backend: nunca reimplementar aqui, só exibir o que veio.
+ *
+ * `sameUnit` é a metade "mesma unidade" dessa revelação, separada do motivo "modera": só ela diz
+ * se É O MEU apartamento que avaliou. Usar isso (não `authorName != null`, que também fica
+ * preenchido pra quem só modera) pra decidir se mostra "seu apartamento já avaliou".
  */
 export interface Review {
   id: string;
@@ -147,6 +151,7 @@ export interface Review {
   mine: boolean;
   authorName: string | null;
   unitCode: string | null;
+  sameUnit: boolean;
 }
 
 export interface ReviewBody {

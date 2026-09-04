@@ -15,7 +15,16 @@ import java.util.UUID;
  *       pessoas que já se conhecem, não é exposição a vizinho.
  * </ul>
  *
- * <p>O anonimato é decidido AQUI, no backend. Nunca mandar o nome e esconder no frontend.
+ * <p>{@code sameUnit} é a metade dessa decisão que interessa ao cliente: verdadeiro só quando o
+ * motivo da revelação foi "mesma unidade", nunca quando foi moderação. Sem isso, o frontend não
+ * tinha como distinguir "meu apartamento já avaliou" de "eu modero e por isso vejo o nome de
+ * qualquer um" — um morador-moderador cujo apartamento não avaliou via a mensagem errada e perdia o
+ * formulário. {@code authorName}/{@code unitCode} continuam cobrindo os dois motivos juntos (é o
+ * que a tela mostra); {@code sameUnit} existe só para a tela decidir o que fazer.
+ *
+ * <p>O anonimato é decidido AQUI, no backend. Nunca mandar o nome e esconder no frontend, e nunca
+ * deduzir "mesma unidade" no frontend a partir de authorName — é exatamente esse tipo de dedução
+ * que este campo elimina.
  */
 public record ReviewView(
     UUID id,
@@ -25,4 +34,5 @@ public record ReviewView(
     Instant createdAt,
     boolean mine,
     String authorName,
-    String unitCode) {}
+    String unitCode,
+    boolean sameUnit) {}

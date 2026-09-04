@@ -91,6 +91,7 @@ function review(over: Record<string, unknown> = {}) {
     mine: false,
     authorName: null,
     unitCode: null,
+    sameUnit: false,
     ...over,
   } as never;
 }
@@ -222,7 +223,7 @@ describe('RecommendationDetailPage', () => {
   it('morador cujo apartamento já avaliou (não é o autor) vê a mensagem sem editar/apagar', async () => {
     setUser('u9');
     getMock.mockResolvedValue(reco());
-    listReviewsMock.mockResolvedValue([review({ mine: false, authorName: 'Ana' })]);
+    listReviewsMock.mockResolvedValue([review({ mine: false, authorName: 'Ana', sameUnit: true })]);
     renderPage();
     await screen.findByRole('heading', { name: 'Encanador Zé' });
 
@@ -235,12 +236,28 @@ describe('RecommendationDetailPage', () => {
   it('autor da avaliação vê editar/apagar', async () => {
     setUser('u9');
     getMock.mockResolvedValue(reco());
-    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você' })]);
+    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você', sameUnit: true })]);
     renderPage();
     await screen.findByRole('heading', { name: 'Encanador Zé' });
 
     expect(screen.getByRole('button', { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /apagar/i })).toBeInTheDocument();
+  });
+
+  it('moderador cujo apartamento não avaliou vê o formulário mesmo revelando o nome de outra unidade', async () => {
+    // Regressão do bug: authorName vem preenchido pra quem modera (qualquer unidade), mas
+    // sameUnit só é true quando é de fato a unidade do ator. Sem essa distinção, o moderador
+    // caía no ramo "seu apartamento já avaliou" mesmo sem nunca ter avaliado.
+    setUser('u9', ['RECOMMENDATION_MODERATE']);
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([
+      review({ mine: false, authorName: 'Ana', sameUnit: false }),
+    ]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByLabelText('Comentário')).toBeInTheDocument();
+    expect(screen.queryByText('Seu apartamento já avaliou, por Ana.')).not.toBeInTheDocument();
   });
 
   it('morador sem avaliação vê o formulário e criar avaliação recarrega a lista', async () => {
@@ -290,6 +307,7 @@ describe('RecommendationDetailPage', () => {
     const mine = review({
       mine: true,
       authorName: 'Você',
+      sameUnit: true,
       rating: 3,
       text: 'Texto original aqui.',
     });
@@ -316,7 +334,7 @@ describe('RecommendationDetailPage', () => {
   it('apagar a própria avaliação após confirmar chama deleteReview', async () => {
     setUser('u9');
     getMock.mockResolvedValue(reco());
-    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você' })]);
+    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você', sameUnit: true })]);
     deleteReviewMock.mockResolvedValue(undefined);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPage();

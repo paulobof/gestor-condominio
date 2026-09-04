@@ -151,9 +151,10 @@ export function RecommendationDetailPage() {
   }, [loadReviews]);
 
   // A avaliação do meu apartamento: a minha (mine) ou, se foi outro morador da mesma unidade que
-  // avaliou, a que o backend revelou pra mim (authorName preenchido só nesse caso ou p/ moderação).
-  const unitReview =
-    reviews.find((r) => r.mine) ?? reviews.find((r) => r.authorName != null) ?? null;
+  // avaliou, a que o backend marcou como sameUnit. NUNCA usar `authorName != null` aqui — esse
+  // campo também vem preenchido para quem só modera (vê o nome de qualquer unidade), o que fazia
+  // um morador-moderador cujo apartamento não avaliou perder o formulário por engano.
+  const unitReview = reviews.find((r) => r.mine) ?? reviews.find((r) => r.sameUnit) ?? null;
 
   const handleCreateReview = async (values: ReviewFormValues) => {
     if (!id) return;
@@ -452,6 +453,7 @@ export function RecommendationDetailPage() {
                   type="button"
                   size="sm"
                   className="min-h-[44px]"
+                  aria-label="Editar avaliação"
                   onClick={() => setEditingReview(true)}
                 >
                   <Pencil aria-hidden="true" /> Editar
@@ -478,7 +480,7 @@ export function RecommendationDetailPage() {
         <div className="flex flex-wrap gap-2 pt-2">
           {canManage && (
             <Button asChild className="min-h-[44px]">
-              <Link to={`/indicacoes/${rec.id}/editar`}>
+              <Link to={`/indicacoes/${rec.id}/editar`} aria-label="Editar indicação">
                 <Pencil aria-hidden="true" /> Editar
               </Link>
             </Button>

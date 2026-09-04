@@ -8,6 +8,18 @@ import { Label } from '@/components/ui/label';
 import { listRecommendations, type Recommendation } from '../api/recommendationsApi';
 import { searchTags, type Tag } from '../api/tagsApi';
 
+/**
+ * Média de avaliações formatada em pt-BR com uma casa decimal ("4,3"), ou `null` sem
+ * avaliações — nunca "0,0", que sugeriria nota péssima em vez de ausência de avaliações.
+ */
+function formatAverageRating(r: Pick<Recommendation, 'reviewCount' | 'ratingSum'>): string | null {
+  if (r.reviewCount === 0) return null;
+  return (r.ratingSum / r.reviewCount).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
 export function RecommendationsListPage() {
   const [search, setSearch] = useState('');
   const [tag, setTag] = useState(''); // slug aplicado ao filtro
@@ -139,58 +151,62 @@ export function RecommendationsListPage() {
         <p className="text-muted-foreground">Nenhuma indicação.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {items.map((r) => (
-            <li key={r.id}>
-              <Link
-                to={`/indicacoes/${r.id}`}
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <Card className="h-full transition-colors hover:bg-accent">
-                  <CardHeader>
-                    <CardTitle className="text-base">{r.serviceName}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {r.professionalName && (
-                      <p className="text-sm text-muted-foreground">{r.professionalName}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {r.rating != null && (
-                        <span className="text-sm font-medium" aria-label={`Nota ${r.rating} de 5`}>
-                          {'★'.repeat(r.rating)}
-                          <span className="text-muted-foreground">{'★'.repeat(5 - r.rating)}</span>
-                        </span>
+          {items.map((r) => {
+            const average = formatAverageRating(r);
+            return (
+              <li key={r.id}>
+                <Link
+                  to={`/indicacoes/${r.id}`}
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <Card className="h-full transition-colors hover:bg-accent">
+                    <CardHeader>
+                      <CardTitle className="text-base">{r.serviceName}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {r.professionalName && (
+                        <p className="text-sm text-muted-foreground">{r.professionalName}</p>
                       )}
-                      {r.isResident && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Mora aqui
-                        </span>
-                      )}
-                      {r.likeCount > 0 && (
-                        <span
-                          className="text-xs text-muted-foreground"
-                          aria-label={`${r.likeCount} curtidas`}
-                        >
-                          👍 {r.likeCount}
-                        </span>
-                      )}
-                    </div>
-                    {r.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {r.tags.map((t) => (
-                          <span
-                            key={t.id}
-                            className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
-                          >
-                            {t.label}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {average != null ? (
+                          <span className="text-sm font-medium">
+                            {`★ ${average} · ${r.reviewCount} ${r.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
                           </span>
-                        ))}
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem avaliações</span>
+                        )}
+                        {r.isResident && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            Mora aqui
+                          </span>
+                        )}
+                        {r.likeCount > 0 && (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            aria-label={`${r.likeCount} curtidas`}
+                          >
+                            👍 {r.likeCount}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            </li>
-          ))}
+                      {r.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {r.tags.map((t) => (
+                            <span
+                              key={t.id}
+                              className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
+                            >
+                              {t.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

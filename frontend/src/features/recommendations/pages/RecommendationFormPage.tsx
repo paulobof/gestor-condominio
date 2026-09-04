@@ -20,6 +20,7 @@ import {
   type RecommendationPhoto,
 } from '../api/recommendationsApi';
 import { searchTags, type Tag } from '../api/tagsApi';
+import { ReviewForm, type ReviewFormValues } from '../components/ReviewForm';
 
 const MAX_PHOTOS = 3;
 const DAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -78,8 +79,6 @@ export function RecommendationFormPage() {
   const [phone, setPhone] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [priceRange, setPriceRange] = useState('');
-  const [rating, setRating] = useState(''); // "" = sem nota
-  const [comment, setComment] = useState('');
 
   // links sociais
   const [instagramInput, setInstagramInput] = useState('');
@@ -135,8 +134,6 @@ export function RecommendationFormPage() {
     setPhone(rec.phone ?? '');
     setAddressLine(rec.addressLine ?? '');
     setPriceRange(rec.priceRange ?? '');
-    setRating(rec.rating != null ? String(rec.rating) : '');
-    setComment(rec.comment ?? '');
     setIsResident(rec.isResident);
     setResidentUserId(rec.residentUserId ?? '');
     setInstagramInput(rec.instagramUrl ?? '');
@@ -226,62 +223,83 @@ export function RecommendationFormPage() {
         notes: row.notes.trim() || null,
       }));
 
-  const parsedRating = (): number | null => {
-    if (!rating) return null;
-    const n = Number(rating);
-    return Number.isFinite(n) ? n : null;
-  };
+  // Mostra o formulário de avaliação embutido só na criação e só para quem tem unidade — é regra
+  // de domínio do backend: autor com unidade manda sentiment/rating/text, sem unidade não manda
+  // nada (a indicação nasce sem avaliação). Edição nunca envia avaliação (o PUT nem aceita).
+  const showReviewSection = !isEdit && userIsResident;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateCommonFields = (): boolean => {
     if (!serviceName.trim()) {
       toast.error('Informe o nome do serviço.');
-      return;
+      return false;
     }
     // Validação de resident: se precisa do UUID do morador e está em branco
     if (!isEdit && needsResidentUuid && !residentUserId.trim()) {
       toast.error('Informe o UUID do morador indicado.');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const buildCommonBody = () => {
+    const instagramUrlFinal = instagramInput.trim() ? normalizeInstagramUrl(instagramInput) : null;
+    const whatsappUrlFinal = whatsappInput.trim() ? normalizeWhatsappUrl(whatsappInput) : null;
+    return {
+      serviceName: serviceName.trim(),
+      professionalName: professionalName.trim() || undefined,
+      phone: phone.trim() || undefined,
+      addressLine: addressLine.trim() || undefined,
+      priceRange: priceRange.trim() || undefined,
+      tagSlugs,
+      openingHours: buildOpeningHours(),
+      instagramUrl: instagramUrlFinal,
+      facebookUrl: facebookUrl.trim() || null,
+      whatsappUrl: whatsappUrlFinal,
+      catalogUrl: catalogUrl.trim() || null,
+    };
+  };
+
+  const submitCreate = async (review: ReviewFormValues | null) => {
+    // Para criação: resolver residentUserId baseado no modo.
+    // "sou eu" (morador logado, sem UUID) → null: backend resolve pelo JWT.
+    const resolvedResidentUserId = needsResidentUuid ? residentUserId.trim() || null : null;
+
+    const created = await createRecommendation({
+      ...buildCommonBody(),
+      isResident,
+      residentUserId: resolvedResidentUserId,
+      ...(review ?? {}),
+    });
+    await uploadPending(created.id);
+    navigate(`/indicacoes/${created.id}`, { replace: true });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateCommonFields()) return;
     setSaving(true);
     try {
-      const instagramUrlFinal = instagramInput.trim()
-        ? normalizeInstagramUrl(instagramInput)
-        : null;
-      const whatsappUrlFinal = whatsappInput.trim() ? normalizeWhatsappUrl(whatsappInput) : null;
-
-      const common = {
-        serviceName: serviceName.trim(),
-        professionalName: professionalName.trim() || undefined,
-        phone: phone.trim() || undefined,
-        addressLine: addressLine.trim() || undefined,
-        priceRange: priceRange.trim() || undefined,
-        rating: parsedRating(),
-        comment: comment.trim() || undefined,
-        tagSlugs,
-        openingHours: buildOpeningHours(),
-        instagramUrl: instagramUrlFinal,
-        facebookUrl: facebookUrl.trim() || null,
-        whatsappUrl: whatsappUrlFinal,
-        catalogUrl: catalogUrl.trim() || null,
-      };
       if (isEdit && id) {
-        await updateRecommendation(id, common);
+        await updateRecommendation(id, buildCommonBody());
         toast.success('Indicação atualizada.');
         navigate(`/indicacoes/${id}`);
       } else {
-        // Para criação: resolver residentUserId baseado no modo.
-        // "sou eu" (morador logado, sem UUID) → null: backend resolve pelo JWT.
-        const resolvedResidentUserId = needsResidentUuid ? residentUserId.trim() || null : null;
-
-        const created = await createRecommendation({
-          ...common,
-          isResident,
-          residentUserId: resolvedResidentUserId,
-        });
-        await uploadPending(created.id);
-        navigate(`/indicacoes/${created.id}`, { replace: true });
+        await submitCreate(null);
       }
+    } catch (err) {
+      toast.error(backendMessage(err, 'Erro ao salvar a indicação.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Chamado pelo ReviewForm embutido (só na criação, com unidade): junta a avaliação aos demais
+  // campos e cria tudo numa única chamada — não há duas submissões.
+  const handleReviewSubmit = async (values: ReviewFormValues) => {
+    if (!validateCommonFields()) return;
+    setSaving(true);
+    try {
+      await submitCreate(values);
     } catch (err) {
       toast.error(backendMessage(err, 'Erro ao salvar a indicação.'));
     } finally {
@@ -449,33 +467,6 @@ export function RecommendationFormPage() {
                 placeholder="Ex.: R$ 100–200"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="rating">Nota (opcional)</Label>
-              <select
-                id="rating"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={rating}
-                onChange={(e) => setRating(e.target.value)}
-              >
-                <option value="">Sem nota</option>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? 'estrela' : 'estrelas'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="comment">Comentário (opcional)</Label>
-              <textarea
-                id="comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={4}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-            </div>
-
             {/* Links sociais */}
             <div className="space-y-3 rounded-md border p-3">
               <p className="text-sm font-medium">Links (opcionais)</p>
@@ -659,10 +650,26 @@ export function RecommendationFormPage() {
               </div>
             </div>
 
-            <Button type="submit" disabled={saving} className="min-h-[44px] w-full">
-              {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar indicação'}
-            </Button>
+            {!showReviewSection && (
+              <Button type="submit" disabled={saving} className="min-h-[44px] w-full">
+                {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar indicação'}
+              </Button>
+            )}
           </form>
+
+          {showReviewSection && (
+            <div className="mt-4 space-y-2 border-t pt-4">
+              <p className="text-sm font-medium">Sua avaliação</p>
+              <p className="text-xs text-muted-foreground">
+                Como morador, sua indicação já nasce com a sua avaliação.
+              </p>
+              <ReviewForm
+                onSubmit={handleReviewSubmit}
+                submitting={saving}
+                submitLabel="Criar indicação"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

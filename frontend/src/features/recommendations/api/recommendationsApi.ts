@@ -25,11 +25,6 @@ export interface Recommendation {
   residentUserId: string | null;
   addressLine: string | null;
   priceRange: string | null;
-  // TODO(Task 7): o backend não retorna mais rating/comment na indicação em si — viraram a
-  // primeira avaliação (ver Review). Mantidos aqui só para RecommendationsListPage/
-  // RecommendationFormPage continuarem compilando; ajustar quando essas telas forem revisadas.
-  rating: number | null;
-  comment: string | null;
   recommendedByUserId: string;
   status: RecommendationStatus;
   createdAt: string;
@@ -44,6 +39,9 @@ export interface Recommendation {
   ownerUnitCode: string | null;
   likeCount: number;
   dislikeCount: number;
+  /** Total de avaliações. A média (não devolvida pelo backend) é `ratingSum / reviewCount`. */
+  reviewCount: number;
+  ratingSum: number;
 }
 
 export interface RecommendationPage {
@@ -78,10 +76,13 @@ export interface RecommendationBody {
   residentUserId?: string | null;
   addressLine?: string;
   priceRange?: string;
-  // TODO(Task 7): idem — o backend espera sentiment/rating/text (primeira avaliação) na criação
-  // e nem aceita mais rating/comment na edição.
-  rating?: number | null;
-  comment?: string;
+  /**
+   * Primeira avaliação da indicação — só na criação, e só quando o autor tem unidade (regra de
+   * domínio validada pelo backend: manda os três ou nenhum). PUT não aceita estes campos.
+   */
+  sentiment?: ReviewSentiment;
+  rating?: number;
+  text?: string;
   tagSlugs: string[];
   openingHours: OpeningHours[];
   instagramUrl?: string | null;
@@ -97,7 +98,7 @@ export async function createRecommendation(body: RecommendationBody) {
 
 export async function updateRecommendation(
   id: string,
-  body: Omit<RecommendationBody, 'isResident' | 'residentUserId'>
+  body: Omit<RecommendationBody, 'isResident' | 'residentUserId' | 'sentiment' | 'rating' | 'text'>
 ) {
   const r = await api.put(`/recommendations/${id}`, body);
   return r.data as Recommendation;

@@ -28,14 +28,16 @@ function reco(over: Record<string, unknown> = {}) {
     residentUserId: null,
     addressLine: null,
     priceRange: null,
-    rating: 5,
-    comment: null,
+    reviewCount: 0,
+    ratingSum: 0,
     recommendedByUserId: 'u2',
     status: 'ACTIVE',
     createdAt: '2026-06-06T00:00:00Z',
     tags: [],
     openingHours: [],
     photos: [],
+    likeCount: 0,
+    dislikeCount: 0,
     ...over,
   };
 }
@@ -77,6 +79,19 @@ describe('RecommendationsListPage', () => {
     await waitFor(() =>
       expect(listMock).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'sofa' }))
     );
+  });
+
+  it('mostra a média e o total de avaliações quando há avaliações', async () => {
+    listMock.mockResolvedValue(page([reco({ reviewCount: 12, ratingSum: 52 })]));
+    renderPage();
+    expect(await screen.findByText('★ 4,3 · 12 avaliações')).toBeInTheDocument();
+  });
+
+  it('mostra "Sem avaliações" quando reviewCount é zero, nunca "★ 0,0"', async () => {
+    listMock.mockResolvedValue(page([reco({ reviewCount: 0, ratingSum: 0 })]));
+    renderPage();
+    expect(await screen.findByText('Sem avaliações')).toBeInTheDocument();
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
   });
 
   it('autocomplete de tag chama searchTags com o texto digitado', async () => {

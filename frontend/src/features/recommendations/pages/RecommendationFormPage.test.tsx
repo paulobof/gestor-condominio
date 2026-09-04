@@ -154,6 +154,9 @@ describe('RecommendationFormPage (criação)', () => {
       name: /esta indicação é minha/i,
     });
     expect(souEuCheckbox).toBeChecked();
+    // Usuário com unidade: a avaliação (obrigatória) aparece embutida no formulário.
+    await userEvent.click(screen.getByRole('button', { name: '5 estrelas' }));
+    await userEvent.type(screen.getByLabelText('Comentário'), 'Ótimo serviço, recomendo muito!');
     await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
@@ -161,6 +164,9 @@ describe('RecommendationFormPage (criação)', () => {
       expect.objectContaining({
         isResident: true,
         residentUserId: null, // "sou eu" → null → backend resolve pelo JWT
+        sentiment: 'LIKE',
+        rating: 5,
+        text: 'Ótimo serviço, recomendo muito!',
       })
     );
   });
@@ -190,6 +196,52 @@ describe('RecommendationFormPage (criação)', () => {
       expect.objectContaining({
         whatsappUrl: 'https://wa.me/5511999990000',
       })
+    );
+  });
+});
+
+describe('RecommendationFormPage (avaliação na criação)', () => {
+  it('sem unidade, os campos de avaliação não aparecem', async () => {
+    setUserNoUnit();
+    renderPage();
+    await screen.findByLabelText('Serviço');
+
+    expect(screen.queryByText('Você recomenda?')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Comentário')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /criar indicação/i })).toBeEnabled();
+  });
+
+  it('com unidade, os campos de avaliação aparecem e bloqueiam o envio sem nota e comentário', async () => {
+    setUserWithUnit();
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Encanador Zé');
+
+    expect(screen.getByText('Você recomenda?')).toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: /criar indicação/i });
+    expect(submit).toBeDisabled();
+
+    await userEvent.click(submit);
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('com unidade, envia sentiment/rating/text junto da indicação ao preencher a avaliação', async () => {
+    setUserWithUnit();
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Serviço'), 'Encanador Zé');
+    await userEvent.click(screen.getByRole('button', { name: '5 estrelas' }));
+    await userEvent.type(screen.getByLabelText('Comentário'), 'Ótimo serviço, recomendo muito!');
+    await userEvent.click(screen.getByRole('button', { name: /criar indicação/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sentiment: 'LIKE',
+        rating: 5,
+        text: 'Ótimo serviço, recomendo muito!',
+      })
+    );
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/indicacoes/new-1', { replace: true })
     );
   });
 });

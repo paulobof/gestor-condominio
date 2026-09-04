@@ -4,42 +4,52 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const navigateMock = vi.fn();
+const promptLoginMock = vi.fn();
 
 vi.mock('react-router-dom', async (orig) => {
   const actual = await orig<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => navigateMock };
 });
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
+vi.mock('@/features/auth/useLoginPrompt', () => ({
+  useLoginPrompt: () => ({ promptLogin: promptLoginMock }),
+}));
 vi.mock('../api/recommendationsApi', () => ({
   getRecommendation: vi.fn(),
   getRecommendationPhotoUrl: vi.fn(),
   deleteRecommendation: vi.fn(),
   hideRecommendation: vi.fn(),
-  voteRecommendation: vi.fn(),
-  listRecommendationComments: vi.fn(),
-  addRecommendationComment: vi.fn(),
-  deleteRecommendationComment: vi.fn(),
+  listReviews: vi.fn(),
+  createReview: vi.fn(),
+  updateReview: vi.fn(),
+  deleteReview: vi.fn(),
+  hideReview: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
+import { toast } from 'sonner';
 import { RecommendationDetailPage } from './RecommendationDetailPage';
 import { useAuth } from '@/features/auth/useAuth';
 import {
   getRecommendation,
   deleteRecommendation,
   hideRecommendation,
-  voteRecommendation,
-  listRecommendationComments,
-  addRecommendationComment,
+  listReviews,
+  createReview,
+  updateReview,
+  deleteReview,
+  hideReview,
 } from '../api/recommendationsApi';
 
 const useAuthMock = vi.mocked(useAuth);
 const getMock = vi.mocked(getRecommendation);
 const deleteMock = vi.mocked(deleteRecommendation);
 const hideMock = vi.mocked(hideRecommendation);
-const voteMock = vi.mocked(voteRecommendation);
-const listCommentsMock = vi.mocked(listRecommendationComments);
-const addCommentMock = vi.mocked(addRecommendationComment);
+const listReviewsMock = vi.mocked(listReviews);
+const createReviewMock = vi.mocked(createReview);
+const updateReviewMock = vi.mocked(updateReview);
+const deleteReviewMock = vi.mocked(deleteReview);
+const hideReviewMock = vi.mocked(hideReview);
 
 function reco(over: Record<string, unknown> = {}) {
   return {
@@ -51,24 +61,42 @@ function reco(over: Record<string, unknown> = {}) {
     residentUserId: null,
     addressLine: null,
     priceRange: null,
-    rating: 5,
-    comment: 'muito bom',
+    rating: null,
+    comment: null,
     recommendedByUserId: 'u1',
     status: 'ACTIVE',
     createdAt: '2026-06-06T00:00:00Z',
     tags: [{ id: 't1', slug: 'encanador', label: 'Encanador', color: null }],
     openingHours: [],
     photos: [],
+    instagramUrl: null,
+    facebookUrl: null,
+    whatsappUrl: null,
+    catalogUrl: null,
+    ownerUnitId: null,
+    ownerUnitCode: null,
     likeCount: 0,
     dislikeCount: 0,
-    myVote: null,
-    commentCount: 0,
     ...over,
   } as never;
 }
 
-function setUser(id: string, authorities: string[] = []) {
-  useAuthMock.mockReturnValue({ user: { id, authorities } } as never);
+function review(over: Record<string, unknown> = {}) {
+  return {
+    id: 'rv1',
+    sentiment: 'LIKE',
+    rating: 5,
+    text: 'Muito bom atendimento, recomendo.',
+    createdAt: '2026-06-06T00:00:00Z',
+    mine: false,
+    authorName: null,
+    unitCode: null,
+    ...over,
+  } as never;
+}
+
+function setUser(id: string | null, authorities: string[] = []) {
+  useAuthMock.mockReturnValue({ user: id ? { id, authorities } : null } as never);
 }
 
 function renderPage() {
@@ -83,7 +111,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listCommentsMock.mockResolvedValue([]);
+  listReviewsMock.mockResolvedValue([]);
 });
 
 describe('RecommendationDetailPage', () => {
@@ -95,8 +123,6 @@ describe('RecommendationDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Encanador Zé' })).toBeInTheDocument();
     expect(screen.getByText('Zé')).toBeInTheDocument();
     expect(screen.getByText('Encanador')).toBeInTheDocument();
-    expect(screen.getByText('muito bom')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nota 5 de 5')).toBeInTheDocument();
   });
 
   it('mostra "não encontrada" quando a API falha', async () => {
@@ -114,10 +140,10 @@ describe('RecommendationDetailPage', () => {
 
     expect(screen.getByRole('link', { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /excluir/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /ocultar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^ocultar$/i })).not.toBeInTheDocument();
   });
 
-  it('terceiro sem permissão não vê ações', async () => {
+  it('terceiro sem permissão não vê ações de gestão da indicação', async () => {
     setUser('u9'); // != autor, sem moderate
     getMock.mockResolvedValue(reco());
     renderPage();
@@ -125,17 +151,17 @@ describe('RecommendationDetailPage', () => {
 
     expect(screen.queryByRole('link', { name: /editar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /excluir/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /ocultar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^ocultar$/i })).not.toBeInTheDocument();
   });
 
-  it('moderador pode ocultar e a página recarrega', async () => {
+  it('moderador pode ocultar a indicação e a página recarrega', async () => {
     setUser('u9', ['RECOMMENDATION_MODERATE']);
     getMock.mockResolvedValue(reco());
     hideMock.mockResolvedValue(undefined);
     renderPage();
     await screen.findByRole('heading', { name: 'Encanador Zé' });
 
-    await userEvent.click(screen.getByRole('button', { name: /ocultar/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^ocultar$/i }));
 
     expect(hideMock).toHaveBeenCalledWith('r1');
     await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2));
@@ -157,34 +183,160 @@ describe('RecommendationDetailPage', () => {
     );
   });
 
-  it('curtir chama voteRecommendation com LIKE', async () => {
-    setUser('u9');
-    getMock.mockResolvedValue(reco({ likeCount: 0, myVote: null }));
-    voteMock.mockResolvedValue(reco({ likeCount: 1, myVote: 'LIKE' }));
-    renderPage();
-    await screen.findByRole('heading', { name: 'Encanador Zé' });
-
-    await userEvent.click(screen.getByRole('button', { name: 'Curtir' }));
-
-    await waitFor(() => expect(voteMock).toHaveBeenCalledWith('r1', 'LIKE'));
-  });
-
-  it('envia um comentário', async () => {
+  it('lista as avaliações, assinando "Morador do condomínio" quando authorName vem nulo', async () => {
     setUser('u9');
     getMock.mockResolvedValue(reco());
-    addCommentMock.mockResolvedValue({
-      id: 'c1',
-      authorUserId: 'u9',
-      authorName: 'Eu',
-      text: 'Top!',
-      createdAt: '2026-06-15T00:00:00Z',
-    } as never);
+    listReviewsMock.mockResolvedValue([review({ authorName: null })]);
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByText('Morador do condomínio')).toBeInTheDocument();
+    expect(screen.getByText('Muito bom atendimento, recomendo.')).toBeInTheDocument();
+  });
+
+  it('assina com o nome revelado quando authorName vem preenchido', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ authorName: 'Ana' })]);
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByText('Ana')).toBeInTheDocument();
+  });
+
+  it('visitante vê botão de avaliar que abre o login', async () => {
+    setUser(null);
+    getMock.mockResolvedValue(reco());
     renderPage();
     await screen.findByRole('heading', { name: 'Encanador Zé' });
 
-    await userEvent.type(screen.getByLabelText('Comentário'), 'Top!');
-    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    const cta = screen.getByRole('button', { name: 'Avaliar' });
+    await userEvent.click(cta);
 
-    await waitFor(() => expect(addCommentMock).toHaveBeenCalledWith('r1', 'Top!'));
+    expect(promptLoginMock).toHaveBeenCalledWith({ reason: 'Avaliar é para quem tem conta.' });
+    expect(screen.queryByLabelText('Comentário')).not.toBeInTheDocument();
+  });
+
+  it('morador cujo apartamento já avaliou (não é o autor) vê a mensagem sem editar/apagar', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ mine: false, authorName: 'Ana' })]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByText('Seu apartamento já avaliou, por Ana.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /editar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /apagar/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Comentário')).not.toBeInTheDocument();
+  });
+
+  it('autor da avaliação vê editar/apagar', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você' })]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByRole('button', { name: /editar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /apagar/i })).toBeInTheDocument();
+  });
+
+  it('morador sem avaliação vê o formulário e criar avaliação recarrega a lista', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValueOnce([]).mockResolvedValueOnce([review({ mine: true })]);
+    createReviewMock.mockResolvedValue(review({ mine: true }));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: '5 estrelas' }));
+    await userEvent.type(screen.getByLabelText('Comentário'), 'Muito bom, recomendo demais.');
+    await userEvent.click(screen.getByRole('button', { name: /publicar avaliação/i }));
+
+    await waitFor(() =>
+      expect(createReviewMock).toHaveBeenCalledWith('r1', {
+        sentiment: 'LIKE',
+        rating: 5,
+        text: 'Muito bom, recomendo demais.',
+      })
+    );
+    await waitFor(() => expect(listReviewsMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('mostra mensagem específica quando o backend recusa por REVIEW_UNIT_ALREADY_REVIEWED', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([]);
+    createReviewMock.mockRejectedValue({
+      response: { data: { code: 'REVIEW_UNIT_ALREADY_REVIEWED' } },
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: '3 estrelas' }));
+    await userEvent.type(screen.getByLabelText('Comentário'), 'Comentário válido com 10+.');
+    await userEvent.click(screen.getByRole('button', { name: /publicar avaliação/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Este apartamento já avaliou esta indicação.')
+    );
+  });
+
+  it('editar a própria avaliação chama updateReview e recarrega', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    const mine = review({
+      mine: true,
+      authorName: 'Você',
+      rating: 3,
+      text: 'Texto original aqui.',
+    });
+    listReviewsMock.mockResolvedValue([mine]);
+    updateReviewMock.mockResolvedValue(review({ mine: true, rating: 4 }));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: /editar/i }));
+    expect(screen.getByLabelText('Comentário')).toHaveValue('Texto original aqui.');
+
+    await userEvent.click(screen.getByRole('button', { name: '4 estrelas' }));
+    await userEvent.click(screen.getByRole('button', { name: /salvar avaliação/i }));
+
+    await waitFor(() =>
+      expect(updateReviewMock).toHaveBeenCalledWith('r1', 'rv1', {
+        sentiment: 'LIKE',
+        rating: 4,
+        text: 'Texto original aqui.',
+      })
+    );
+  });
+
+  it('apagar a própria avaliação após confirmar chama deleteReview', async () => {
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ mine: true, authorName: 'Você' })]);
+    deleteReviewMock.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: /apagar/i }));
+
+    await waitFor(() => expect(deleteReviewMock).toHaveBeenCalledWith('r1', 'rv1'));
+  });
+
+  it('moderador pode ocultar uma avaliação individual', async () => {
+    setUser('u9', ['RECOMMENDATION_MODERATE']);
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ authorName: 'Ana' })]);
+    hideReviewMock.mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ocultar avaliação' }));
+
+    await waitFor(() => expect(hideReviewMock).toHaveBeenCalledWith('r1', 'rv1'));
   });
 });

@@ -3,8 +3,6 @@ import type { Tag } from './tagsApi';
 
 export type RecommendationStatus = 'ACTIVE' | 'HIDDEN';
 
-export type VoteValue = 'LIKE' | 'DISLIKE';
-
 export interface OpeningHours {
   dayOfWeek: number;
   opensAt: string | null;
@@ -27,6 +25,9 @@ export interface Recommendation {
   residentUserId: string | null;
   addressLine: string | null;
   priceRange: string | null;
+  // TODO(Task 7): o backend não retorna mais rating/comment na indicação em si — viraram a
+  // primeira avaliação (ver Review). Mantidos aqui só para RecommendationsListPage/
+  // RecommendationFormPage continuarem compilando; ajustar quando essas telas forem revisadas.
   rating: number | null;
   comment: string | null;
   recommendedByUserId: string;
@@ -43,8 +44,6 @@ export interface Recommendation {
   ownerUnitCode: string | null;
   likeCount: number;
   dislikeCount: number;
-  myVote: VoteValue | null;
-  commentCount: number;
 }
 
 export interface RecommendationPage {
@@ -79,6 +78,8 @@ export interface RecommendationBody {
   residentUserId?: string | null;
   addressLine?: string;
   priceRange?: string;
+  // TODO(Task 7): idem — o backend espera sentiment/rating/text (primeira avaliação) na criação
+  // e nem aceita mais rating/comment na edição.
   rating?: number | null;
   comment?: string;
   tagSlugs: string[];
@@ -128,30 +129,51 @@ export async function getRecommendationPhotoUrl(id: string, photoId: string) {
   return (r.data as { url: string }).url;
 }
 
-export interface RecommendationComment {
+// ---- Avaliações (like/dislike + nota + comentário obrigatório) ------------------------
+
+export type ReviewSentiment = 'LIKE' | 'DISLIKE';
+
+/**
+ * Avaliação como o app a exibe. `authorName`/`unitCode` vêm nulos para quase todo mundo — só
+ * quem tem RECOMMENDATION_MODERATE ou mora na mesma unidade da avaliação os recebe preenchidos.
+ * Essa decisão é do backend: nunca reimplementar aqui, só exibir o que veio.
+ */
+export interface Review {
   id: string;
-  authorUserId: string;
-  authorName: string | null;
+  sentiment: ReviewSentiment;
+  rating: number;
   text: string;
   createdAt: string;
+  mine: boolean;
+  authorName: string | null;
+  unitCode: string | null;
 }
 
-/** Define/alterna o voto (mesmo valor remove). Retorna a indicação com contadores atualizados. */
-export async function voteRecommendation(id: string, value: VoteValue) {
-  const r = await api.post(`/recommendations/${id}/vote`, { value });
-  return r.data as Recommendation;
+export interface ReviewBody {
+  sentiment: ReviewSentiment;
+  rating: number;
+  text: string;
 }
 
-export async function listRecommendationComments(id: string) {
-  const r = await api.get(`/recommendations/${id}/comments`);
-  return r.data as RecommendationComment[];
+export async function listReviews(id: string) {
+  const r = await api.get(`/recommendations/${id}/reviews`);
+  return r.data as Review[];
 }
 
-export async function addRecommendationComment(id: string, text: string) {
-  const r = await api.post(`/recommendations/${id}/comments`, { text });
-  return r.data as RecommendationComment;
+export async function createReview(id: string, body: ReviewBody) {
+  const r = await api.post(`/recommendations/${id}/reviews`, body);
+  return r.data as Review;
 }
 
-export async function deleteRecommendationComment(id: string, commentId: string) {
-  await api.delete(`/recommendations/${id}/comments/${commentId}`);
+export async function updateReview(id: string, reviewId: string, body: ReviewBody) {
+  const r = await api.put(`/recommendations/${id}/reviews/${reviewId}`, body);
+  return r.data as Review;
+}
+
+export async function deleteReview(id: string, reviewId: string) {
+  await api.delete(`/recommendations/${id}/reviews/${reviewId}`);
+}
+
+export async function hideReview(id: string, reviewId: string) {
+  await api.post(`/recommendations/${id}/reviews/${reviewId}/hide`);
 }

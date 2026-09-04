@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -13,28 +13,44 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth/useAuth';
 import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 import {
-  addRecommendationComment,
+  createReview,
   deleteRecommendation,
-  deleteRecommendationComment,
+  deleteReview,
   getRecommendation,
   getRecommendationPhotoUrl,
   hideRecommendation,
-  listRecommendationComments,
-  voteRecommendation,
+  hideReview,
+  listReviews,
+  updateReview,
   type Recommendation,
-  type RecommendationComment,
-  type VoteValue,
+  type Review,
 } from '../api/recommendationsApi';
+import { ReviewForm, type ReviewFormValues } from '../components/ReviewForm';
 
 const DAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 function hhmm(time: string | null): string | null {
   // API retorna "HH:mm:ss"; exibe apenas "HH:mm".
   return time ? time.slice(0, 5) : null;
+}
+
+/** Traduz o `code` de erro do backend numa mensagem que o morador entende. */
+function reviewErrorMessage(err: unknown): string {
+  const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+  switch (code) {
+    case 'REVIEW_REQUIRES_UNIT':
+      return 'Só moradores com unidade podem avaliar indicações.';
+    case 'REVIEW_UNIT_ALREADY_REVIEWED':
+      return 'Este apartamento já avaliou esta indicação.';
+    case 'REVIEW_INVALID':
+    case 'VALIDATION_FAILED':
+      return 'Escolha uma nota de 1 a 5 e escreva um comentário com pelo menos 10 caracteres.';
+    default:
+      return 'Erro ao salvar a avaliação.';
+  }
 }
 
 export function RecommendationDetailPage() {
@@ -47,10 +63,10 @@ export function RecommendationDetailPage() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
   const [hiding, setHiding] = useState(false);
-  const [voting, setVoting] = useState(false);
-  const [comments, setComments] = useState<RecommendationComment[]>([]);
-  const [commentText, setCommentText] = useState('');
-  const [postingComment, setPostingComment] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [editingReview, setEditingReview] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -121,66 +137,76 @@ export function RecommendationDetailPage() {
     }
   };
 
-  const loadComments = useCallback(async () => {
+  const loadReviews = useCallback(async () => {
     if (!id) return;
     try {
-      setComments(await listRecommendationComments(id));
+      setReviews(await listReviews(id));
     } catch {
-      /* lista de comentários é não-crítica */
+      toast.error('Erro ao carregar as avaliações.');
     }
   }, [id]);
 
   useEffect(() => {
-    loadComments();
-  }, [loadComments]);
+    loadReviews();
+  }, [loadReviews]);
 
-  /** Visitante le tudo; curtir e comentar pedem a conta ali mesmo, sem tirar ele da pagina. */
-  const requireLogin = () => {
-    if (user) return false;
-    promptLogin({ reason: 'Entre na sua conta para curtir e comentar.' });
-    return true;
-  };
+  // A avaliação do meu apartamento: a minha (mine) ou, se foi outro morador da mesma unidade que
+  // avaliou, a que o backend revelou pra mim (authorName preenchido só nesse caso ou p/ moderação).
+  const unitReview =
+    reviews.find((r) => r.mine) ?? reviews.find((r) => r.authorName != null) ?? null;
 
-  const handleVote = async (value: VoteValue) => {
-    if (!id || voting) return;
-    if (requireLogin()) return;
-    setVoting(true);
+  const handleCreateReview = async (values: ReviewFormValues) => {
+    if (!id) return;
+    setSubmittingReview(true);
     try {
-      setRec(await voteRecommendation(id, value));
-    } catch {
-      toast.error('Erro ao registrar o voto.');
+      await createReview(id, values);
+      toast.success('Avaliação publicada.');
+      await loadReviews();
+    } catch (err) {
+      toast.error(reviewErrorMessage(err));
     } finally {
-      setVoting(false);
+      setSubmittingReview(false);
     }
   };
 
-  const handleAddComment = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!id || !commentText.trim()) return;
-    if (requireLogin()) return;
-    setPostingComment(true);
+  const handleUpdateReview = async (values: ReviewFormValues) => {
+    if (!id || !unitReview?.mine) return;
+    setSubmittingReview(true);
     try {
-      await addRecommendationComment(id, commentText.trim());
-      setCommentText('');
-      await loadComments();
-      setRec((prev) => (prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev));
-    } catch {
-      toast.error('Erro ao enviar o comentário.');
+      await updateReview(id, unitReview.id, values);
+      toast.success('Avaliação atualizada.');
+      setEditingReview(false);
+      await loadReviews();
+    } catch (err) {
+      toast.error(reviewErrorMessage(err));
     } finally {
-      setPostingComment(false);
+      setSubmittingReview(false);
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteReview = async () => {
+    if (!id || !unitReview?.mine) return;
+    if (!window.confirm('Tem certeza que deseja apagar sua avaliação?')) return;
+    setDeletingReview(true);
+    try {
+      await deleteReview(id, unitReview.id);
+      toast.success('Avaliação apagada.');
+      await loadReviews();
+    } catch {
+      toast.error('Erro ao apagar a avaliação.');
+    } finally {
+      setDeletingReview(false);
+    }
+  };
+
+  const handleHideReview = async (reviewId: string) => {
     if (!id) return;
     try {
-      await deleteRecommendationComment(id, commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-      setRec((prev) =>
-        prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : prev
-      );
+      await hideReview(id, reviewId);
+      toast.success('Avaliação ocultada.');
+      await loadReviews();
     } catch {
-      toast.error('Erro ao remover o comentário.');
+      toast.error('Erro ao ocultar a avaliação.');
     }
   };
 
@@ -218,12 +244,6 @@ export function RecommendationDetailPage() {
           )}
         </div>
         {rec.professionalName && <p className="text-muted-foreground">{rec.professionalName}</p>}
-        {rec.rating != null && (
-          <p className="text-sm font-medium" aria-label={`Nota ${rec.rating} de 5`}>
-            {'★'.repeat(rec.rating)}
-            <span className="text-muted-foreground">{'★'.repeat(5 - rec.rating)}</span>
-          </p>
-        )}
       </div>
 
       <dl className="grid grid-cols-1 gap-2 text-sm">
@@ -301,33 +321,6 @@ export function RecommendationDetailPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant={rec.myVote === 'LIKE' ? 'default' : 'outline'}
-          size="sm"
-          className="min-h-[44px]"
-          onClick={() => handleVote('LIKE')}
-          disabled={voting}
-          aria-pressed={rec.myVote === 'LIKE'}
-          aria-label="Curtir"
-        >
-          <ThumbsUp className="mr-1 h-4 w-4" aria-hidden="true" /> {rec.likeCount}
-        </Button>
-        <Button
-          type="button"
-          variant={rec.myVote === 'DISLIKE' ? 'default' : 'outline'}
-          size="sm"
-          className="min-h-[44px]"
-          onClick={() => handleVote('DISLIKE')}
-          disabled={voting}
-          aria-pressed={rec.myVote === 'DISLIKE'}
-          aria-label="Não curtir"
-        >
-          <ThumbsDown className="mr-1 h-4 w-4" aria-hidden="true" /> {rec.dislikeCount}
-        </Button>
-      </div>
-
       {rec.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {rec.tags.map((t) => (
@@ -337,8 +330,6 @@ export function RecommendationDetailPage() {
           ))}
         </div>
       )}
-
-      {rec.comment && <p className="whitespace-pre-line text-sm leading-relaxed">{rec.comment}</p>}
 
       {rec.openingHours.length > 0 && (
         <section className="space-y-2">
@@ -386,50 +377,100 @@ export function RecommendationDetailPage() {
 
       <section className="space-y-3 border-t pt-4">
         <h2 className="text-lg font-heading font-semibold">
-          Comentários
-          {rec.commentCount > 0 && (
-            <span className="text-muted-foreground"> ({rec.commentCount})</span>
-          )}
+          Avaliações
+          {reviews.length > 0 && <span className="text-muted-foreground"> ({reviews.length})</span>}
         </h2>
-        <form onSubmit={handleAddComment} className="flex gap-2">
-          <Input
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Escreva um comentário…"
-            maxLength={1000}
-            aria-label="Comentário"
-          />
-          <Button
-            type="submit"
-            className="min-h-[44px]"
-            disabled={postingComment || !commentText.trim()}
-          >
-            Enviar
-          </Button>
-        </form>
-        {comments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Seja o primeiro a comentar.</p>
+
+        {reviews.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>
         ) : (
           <ul className="space-y-3">
-            {comments.map((c) => (
-              <li key={c.id} className="rounded-md border p-3">
+            {reviews.map((rv) => (
+              <li key={rv.id} className="rounded-md border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{c.authorName ?? 'Usuário'}</span>
-                  {(user?.id === c.authorUserId || canModerate) && (
+                  <span className="text-sm font-medium">
+                    {rv.authorName ?? 'Morador do condomínio'}
+                  </span>
+                  {canModerate && (
                     <button
                       type="button"
-                      onClick={() => handleDeleteComment(c.id)}
-                      aria-label="Excluir comentário"
-                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => handleHideReview(rv.id)}
+                      aria-label="Ocultar avaliação"
+                      className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                 </div>
-                <p className="mt-1 whitespace-pre-line text-sm">{c.text}</p>
+                <p
+                  className="mt-1 flex items-center gap-1 text-sm"
+                  aria-label={`Nota ${rv.rating} de 5`}
+                >
+                  {'★'.repeat(rv.rating)}
+                  <span className="text-muted-foreground">{'★'.repeat(5 - rv.rating)}</span>
+                  {rv.sentiment === 'LIKE' ? (
+                    <ThumbsUp className="ml-1 h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                  ) : (
+                    <ThumbsDown
+                      className="ml-1 h-3.5 w-3.5 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  )}
+                </p>
+                <p className="mt-1 whitespace-pre-line text-sm">{rv.text}</p>
               </li>
             ))}
           </ul>
+        )}
+
+        {!user ? (
+          <Button
+            type="button"
+            className="min-h-[44px]"
+            onClick={() => promptLogin({ reason: 'Avaliar é para quem tem conta.' })}
+          >
+            Avaliar
+          </Button>
+        ) : editingReview && unitReview?.mine ? (
+          <ReviewForm
+            initialValues={{
+              sentiment: unitReview.sentiment,
+              rating: unitReview.rating,
+              text: unitReview.text,
+            }}
+            onSubmit={handleUpdateReview}
+            onCancel={() => setEditingReview(false)}
+            submitting={submittingReview}
+            submitLabel="Salvar avaliação"
+          />
+        ) : unitReview ? (
+          <div className="rounded-md border p-3 text-sm">
+            <p>Seu apartamento já avaliou, por {unitReview.authorName ?? 'você'}.</p>
+            {unitReview.mine && (
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="min-h-[44px]"
+                  onClick={() => setEditingReview(true)}
+                >
+                  <Pencil aria-hidden="true" /> Editar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="min-h-[44px]"
+                  onClick={handleDeleteReview}
+                  disabled={deletingReview}
+                >
+                  <Trash2 aria-hidden="true" /> {deletingReview ? 'Apagando…' : 'Apagar'}
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <ReviewForm onSubmit={handleCreateReview} submitting={submittingReview} />
         )}
       </section>
 

@@ -15,7 +15,13 @@ import {
   uploadRecommendationPhoto,
   deleteRecommendationPhoto,
   getRecommendationPhotoUrl,
+  listReviews,
+  createReview,
+  updateReview,
+  deleteReview,
+  hideReview,
   type RecommendationBody,
+  type ReviewBody,
 } from './recommendationsApi';
 
 const get = vi.mocked(api.get);
@@ -110,5 +116,58 @@ describe('recommendationsApi — contrato com o backend', () => {
     const url = await getRecommendationPhotoUrl('r1', 'p1');
     expect(get).toHaveBeenCalledWith('/recommendations/r1/photos/p1/url');
     expect(url).toBe('https://minio/signed');
+  });
+
+  it('listReviews faz GET em /reviews', async () => {
+    const reviews = [
+      {
+        id: 'rv1',
+        sentiment: 'LIKE',
+        rating: 5,
+        text: 'Ótimo atendimento, recomendo muito.',
+        createdAt: '2026-06-06T00:00:00Z',
+        mine: false,
+        authorName: null,
+        unitCode: null,
+      },
+    ];
+    get.mockResolvedValue({ data: reviews });
+
+    const result = await listReviews('r1');
+
+    expect(get).toHaveBeenCalledWith('/recommendations/r1/reviews');
+    expect(result).toBe(reviews);
+  });
+
+  it('createReview faz POST em /reviews com o corpo e retorna a avaliação criada', async () => {
+    const body: ReviewBody = { sentiment: 'LIKE', rating: 5, text: 'Muito bom, recomendo.' };
+    const created = { id: 'rv1', ...body, createdAt: '2026-06-06T00:00:00Z', mine: true };
+    post.mockResolvedValue({ data: created });
+
+    const result = await createReview('r1', body);
+
+    expect(post).toHaveBeenCalledWith('/recommendations/r1/reviews', body);
+    expect(result).toBe(created);
+  });
+
+  it('updateReview faz PUT em /reviews/{reviewId} com o corpo', async () => {
+    const body: ReviewBody = { sentiment: 'DISLIKE', rating: 2, text: 'Não gostei do serviço.' };
+    put.mockResolvedValue({ data: { id: 'rv1', ...body } });
+
+    await updateReview('r1', 'rv1', body);
+
+    expect(put).toHaveBeenCalledWith('/recommendations/r1/reviews/rv1', body);
+  });
+
+  it('deleteReview faz DELETE em /reviews/{reviewId}', async () => {
+    del.mockResolvedValue({ data: undefined });
+    await deleteReview('r1', 'rv1');
+    expect(del).toHaveBeenCalledWith('/recommendations/r1/reviews/rv1');
+  });
+
+  it('hideReview faz POST em /reviews/{reviewId}/hide sem body', async () => {
+    post.mockResolvedValue({ data: undefined });
+    await hideReview('r1', 'rv1');
+    expect(post).toHaveBeenCalledWith('/recommendations/r1/reviews/rv1/hide');
   });
 });

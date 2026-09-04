@@ -32,6 +32,7 @@ public class RecommendationReviewService {
   @Transactional
   public ReviewView create(
       UUID recommendationId, UUID actorId, UUID actorUnitId, ReviewRequest req) {
+    validate(req);
     if (actorUnitId == null) {
       throw new RecommendationException(
           "REVIEW_REQUIRES_UNIT", "Só moradores com unidade podem avaliar indicações.");
@@ -58,6 +59,7 @@ public class RecommendationReviewService {
 
   @Transactional
   public ReviewView edit(UUID recommendationId, UUID reviewId, UUID actorId, ReviewRequest req) {
+    validate(req);
     RecommendationReview review = loadOwned(recommendationId, reviewId, actorId);
     review.edit(req.sentiment(), req.rating().shortValue(), req.text());
     reviewRepo.save(review);
@@ -100,6 +102,26 @@ public class RecommendationReviewService {
     review.hide();
     reviewRepo.save(review);
     recountAndSave(load(recommendationId));
+  }
+
+  // ReviewRequest#text já chega stripado (compact constructor do record) quando a chamada vem da
+  // fronteira HTTP com @Valid — mas ReviewRequest também é montado programaticamente em
+  // RecommendationService.create (indicação + primeira avaliação), onde as anotações de Bean
+  // Validation nunca são acionadas. Sem esta checagem de domínio, um texto curto ou uma nota fora
+  // de 1..5 vindos desse caminho só seriam barrados pela CHECK do banco (chk_review_rating /
+  // chk_review_text), virando 500 em vez de 400.
+  private void validate(ReviewRequest req) {
+    if (req.sentiment() == null
+        || req.rating() == null
+        || req.rating() < 1
+        || req.rating() > 5
+        || req.text() == null
+        || req.text().length() < 10) {
+      throw new RecommendationException(
+          "REVIEW_INVALID",
+          "Avaliação precisa de sentimento, nota entre 1 e 5 e comentário com pelo menos 10"
+              + " caracteres.");
+    }
   }
 
   private List<ReviewView> toViews(

@@ -135,6 +135,33 @@ class RecommendationReviewServiceTest {
   }
 
   @Test
+  void create_textoCurto_lancaErroDeDominio() {
+    // Caminho interno (RecommendationService.create monta o ReviewRequest na mão, sem @Valid):
+    // sem esta checagem de dominio, um texto curto so seria barrado pela CHECK do banco (500).
+    assertThatThrownBy(
+            () -> service.create(RID, ACTOR, UNIT, req(ReviewSentiment.LIKE, 5, "curto")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_INVALID");
+    verify(reviewRepo, never()).save(any());
+  }
+
+  @Test
+  void create_notaForaDeEscala_lancaErroDeDominio() {
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    RID,
+                    ACTOR,
+                    UNIT,
+                    req(ReviewSentiment.LIKE, 6, "Comentário com dez ou mais caracteres.")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_INVALID");
+    verify(reviewRepo, never()).save(any());
+  }
+
+  @Test
   void create_apartamentoJaAvaliou_lancaErroDeDominio() {
     when(reviewRepo.findByRecommendationIdAndUnitId(RID, UNIT))
         .thenReturn(Optional.of(existingReview()));
@@ -187,6 +214,16 @@ class RecommendationReviewServiceTest {
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("FORBIDDEN");
+  }
+
+  @Test
+  void edit_textoCurto_lancaErroDeDominio() {
+    assertThatThrownBy(
+            () -> service.edit(RID, REVIEW_ID, ACTOR, req(ReviewSentiment.LIKE, 5, "curto")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_INVALID");
+    verify(reviewRepo, never()).save(any());
   }
 
   @Test

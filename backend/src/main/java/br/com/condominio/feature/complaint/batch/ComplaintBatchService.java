@@ -50,7 +50,7 @@ public class ComplaintBatchService {
     if (expectedText != null && !expectedText.equals(text)) {
       throw new ComplaintException(
           "BATCH_STALE",
-          "Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes"
+          "Alguma reclamação mudou depois que o texto foi gerado. Gere o texto de novo e copie antes"
               + " de confirmar.");
     }
     ComplaintBatch batch = batches.save(ComplaintBatch.create(actor, now, text, list.size()));
@@ -73,13 +73,13 @@ public class ComplaintBatchService {
     Set<UUID> distinct = new LinkedHashSet<>(ids);
     List<Complaint> list = repo.findAllById(distinct);
     if (list.size() != distinct.size()) {
-      throw new ComplaintException("NOT_FOUND", "Algum chamado do lote não foi encontrado.");
+      throw new ComplaintException("NOT_FOUND", "Alguma reclamação do lote não foi encontrada.");
     }
     for (Complaint c : list) {
       if (c.getStatus() != ComplaintStatus.READY) {
         throw new ComplaintException(
             "INVALID_STATE",
-            "O chamado #" + c.getCode() + " não está mais pronto para encaminhar. Recarregue.");
+            "A reclamação #" + c.getCode() + " não está mais pronta para encaminhar. Recarregue.");
       }
     }
     return list;

@@ -26,7 +26,8 @@ public class ComplaintService {
   @Transactional
   public ComplaintView create(UUID userId, UUID unitId, ComplaintFields f) {
     if (unitId == null) {
-      throw new ComplaintException("NO_UNIT", "Só moradores com unidade podem abrir chamados.");
+      throw new ComplaintException(
+          "NO_UNIT", "Só moradores com unidade podem registrar reclamações.");
     }
     catalog.requireUsable(f.typeId(), f.subtypeId(), f.locationId(), Set.of());
     Complaint c = repo.saveAndFlush(Complaint.create(userId, unitId, f));
@@ -121,6 +122,6 @@ public class ComplaintService {
   }
 
   static ComplaintException notFound() {
-    return new ComplaintException("NOT_FOUND", "Chamado não encontrado.");
+    return new ComplaintException("NOT_FOUND", "Reclamação não encontrada.");
   }
 }

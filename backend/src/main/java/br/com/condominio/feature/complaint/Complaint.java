@@ -267,14 +267,14 @@ public class Complaint {
   private void requireStatus(ComplaintStatus... allowed) {
     if (!Arrays.asList(allowed).contains(status)) {
       throw new ComplaintException(
-          "INVALID_STATE", "Ação não permitida para chamado com status " + status + ".");
+          "INVALID_STATE", "Ação não permitida para reclamação com status " + status + ".");
     }
   }
 
   /** Não-autor recebe "não encontrado": não revela que o chamado existe. */
   private void requireAuthor(UUID actor) {
     if (!isAuthor(actor)) {
-      throw new ComplaintException("NOT_FOUND", "Chamado não encontrado.");
+      throw new ComplaintException("NOT_FOUND", "Reclamação não encontrada.");
     }
   }
 

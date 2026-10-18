@@ -36,7 +36,7 @@ public class ComplaintPhotoService {
     Complaint c = load(id);
     c.requirePhotoEditableBy(actor);
     if (photoRepo.countByComplaintId(id) >= MAX_PHOTOS) {
-      throw new ComplaintException("PHOTO_LIMIT", "Máximo de 3 fotos por chamado.");
+      throw new ComplaintException("PHOTO_LIMIT", "Máximo de 3 fotos por reclamação.");
     }
     if (file.getSize() > MAX_PHOTO_BYTES) {
       throw new ComplaintException("PHOTO_TOO_LARGE", "Foto deve ter no máximo 1MB.");

@@ -23,12 +23,12 @@ public class ComplaintBatchTextRenderer {
                     .thenComparingLong(BatchLine::code))
             .toList();
     int n = sorted.size();
-    StringBuilder sb = new StringBuilder("Chamados — HELBOR TRILOGY HOME\n");
+    StringBuilder sb = new StringBuilder("Reclamações — HELBOR TRILOGY HOME\n");
     sb.append("Lote de ")
         .append(BR.format(date))
         .append(" (")
         .append(n)
-        .append(n == 1 ? " chamado" : " chamados")
+        .append(n == 1 ? " reclamação" : " reclamações")
         .append(")\n");
     String currentType = null;
     int i = 0;

@@ -67,7 +67,7 @@ class ComplaintBatchServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                "Descrição do chamado " + code));
+                "Descrição da reclamação " + code));
     c.drainChanges();
     ReflectionTestUtils.setField(c, "id", UUID.randomUUID());
     ReflectionTestUtils.setField(c, "code", code);

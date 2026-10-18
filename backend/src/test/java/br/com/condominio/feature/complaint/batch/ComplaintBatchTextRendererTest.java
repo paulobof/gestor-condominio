@@ -38,8 +38,8 @@ class ComplaintBatchTextRendererTest {
     assertThat(text)
         .isEqualTo(
             """
-            Chamados — HELBOR TRILOGY HOME
-            Lote de 17/10/2026 (3 chamados)
+            Reclamações — HELBOR TRILOGY HOME
+            Lote de 17/10/2026 (3 reclamações)
 
             MANUTENÇÃO
             1. #123 Pintura — Torre 2 (hall do 5º andar)
@@ -68,6 +68,6 @@ class ComplaintBatchTextRendererTest {
         renderer.render(
             date,
             List.of(new BatchLine(1, "Outros", 5, "Outros", "Portaria", null, "Interfone mudo")));
-    assertThat(text).contains("(1 chamado)");
+    assertThat(text).contains("(1 reclamação)");
   }
 }

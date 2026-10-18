@@ -176,7 +176,7 @@ class ComplaintControllerWebTest {
   @Test
   void addPhoto_limit_is400() throws Exception {
     when(photoService.addPhoto(eq(CID), eq(UID), any()))
-        .thenThrow(new ComplaintException("PHOTO_LIMIT", "Máximo de 3 fotos por chamado."));
+        .thenThrow(new ComplaintException("PHOTO_LIMIT", "Máximo de 3 fotos por reclamação."));
     mvc.perform(
             multipart("/api/complaints/{id}/photos", CID)
                 .file(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[] {1}))

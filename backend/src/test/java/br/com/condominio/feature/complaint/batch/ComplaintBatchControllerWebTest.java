@@ -52,14 +52,14 @@ class ComplaintBatchControllerWebTest {
   @Test
   void preview_returnsText() throws Exception {
     UUID id = UUID.randomUUID();
-    when(service.preview(List.of(id))).thenReturn(new BatchPreview("Chamados — X", 1));
+    when(service.preview(List.of(id))).thenReturn(new BatchPreview("Reclamações — X", 1));
     mvc.perform(
             post("/api/admin/complaints/batches/preview")
                 .with(MockAuth.user(UID, PERM))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"ids\":[\"" + id + "\"]}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.text").value("Chamados — X"));
+        .andExpect(jsonPath("$.text").value("Reclamações — X"));
   }
 
   @Test

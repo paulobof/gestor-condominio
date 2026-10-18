@@ -37,6 +37,9 @@ public class FeatureFlags {
   @Value("${app.feature.parkingrental.enabled:true}")
   private boolean parkingrental;
 
+  @Value("${app.feature.complaints.enabled:false}")
+  private boolean complaints;
+
   @Value("${app.feature.accessmanagement.enabled:true}")
   private boolean accessmanagement;
 
@@ -50,6 +53,7 @@ public class FeatureFlags {
     m.put("recommendations", recommendations);
     m.put("classifieds", classifieds);
     m.put("parkingrental", parkingrental);
+    m.put("complaints", complaints);
     m.put("accessmanagement", accessmanagement);
     return m;
   }

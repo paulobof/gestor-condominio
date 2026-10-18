@@ -107,6 +107,7 @@ app:
       bucket-classifieds: ${MINIO_BUCKET_CLASSIFIEDS:classifieds}
       bucket-recommendations: ${MINIO_BUCKET_RECOMMENDATIONS:recommendations}
       bucket-documents: ${MINIO_BUCKET_DOCUMENTS:documents}
+      bucket-complaints: ${MINIO_BUCKET_COMPLAINTS:complaints}
       presigned-ttl-photos-seconds: ${MINIO_PRESIGNED_TTL_PHOTOS_SECONDS:600}
   whatsapp:
     base-url: ${APP_WHATSAPP_BASE_URL:http://localhost:9999}
@@ -143,6 +144,9 @@ app:
       enabled: ${APP_FEATURE_DOCUMENTS_ENABLED:true}
     accessmanagement:
       enabled: ${APP_FEATURE_ACCESSMANAGEMENT_ENABLED:true}
+    # Em construção: desligado por padrão até o módulo inteiro estar entregue.
+    complaints:
+      enabled: ${APP_FEATURE_COMPLAINTS_ENABLED:false}
   recommendation:
     consent-base-url: ${APP_RECOMMENDATION_CONSENT_BASE_URL:http://localhost:5173/indicacoes/pendentes}
 

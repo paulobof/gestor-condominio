@@ -15,7 +15,7 @@ Sistema de gestão do **HELBOR TRILOGY HOME**. Spec: `docs/superpowers/specs/202
 
 ## Soft delete
 
-**Sempre** soft delete via `@SQLDelete` + `@SQLRestriction` (Hibernate 6). Hard delete **proibido**, exceto: `user_role`, `user_permission_grant_log`, `role_permission`, `*_opening_hours`, `recommendation_tag`, `sensitive_access_log`, `proof_access_log` (M:N puros e logs imutáveis).
+**Sempre** soft delete via `@SQLDelete` + `@SQLRestriction` (Hibernate 6). Hard delete **proibido**, exceto: `user_role`, `user_permission_grant_log`, `role_permission`, `*_opening_hours`, `recommendation_tag`, `sensitive_access_log`, `proof_access_log`, `complaint_event` (M:N puros e logs imutáveis).
 
 Limitações: `@SQLRestriction` **não filtra** queries nativas nem `JdbcTemplate` — incluir `WHERE deleted_at IS NULL` manualmente. **Nunca** `CascadeType.REMOVE`.
 

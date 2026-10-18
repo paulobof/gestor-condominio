@@ -14,5 +14,6 @@ public class MinioProperties {
   private String bucketClassifieds = "classifieds";
   private String bucketRecommendations = "recommendations";
   private String bucketDocuments = "documents";
+  private String bucketComplaints = "complaints";
   private int presignedTtlPhotosSeconds = 600;
 }

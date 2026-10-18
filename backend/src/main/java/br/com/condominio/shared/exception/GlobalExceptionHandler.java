@@ -3,6 +3,7 @@ package br.com.condominio.shared.exception;
 import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.announcement.AnnouncementException;
 import br.com.condominio.feature.classified.ClassifiedException;
+import br.com.condominio.feature.complaint.ComplaintException;
 import br.com.condominio.feature.document.DocumentException;
 import br.com.condominio.feature.faq.FaqException;
 import br.com.condominio.feature.info.InfoException;
@@ -67,6 +68,26 @@ public class GlobalExceptionHandler {
         switch (ex.getCode()) {
           case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
           case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+          default -> HttpStatus.BAD_REQUEST;
+        };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(ComplaintException.class)
+  public ResponseEntity<ApiError> handleComplaint(ComplaintException ex) {
+    HttpStatus status =
+        switch (ex.getCode()) {
+          case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
+          case "FORBIDDEN", "NO_UNIT" -> HttpStatus.FORBIDDEN;
+          case "INVALID_STATE", "DUPLICATE_NAME" -> HttpStatus.CONFLICT;
+          case "CATALOG_INVALID" -> HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

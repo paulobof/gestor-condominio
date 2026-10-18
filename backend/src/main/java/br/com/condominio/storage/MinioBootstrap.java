@@ -21,7 +21,8 @@ public class MinioBootstrap {
           new String[] {
             props.getBucketClassifieds(),
             props.getBucketRecommendations(),
-            props.getBucketDocuments()
+            props.getBucketDocuments(),
+            props.getBucketComplaints()
           }) {
         try {
           storage.ensureBucketExists(bucket);

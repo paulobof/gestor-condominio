@@ -85,6 +85,20 @@ class ComplaintAdminServiceTest {
   }
 
   @Test
+  void effectiveStatuses_emptyOrNull_defaultsToPending() {
+    Set<ComplaintStatus> pending =
+        Set.of(ComplaintStatus.OPEN, ComplaintStatus.IN_REVIEW, ComplaintStatus.READY);
+    assertThat(ComplaintAdminService.effectiveStatuses(Set.of())).isEqualTo(pending);
+    assertThat(ComplaintAdminService.effectiveStatuses(null)).isEqualTo(pending);
+  }
+
+  @Test
+  void effectiveStatuses_requested_isKept() {
+    assertThat(ComplaintAdminService.effectiveStatuses(Set.of(ComplaintStatus.FORWARDED)))
+        .isEqualTo(Set.of(ComplaintStatus.FORWARDED));
+  }
+
+  @Test
   void startReview_movesToInReviewAndFlushesEvents() {
     Complaint c = persisted(ComplaintStatus.OPEN);
     service.startReview(c.getId(), admin);

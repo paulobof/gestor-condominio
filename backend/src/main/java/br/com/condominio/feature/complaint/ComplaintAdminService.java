@@ -39,9 +39,13 @@ public class ComplaintAdminService {
   private final UnitRepository units;
   private final Clock clock;
 
+  static Set<ComplaintStatus> effectiveStatuses(Set<ComplaintStatus> requested) {
+    return requested == null || requested.isEmpty() ? PENDING : requested;
+  }
+
   @Transactional(readOnly = true)
   public Page<ComplaintAdminView> queue(Set<ComplaintStatus> statuses, int page, int size) {
-    Set<ComplaintStatus> filter = statuses == null || statuses.isEmpty() ? PENDING : statuses;
+    Set<ComplaintStatus> filter = effectiveStatuses(statuses);
     PageRequest pr =
         PageRequest.of(
             Math.max(page, 0),

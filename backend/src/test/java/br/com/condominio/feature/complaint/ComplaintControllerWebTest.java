@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import br.com.condominio.feature.complaint.dto.ComplaintPhotoView;
 import br.com.condominio.feature.complaint.dto.ComplaintView;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
@@ -21,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
@@ -35,6 +37,7 @@ class ComplaintControllerWebTest {
 
   @Autowired private MockMvc mvc;
   @MockBean private ComplaintService service;
+  @MockBean private ComplaintPhotoService photoService;
   @MockBean private JwtService jwtService;
 
   static ComplaintView view(ComplaintStatus status) {
@@ -142,5 +145,48 @@ class ComplaintControllerWebTest {
     mvc.perform(delete("/api/complaints/{id}", CID).with(MockAuth.user(UID)))
         .andExpect(status().isNoContent());
     verify(service).cancel(CID, UID);
+  }
+
+  @Test
+  void addPhoto_returns201() throws Exception {
+    UUID pid = UUID.randomUUID();
+    when(photoService.addPhoto(eq(CID), eq(UID), any()))
+        .thenReturn(new ComplaintPhotoView(pid, 0, "image/jpeg"));
+    mvc.perform(
+            multipart("/api/complaints/{id}/photos", CID)
+                .file(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[] {1}))
+                .with(MockAuth.user(UID)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(pid.toString()));
+  }
+
+  @Test
+  void addPhoto_limit_is400() throws Exception {
+    when(photoService.addPhoto(eq(CID), eq(UID), any()))
+        .thenThrow(new ComplaintException("PHOTO_LIMIT", "Máximo de 3 fotos por chamado."));
+    mvc.perform(
+            multipart("/api/complaints/{id}/photos", CID)
+                .file(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[] {1}))
+                .with(MockAuth.user(UID)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("PHOTO_LIMIT"));
+  }
+
+  @Test
+  void photoUrl_setsNoReferrer() throws Exception {
+    UUID pid = UUID.randomUUID();
+    when(photoService.photoUrl(CID, pid, UID, false)).thenReturn("http://minio/x");
+    mvc.perform(get("/api/complaints/{id}/photos/{pid}/url", CID, pid).with(MockAuth.user(UID)))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Referrer-Policy", "no-referrer"))
+        .andExpect(jsonPath("$.url").value("http://minio/x"));
+  }
+
+  @Test
+  void removePhoto_returns204() throws Exception {
+    UUID pid = UUID.randomUUID();
+    mvc.perform(delete("/api/complaints/{id}/photos/{pid}", CID, pid).with(MockAuth.user(UID)))
+        .andExpect(status().isNoContent());
+    verify(photoService).removePhoto(CID, pid, UID);
   }
 }

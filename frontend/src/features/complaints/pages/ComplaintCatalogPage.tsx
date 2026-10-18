@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,24 +12,32 @@ import {
   createLocation,
   createSubtype,
   createType,
+  moveCatalogItem,
   updateLocation,
   updateSubtype,
   updateType,
   type Catalog,
   type CatalogItem,
   type CatalogItemBody,
+  type CatalogKind,
 } from '../api/complaintsApi';
 
 const nextOrder = (items: CatalogItem[]) =>
   items.reduce((max, i) => Math.max(max, i.sortOrder), 0) + 1;
 
-/** Linha de um item: renomear inline e ativar/desativar. */
+/** Linha de um item: renomear inline, ativar/desativar e mover para cima/baixo. */
 function ItemRow({
   item,
   onSave,
+  onMove,
+  first,
+  last,
 }: {
   item: CatalogItem;
   onSave: (body: CatalogItemBody) => Promise<void>;
+  onMove: (direction: 'UP' | 'DOWN') => void;
+  first: boolean;
+  last: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
@@ -78,6 +86,24 @@ function ItemRow({
         onClick={() => onSave({ name: item.name, sortOrder: item.sortOrder, active: !item.active })}
       >
         {item.active ? 'Desativar' : 'Ativar'}
+      </Button>
+      <Button
+        variant="ghost"
+        className="min-h-[44px] min-w-[44px]"
+        aria-label={`Mover ${item.name} para cima`}
+        disabled={first}
+        onClick={() => onMove('UP')}
+      >
+        <ArrowUp aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        className="min-h-[44px] min-w-[44px]"
+        aria-label={`Mover ${item.name} para baixo`}
+        disabled={last}
+        onClick={() => onMove('DOWN')}
+      >
+        <ArrowDown aria-hidden="true" />
       </Button>
     </li>
   );
@@ -138,6 +164,10 @@ export function ComplaintCatalogPage() {
     }
   };
 
+  const move = (kind: CatalogKind, id: string) => (direction: 'UP' | 'DOWN') => {
+    void run(() => moveCatalogItem(kind, id, direction));
+  };
+
   if (!catalog) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
 
   return (
@@ -157,20 +187,26 @@ export function ComplaintCatalogPage() {
           <CardTitle className="text-lg">Tipos e subtipos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {catalog.types.map((t) => (
+          {catalog.types.map((t, ti) => (
             <fieldset key={t.id} aria-label={t.name} className="space-y-2 rounded-md border p-3">
               <ul>
                 <ItemRow
                   item={t}
                   onSave={(body) => run(() => updateType(t.id, body)).then(() => {})}
+                  onMove={move('types', t.id)}
+                  first={ti === 0}
+                  last={ti === catalog.types.length - 1}
                 />
               </ul>
               <ul className="ml-4 space-y-1 border-l pl-4">
-                {t.subtypes.map((s) => (
+                {t.subtypes.map((s, si) => (
                   <ItemRow
                     key={s.id}
                     item={s}
                     onSave={(body) => run(() => updateSubtype(s.id, body)).then(() => {})}
+                    onMove={move('subtypes', s.id)}
+                    first={si === 0}
+                    last={si === t.subtypes.length - 1}
                   />
                 ))}
               </ul>
@@ -201,11 +237,14 @@ export function ComplaintCatalogPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <ul className="space-y-1">
-            {catalog.locations.map((l) => (
+            {catalog.locations.map((l, li) => (
               <ItemRow
                 key={l.id}
                 item={l}
                 onSave={(body) => run(() => updateLocation(l.id, body)).then(() => {})}
+                onMove={move('locations', l.id)}
+                first={li === 0}
+                last={li === catalog.locations.length - 1}
               />
             ))}
           </ul>

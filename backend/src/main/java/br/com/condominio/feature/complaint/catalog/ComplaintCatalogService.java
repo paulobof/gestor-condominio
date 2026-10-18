@@ -106,6 +106,42 @@ public class ComplaintCatalogService {
     return CatalogItemView.of(l);
   }
 
+  @Transactional
+  public void moveType(UUID id, MoveDirection direction) {
+    move(types.findAllByOrderBySortOrderAscNameAsc(), id, direction);
+  }
+
+  @Transactional
+  public void moveSubtype(UUID id, MoveDirection direction) {
+    ComplaintSubtype s = subtypes.findById(id).orElseThrow(ComplaintCatalogService::notFound);
+    move(subtypes.findByTypeIdOrderBySortOrderAscNameAsc(s.getTypeId()), id, direction);
+  }
+
+  @Transactional
+  public void moveLocation(UUID id, MoveDirection direction) {
+    move(locations.findAllByOrderBySortOrderAscNameAsc(), id, direction);
+  }
+
+  /**
+   * Troca o item com o vizinho na ordem de exibição e renumera os irmãos 1..n — assim empates de
+   * {@code sort_order} (itens criados com a mesma ordem) não impedem a troca. Na ponta: no-op.
+   */
+  private static <T extends CatalogEntry> void move(
+      List<T> ordered, UUID id, MoveDirection direction) {
+    List<T> list = new ArrayList<>(ordered);
+    int i = -1;
+    for (int k = 0; k < list.size(); k++) {
+      if (list.get(k).getId().equals(id)) i = k;
+    }
+    if (i < 0) throw notFound();
+    int j = direction == MoveDirection.UP ? i - 1 : i + 1;
+    if (j < 0 || j >= list.size()) return;
+    Collections.swap(list, i, j);
+    for (int k = 0; k < list.size(); k++) {
+      list.get(k).reorder(k + 1);
+    }
+  }
+
   /**
    * Valida a escolha de tipo/subtipo/local. {@code grandfathered}: ids que o chamado já usa — um
    * item desativado depois continua aceito para ele, senão o admin não conseguiria editar só a

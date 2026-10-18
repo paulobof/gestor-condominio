@@ -275,3 +275,10 @@ export function backendMessage(e: unknown, fallback: string): string {
 export async function adminSetSyndicResponse(id: string, text: string) {
   return (await api.put(`/admin/complaints/${id}/response`, { text })).data as AdminComplaintDetail;
 }
+
+export type CatalogKind = 'types' | 'subtypes' | 'locations';
+
+/** Troca o item com o vizinho (o backend renumera os irmãos numa transação). */
+export async function moveCatalogItem(kind: CatalogKind, id: string, direction: 'UP' | 'DOWN') {
+  await api.post(`/admin/complaint-catalog/${kind}/${id}/move`, { direction });
+}

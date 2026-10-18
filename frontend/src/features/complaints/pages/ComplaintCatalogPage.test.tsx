@@ -15,11 +15,18 @@ vi.mock('../api/complaintsApi', async (orig) => {
     updateSubtype: vi.fn(),
     createLocation: vi.fn(),
     updateLocation: vi.fn(),
+    moveCatalogItem: vi.fn(),
   };
 });
 
 import { ComplaintCatalogPage } from './ComplaintCatalogPage';
-import { adminCatalog, createSubtype, createType, updateLocation } from '../api/complaintsApi';
+import {
+  adminCatalog,
+  createSubtype,
+  createType,
+  moveCatalogItem,
+  updateLocation,
+} from '../api/complaintsApi';
 import { toast } from 'sonner';
 
 beforeEach(() => {
@@ -34,7 +41,10 @@ beforeEach(() => {
         subtypes: [{ id: 's1', name: 'Pintura', active: true, sortOrder: 1 }],
       },
     ],
-    locations: [{ id: 'l1', name: 'Torre 1', active: true, sortOrder: 1 }],
+    locations: [
+      { id: 'l1', name: 'Torre 1', active: true, sortOrder: 1 },
+      { id: 'l2', name: 'Garagem', active: true, sortOrder: 2 },
+    ],
   });
 });
 
@@ -99,5 +109,45 @@ describe('ComplaintCatalogPage', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('Já existe um item com esse nome.')
     );
+  });
+
+  it('move local para baixo e recarrega; pontas ficam desabilitadas', async () => {
+    vi.mocked(moveCatalogItem).mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByText('Torre 1');
+    expect(screen.getByRole('button', { name: 'Mover Torre 1 para cima' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Mover Garagem para baixo' })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mover Torre 1 para baixo' }));
+    await waitFor(() => expect(moveCatalogItem).toHaveBeenCalledWith('locations', 'l1', 'DOWN'));
+    expect(adminCatalog).toHaveBeenCalledTimes(2);
+  });
+
+  it('move tipo e subtipo com o tipo certo de item', async () => {
+    vi.mocked(adminCatalog).mockResolvedValue({
+      types: [
+        {
+          id: 't1',
+          name: 'Manutenção',
+          active: true,
+          sortOrder: 1,
+          subtypes: [
+            { id: 's1', name: 'Pintura', active: true, sortOrder: 1 },
+            { id: 's2', name: 'Elétrica', active: true, sortOrder: 2 },
+          ],
+        },
+        { id: 't2', name: 'Limpeza', active: true, sortOrder: 2, subtypes: [] },
+      ],
+      locations: [],
+    });
+    vi.mocked(moveCatalogItem).mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByText('Limpeza');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mover Limpeza para cima' }));
+    await waitFor(() => expect(moveCatalogItem).toHaveBeenCalledWith('types', 't2', 'UP'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mover Elétrica para cima' }));
+    await waitFor(() => expect(moveCatalogItem).toHaveBeenCalledWith('subtypes', 's2', 'UP'));
   });
 });

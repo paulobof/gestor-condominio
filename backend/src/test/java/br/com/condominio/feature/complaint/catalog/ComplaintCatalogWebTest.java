@@ -2,6 +2,7 @@ package br.com.condominio.feature.complaint.catalog;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -95,5 +96,41 @@ class ComplaintCatalogWebTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(BODY))
         .andExpect(status().isCreated());
+  }
+
+  @Test
+  void move_withoutPermission_is403() throws Exception {
+    mvc.perform(
+            post("/api/admin/complaint-catalog/types/{id}/move", UUID.randomUUID())
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"direction\":\"UP\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void move_eachKind_returns204() throws Exception {
+    UUID id = UUID.randomUUID();
+    for (String kind : List.of("types", "subtypes", "locations")) {
+      mvc.perform(
+              post("/api/admin/complaint-catalog/{kind}/{id}/move", kind, id)
+                  .with(MockAuth.user(UID, PERM))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"direction\":\"DOWN\"}"))
+          .andExpect(status().isNoContent());
+    }
+    verify(service).moveType(id, MoveDirection.DOWN);
+    verify(service).moveSubtype(id, MoveDirection.DOWN);
+    verify(service).moveLocation(id, MoveDirection.DOWN);
+  }
+
+  @Test
+  void move_missingDirection_is400() throws Exception {
+    mvc.perform(
+            post("/api/admin/complaint-catalog/types/{id}/move", UUID.randomUUID())
+                .with(MockAuth.user(UID, PERM))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest());
   }
 }

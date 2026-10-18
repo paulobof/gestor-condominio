@@ -67,4 +67,25 @@ public class ComplaintCatalogAdminController {
       @PathVariable UUID id, @Valid @RequestBody CatalogItemRequest body) {
     return service.updateLocation(id, body);
   }
+
+  @PostMapping("/types/{id}/move")
+  @PreAuthorize(CAN)
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void moveType(@PathVariable UUID id, @Valid @RequestBody MoveRequest body) {
+    service.moveType(id, body.direction());
+  }
+
+  @PostMapping("/subtypes/{id}/move")
+  @PreAuthorize(CAN)
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void moveSubtype(@PathVariable UUID id, @Valid @RequestBody MoveRequest body) {
+    service.moveSubtype(id, body.direction());
+  }
+
+  @PostMapping("/locations/{id}/move")
+  @PreAuthorize(CAN)
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void moveLocation(@PathVariable UUID id, @Valid @RequestBody MoveRequest body) {
+    service.moveLocation(id, body.direction());
+  }
 }

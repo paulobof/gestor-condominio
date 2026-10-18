@@ -46,6 +46,11 @@ public abstract class CatalogEntry {
     updatedAt = Instant.now();
   }
 
+  /** Nova posição na lista de exibição (só a ordem muda; nome e ativo ficam). */
+  public void reorder(int sortOrder) {
+    this.sortOrder = sortOrder;
+  }
+
   public void update(String name, int sortOrder, boolean active) {
     this.name = name.strip();
     this.sortOrder = sortOrder;

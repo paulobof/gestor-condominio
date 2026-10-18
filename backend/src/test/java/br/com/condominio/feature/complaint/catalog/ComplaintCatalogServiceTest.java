@@ -165,4 +165,63 @@ class ComplaintCatalogServiceTest {
     assertThat(idx.typeName(t.getId())).isEqualTo("Manutenção");
     assertThat(idx.subtypeName(UUID.randomUUID())).isEqualTo("—");
   }
+
+  // ---- reordenar ----
+
+  private ComplaintType typeAt(String name, int order) {
+    ComplaintType t = withId(ComplaintType.create(name, order));
+    return t;
+  }
+
+  @Test
+  void moveType_down_swapsWithNextAndRenumbersSequentially() {
+    ComplaintType a = typeAt("A", 5);
+    ComplaintType b = typeAt("B", 5); // empate: só a ordem por nome os separa
+    ComplaintType c = typeAt("C", 9);
+    when(types.findAllByOrderBySortOrderAscNameAsc()).thenReturn(List.of(a, b, c));
+
+    service.moveType(a.getId(), MoveDirection.DOWN);
+
+    assertThat(b.getSortOrder()).isEqualTo(1);
+    assertThat(a.getSortOrder()).isEqualTo(2);
+    assertThat(c.getSortOrder()).isEqualTo(3);
+  }
+
+  @Test
+  void moveLocation_upFromTop_isNoOp() {
+    ComplaintLocation a = withId(ComplaintLocation.create("Garagem", 1));
+    ComplaintLocation b = withId(ComplaintLocation.create("Hall", 2));
+    when(locations.findAllByOrderBySortOrderAscNameAsc()).thenReturn(List.of(a, b));
+
+    service.moveLocation(a.getId(), MoveDirection.UP);
+
+    assertThat(a.getSortOrder()).isEqualTo(1);
+    assertThat(b.getSortOrder()).isEqualTo(2);
+  }
+
+  @Test
+  void moveSubtype_up_onlyAmongSiblingsOfSameType() {
+    UUID typeId = UUID.randomUUID();
+    ComplaintSubtype a = withId(ComplaintSubtype.create(typeId, "Elétrica", 1));
+    ComplaintSubtype b = withId(ComplaintSubtype.create(typeId, "Pintura", 2));
+    when(subtypes.findById(b.getId())).thenReturn(Optional.of(b));
+    when(subtypes.findByTypeIdOrderBySortOrderAscNameAsc(typeId)).thenReturn(List.of(a, b));
+
+    service.moveSubtype(b.getId(), MoveDirection.UP);
+
+    assertThat(b.getSortOrder()).isEqualTo(1);
+    assertThat(a.getSortOrder()).isEqualTo(2);
+  }
+
+  @Test
+  void move_unknownId_isNotFound() {
+    when(types.findAllByOrderBySortOrderAscNameAsc()).thenReturn(List.of(typeAt("A", 1)));
+    assertThatThrownBy(() -> service.moveType(UUID.randomUUID(), MoveDirection.UP))
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+    when(subtypes.findById(any())).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.moveSubtype(UUID.randomUUID(), MoveDirection.UP))
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+  }
 }

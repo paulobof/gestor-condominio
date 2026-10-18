@@ -16,6 +16,7 @@ Moradores registram problemas do prédio (ex.: Manutenção → Pintura) com tip
 | Tipo/subtipo | Cadastráveis pelo admin (tela de catálogo) |
 | Local | Cadastrável pelo admin + complemento livre opcional |
 | Encaminhamento | Lote semanal; app gera texto consolidado; envio manual |
+| Resposta da síndica | **Uma** resposta por chamado (texto livre, editável pelo admin a qualquer momento após encaminhar), visível aos moradores no detalhe e no mural |
 | Notificação WhatsApp ao autor | **Fora do escopo** (fase 2) |
 
 ### Fora do escopo (YAGNI)
@@ -60,11 +61,12 @@ Confirmar o número da migration na implementação (pode haver outra em paralel
   - `location_detail varchar(200) null`, `description varchar(2000) not null`
   - `status varchar(20)`, `due_date date null`
   - `rejection_reason varchar(500) null`, `resolution_note varchar(500) null`
+  - `syndic_response varchar(2000) null`, `syndic_response_at timestamptz null` (resposta da síndica redigida pelo admin; vazio = sem resposta)
   - `batch_id → complaint_batch null`, `forwarded_at`, `resolved_at`, timestamps.
   - Índices: `(status, created_at)`, `(author_user_id)`.
 - **`complaint_photo`**: `id`, `complaint_id`, `object_key`, `content_type`, `size_bytes`, `sort_order`. Máx. 3 por chamado (regra no domínio).
 - **`complaint_batch`**: `id`, `sent_by_user_id`, `sent_at`, `rendered_text text`, `complaint_count int`.
-- **`complaint_event`** (log imutável; hard delete permitido → adicionar à lista de exceções do CLAUDE.md): `id`, `complaint_id`, `actor_user_id`, `kind varchar(30)` (`CREATED`, `EDITED`, `STATUS_CHANGED`, `DUE_DATE_SET`, `PHOTO_ADDED`, `PHOTO_REMOVED`), `from_value`, `to_value`, `created_at`. Nunca guardar PII em `from/to`.
+- **`complaint_event`** (log imutável; hard delete permitido → adicionar à lista de exceções do CLAUDE.md): `id`, `complaint_id`, `actor_user_id`, `kind varchar(30)` (`CREATED`, `EDITED`, `STATUS_CHANGED`, `DUE_DATE_SET`, `RESPONSE_SET`, `PHOTO_ADDED`, `PHOTO_REMOVED`), `from_value`, `to_value`, `created_at`. Nunca guardar PII em `from/to`.
 
 Seed: permissões novas + vínculo ao role admin; catálogo inicial sugerido (editável depois):
 
@@ -114,6 +116,7 @@ O DTO do mural (`ComplaintBoardView`) **não contém** autor nem unidade. Chamad
 | POST | `/batches` | `{ids}` → cria lote, todos `READY → FORWARDED` numa transação; algum id fora de `READY` → 409 e nada muda |
 | GET | `/batches` | histórico de lotes (data, quem, qtde, texto) |
 | PUT | `/{id}/due-date` | `{dueDate}`; só `FORWARDED`; não pode ser no passado; gera `DUE_DATE_SET` |
+| PUT | `/{id}/response` | `{text}` (≤2000; vazio limpa); só `FORWARDED`/`RESOLVED`; atualiza `syndic_response_at`; gera `RESPONSE_SET` (sem o conteúdo no evento) |
 | POST | `/{id}/resolve` | `{note?}`; `FORWARDED → RESOLVED` |
 
 ### Catálogo — `/api/admin/complaint-catalog` (`COMPLAINT_CATALOG_MANAGE`)
@@ -159,10 +162,11 @@ Rotas e páginas (mobile-first, shadcn/ui, touch ≥44px, WCAG AA):
 
 - **`/chamados`** — abas **Mural** e **Meus chamados**; botão "Abrir chamado".
   - Mural: cards com tipo › subtipo, local, trecho da descrição, miniatura, badge de status, "Prazo: dd/MM" quando houver; filtros por tipo/local/status.
+  - Detalhe e card mostram **"Resposta da síndica"** (com data da última atualização) quando houver.
   - Meus chamados: todos os status; recusado mostra o motivo; `OPEN` permite editar/cancelar.
 - **`/chamados/novo`** e **`/chamados/:id/editar`** — selects encadeados tipo → subtipo, select de local + complemento, descrição com contador (2000), até 3 fotos comprimidas com `browser-image-compression` (alvo ≤1MB, recusa no cliente se ainda >1MB), preview e remoção.
 - **`/chamados/:id`** — detalhe com galeria.
-- **`/admin/chamados`** — fila com abas por status; detalhe com edição inline, ações (Iniciar análise, Pronto, Recusar com motivo, Definir prazo, Resolver) e histórico.
+- **`/admin/chamados`** — fila com abas por status; detalhe com edição inline, ações (Iniciar análise, Pronto, Recusar com motivo, Definir prazo, Resposta da síndica, Resolver) e histórico.
 - **`/admin/chamados/encaminhar`** — lista `READY` com checkboxes (todos marcados por padrão), "Gerar texto" → textarea somente-leitura + **Copiar**; "Confirmar envio" (diálogo de confirmação) → cria lote. Abaixo, histórico de lotes com texto.
 - **`/admin/chamados/catalogo`** — tipos (com subtipos aninhados) e locais; criar, renomear, ativar/desativar, reordenar.
 - Itens de menu condicionados à flag e às permissões.

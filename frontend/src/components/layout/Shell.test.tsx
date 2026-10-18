@@ -4,22 +4,18 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
-vi.mock('@/features/featureflags/useFeatures', () => ({ useFeatures: vi.fn() }));
 // ThemeToggle depende de matchMedia, que o jsdom nao tem — irrelevante para o que se testa aqui.
 vi.mock('@/components/theme/ThemeToggle', () => ({ ThemeToggle: () => null }));
 
 import { Shell } from './Shell';
 import { useAuth } from '@/features/auth/useAuth';
-import { useFeatures } from '@/features/featureflags/useFeatures';
 import { LoginPromptContext } from '@/features/auth/LoginPromptProvider';
 
 const useAuthMock = vi.mocked(useAuth);
-const useFeaturesMock = vi.mocked(useFeatures);
 const logout = vi.fn();
 
 function renderShell(user: unknown, promptLogin = vi.fn()) {
   useAuthMock.mockReturnValue({ user, logout } as never);
-  useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });
   render(
     <MemoryRouter>
       <LoginPromptContext.Provider value={{ promptLogin }}>

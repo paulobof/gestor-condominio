@@ -5,9 +5,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const login = vi.fn();
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: () => ({ login }) }));
-vi.mock('@/features/featureflags/useFeatures', () => ({
-  useFeatures: () => ({ enabled: () => false, loading: false }),
-}));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 const navigate = vi.fn();

@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
-import { useFeatures } from '@/features/featureflags/useFeatures';
 import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
@@ -33,8 +32,6 @@ interface NavItem {
   brand: Brand;
   end?: boolean;
   requires?: string;
-  /** Nome da feature flag; item some do menu quando ela está desligada no ambiente. */
-  requiresFeature?: string;
   /** Área só para quem tem conta: visitante vê o item com cadeado e cai no login ao clicar. */
   requiresLogin?: boolean;
   /** Logado, só aparece para quem mora numa unidade (ou tem a permission indicada em `requires`). */
@@ -67,7 +64,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Informações',
     icon: Info,
     brand: 'blue',
-    requiresFeature: 'generalinfo',
   },
   {
     kind: 'item',
@@ -75,7 +71,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Indicações',
     icon: Lightbulb,
     brand: 'orange',
-    requiresFeature: 'recommendations',
   },
   {
     kind: 'item',
@@ -83,7 +78,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Classificados',
     icon: ShoppingBag,
     brand: 'green',
-    requiresFeature: 'classifieds',
   },
   {
     kind: 'item',
@@ -91,7 +85,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Avisos',
     icon: Megaphone,
     brand: 'red',
-    requiresFeature: 'announcements',
     requiresLogin: true,
   },
   {
@@ -100,7 +93,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Perguntas Frequentes',
     icon: BookOpen,
     brand: 'blue',
-    requiresFeature: 'faq',
     requiresLogin: true,
   },
   {
@@ -109,7 +101,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Documentos',
     icon: FileText,
     brand: 'blue',
-    requiresFeature: 'documents',
     requiresLogin: true,
   },
   {
@@ -118,7 +109,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Vagas',
     icon: SquareParking,
     brand: 'blue',
-    requiresFeature: 'parkingrental',
     requiresLogin: true,
   },
   {
@@ -127,7 +117,6 @@ const ENTRIES: NavEntry[] = [
     label: 'Chamados',
     icon: Wrench,
     brand: 'orange',
-    requiresFeature: 'complaints',
     requiresLogin: true,
     requiresUnit: 'COMPLAINT_MANAGE',
   },
@@ -146,7 +135,6 @@ const ENTRIES: NavEntry[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
-    requiresFeature: 'accessmanagement',
   },
   {
     kind: 'item',
@@ -155,7 +143,6 @@ const ENTRIES: NavEntry[] = [
     icon: Wrench,
     brand: 'ink',
     requires: 'COMPLAINT_MANAGE',
-    requiresFeature: 'complaints',
   },
   {
     kind: 'item',
@@ -164,7 +151,6 @@ const ENTRIES: NavEntry[] = [
     icon: ListTree,
     brand: 'ink',
     requires: 'COMPLAINT_CATALOG_MANAGE',
-    requiresFeature: 'complaints',
   },
   {
     kind: 'item',
@@ -314,7 +300,6 @@ function GroupNav({ group, onNavigate }: { group: NavGroup; onNavigate?: () => v
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
-  const { enabled } = useFeatures();
   const hasAuthority = (requires?: string) =>
     !requires || (user?.authorities.includes(requires) ?? false);
   // Visitante nao e barrado por permission em item com cadeado: ele ve o item e o clique abre o
@@ -326,14 +311,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     }
     return hasAuthority(item.requires);
   };
-  const on = (feature?: string) => !feature || enabled(feature);
 
   return (
     <div className="flex h-full flex-1 flex-col">
       <nav aria-label="Navegação principal" className="flex flex-col gap-1 p-3">
         {ENTRIES.map((entry) => {
           if (entry.kind === 'item') {
-            if (!canSee(entry) || !on(entry.requiresFeature)) return null;
+            if (!canSee(entry)) return null;
             return (
               <ItemLink
                 key={entry.to}

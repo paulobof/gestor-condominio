@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
-import { useFeatures } from '@/features/featureflags/useFeatures';
 import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
@@ -28,8 +27,6 @@ interface NavItem {
   brand: Brand;
   /** Permissão exigida para ver o item; ausente = qualquer visitante. */
   requires?: string;
-  /** Feature flag do módulo; item some quando está desligado no ambiente. */
-  feature?: string;
   /** Área só para quem tem conta: visitante vê o card com cadeado e cai no login ao clicar. */
   requiresLogin?: boolean;
 }
@@ -37,7 +34,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   {
     to: '/informacoes',
-    feature: 'generalinfo',
     title: 'Informações',
     desc: 'Informações gerais do condomínio.',
     icon: Info,
@@ -45,7 +41,6 @@ const NAV: NavItem[] = [
   },
   {
     to: '/indicacoes',
-    feature: 'recommendations',
     title: 'Indicações',
     desc: 'Serviços recomendados por moradores.',
     icon: Lightbulb,
@@ -53,7 +48,6 @@ const NAV: NavItem[] = [
   },
   {
     to: '/classificados',
-    feature: 'classifieds',
     title: 'Classificados',
     desc: 'Compra e venda entre moradores.',
     icon: ShoppingBag,
@@ -61,7 +55,6 @@ const NAV: NavItem[] = [
   },
   {
     to: '/avisos',
-    feature: 'announcements',
     requiresLogin: true,
     title: 'Mural de avisos',
     desc: 'Comunicados do condomínio.',
@@ -70,7 +63,6 @@ const NAV: NavItem[] = [
   },
   {
     to: '/faq',
-    feature: 'faq',
     requiresLogin: true,
     title: 'Perguntas Frequentes',
     desc: 'Dúvidas comuns do condomínio.',
@@ -79,7 +71,6 @@ const NAV: NavItem[] = [
   },
   {
     to: '/vagas/aluguel',
-    feature: 'parkingrental',
     requiresLogin: true,
     title: 'Vagas',
     desc: 'Anuncie: procura, aluguel ou troca de vaga.',
@@ -101,7 +92,6 @@ const NAV: NavItem[] = [
     icon: UserCog,
     brand: 'ink',
     requires: 'ROLE_ASSIGN',
-    feature: 'accessmanagement',
   },
   {
     to: '/minha-unidade/moradores',
@@ -121,7 +111,6 @@ const hsl = (b: Brand, alpha?: number) =>
 
 export default function App() {
   const { user } = useAuth();
-  const { enabled } = useFeatures();
   const { promptLogin } = useLoginPrompt();
   // Visitante nao e barrado por permission em card com cadeado: ele ve o card e o clique abre o
   // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o card.
@@ -129,8 +118,7 @@ export default function App() {
     user
       ? !item.requires || user.authorities.includes(item.requires)
       : !item.requires || !!item.requiresLogin;
-  const on = (item: NavItem) => !item.feature || enabled(item.feature);
-  const items = NAV.filter((i) => can(i) && on(i));
+  const items = NAV.filter(can);
 
   return (
     <section className="container space-y-6 py-6">

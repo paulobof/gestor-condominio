@@ -3,24 +3,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
-vi.mock('@/features/featureflags/useFeatures', () => ({ useFeatures: vi.fn() }));
 
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/features/auth/useAuth';
-import { useFeatures } from '@/features/featureflags/useFeatures';
 
 const useAuthMock = vi.mocked(useAuth);
-const useFeaturesMock = vi.mocked(useFeatures);
-
-/** Por padrão tudo ligado; os testes de flag passam a lista do que está ligado. */
-let enabledFeatures: string[] | null = null;
 
 function renderSidebar(authorities: string[] = [], path = '/', unitId: string | null = null) {
   useAuthMock.mockReturnValue({ user: { id: 'u1', authorities, unitId } } as never);
-  useFeaturesMock.mockReturnValue({
-    enabled: (name: string) => enabledFeatures === null || enabledFeatures.includes(name),
-    loading: false,
-  });
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Sidebar open={true} onClose={() => {}} />
@@ -30,7 +20,6 @@ function renderSidebar(authorities: string[] = [], path = '/', unitId: string | 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  enabledFeatures = null;
 });
 
 describe('Sidebar', () => {
@@ -49,7 +38,6 @@ describe('Sidebar', () => {
 
   it('visitante vê com cadeado tudo que exige conta; áreas abertas ficam sem', () => {
     useAuthMock.mockReturnValue({ user: null } as never);
-    useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });
     render(
       <MemoryRouter initialEntries={['/']}>
         <Sidebar open={true} onClose={() => {}} />
@@ -190,19 +178,6 @@ describe('Sidebar', () => {
     renderSidebar();
     expect(screen.queryByText(/escolha de vaga/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Em breve')).not.toBeInTheDocument();
-  });
-
-  it('esconde o item quando a feature está desligada no ambiente', () => {
-    enabledFeatures = ['announcements'];
-    renderSidebar(['RESIDENT_MANAGE']);
-
-    expect(screen.getAllByRole('link', { name: /avisos/i })[0]).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /classificados/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Aluguel de Vagas' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /documentos/i })).not.toBeInTheDocument();
-    // itens sem flag continuam: Início e Moradores (permission-gated)
-    expect(screen.getAllByRole('link', { name: /início/i })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /^moradores$/i })[0]).toBeInTheDocument();
   });
 
   it('não oferece mais posse de unidade a ninguém', () => {

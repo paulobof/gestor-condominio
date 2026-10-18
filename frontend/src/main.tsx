@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from '@/features/auth/AuthProvider';
-import { FeaturesProvider } from '@/features/featureflags/FeaturesProvider';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AppRouter } from './router';
 import { Toaster } from '@/components/ui/sonner';
@@ -11,10 +10,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <FeaturesProvider>
-          <AppRouter />
-          <Toaster />
-        </FeaturesProvider>
+        <AppRouter />
+        <Toaster />
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>

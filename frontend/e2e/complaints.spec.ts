@@ -39,7 +39,6 @@ const COMPLAINT = {
 
 test.describe('Chamados', () => {
   test.beforeEach(async ({ mock }) => {
-    mock.get('/features', { complaints: true });
     mock.get('/complaints/catalog', CATALOG);
   });
 

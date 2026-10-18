@@ -219,15 +219,18 @@ class ComplaintTest {
   }
 
   @Test
-  void visibility_authorManagerOrBoard() {
+  void visibility_authorManagerOrBoardForUsersWithUnit() {
     Complaint c = open();
     UUID stranger = UUID.randomUUID();
-    assertThat(c.isVisibleTo(author, false)).isTrue();
-    assertThat(c.isVisibleTo(stranger, true)).isTrue();
-    assertThat(c.isVisibleTo(stranger, false)).isFalse();
-    assertThat(inStatus(ComplaintStatus.FORWARDED).isVisibleTo(stranger, false)).isTrue();
-    assertThat(inStatus(ComplaintStatus.RESOLVED).isVisibleTo(stranger, false)).isTrue();
-    assertThat(inStatus(ComplaintStatus.REJECTED).isVisibleTo(stranger, false)).isFalse();
+    UUID unit = UUID.randomUUID();
+    assertThat(c.isVisibleTo(author, null, false)).isTrue();
+    assertThat(c.isVisibleTo(stranger, null, true)).isTrue();
+    assertThat(c.isVisibleTo(stranger, unit, false)).isFalse();
+    assertThat(inStatus(ComplaintStatus.FORWARDED).isVisibleTo(stranger, unit, false)).isTrue();
+    assertThat(inStatus(ComplaintStatus.RESOLVED).isVisibleTo(stranger, unit, false)).isTrue();
+    assertThat(inStatus(ComplaintStatus.REJECTED).isVisibleTo(stranger, unit, false)).isFalse();
+    // mural é só para quem tem unidade
+    assertThat(inStatus(ComplaintStatus.FORWARDED).isVisibleTo(stranger, null, false)).isFalse();
   }
 
   @Test

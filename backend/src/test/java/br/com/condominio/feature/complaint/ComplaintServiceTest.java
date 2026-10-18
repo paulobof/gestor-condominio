@@ -83,15 +83,47 @@ class ComplaintServiceTest {
   @Test
   void get_strangerNotOnBoard_isNotFound() {
     Complaint c = persisted(ComplaintStatus.IN_REVIEW);
-    assertThatThrownBy(() -> service.get(c.getId(), stranger, false))
+    assertThatThrownBy(() -> service.get(c.getId(), stranger, unit, false))
         .extracting("code")
         .isEqualTo("NOT_FOUND");
   }
 
   @Test
-  void get_strangerOnBoard_isVisible() {
+  void get_strangerWithUnitOnBoard_isVisible() {
     Complaint c = persisted(ComplaintStatus.FORWARDED);
-    service.get(c.getId(), stranger, false);
+    service.get(c.getId(), stranger, unit, false);
+    verify(views).toView(c, stranger);
+  }
+
+  @Test
+  void get_strangerWithoutUnitOnBoard_isNoUnit() {
+    Complaint c = persisted(ComplaintStatus.RESOLVED);
+    assertThatThrownBy(() -> service.get(c.getId(), stranger, null, false))
+        .extracting("code")
+        .isEqualTo("NO_UNIT");
+    verifyNoInteractions(views);
+  }
+
+  @Test
+  void get_withoutUnit_unknownId_isNoUnit_soExistenceIsNotRevealed() {
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id)).thenReturn(Optional.empty());
+    assertThatThrownBy(() -> service.get(id, stranger, null, false))
+        .extracting("code")
+        .isEqualTo("NO_UNIT");
+  }
+
+  @Test
+  void get_authorWithoutUnit_seesOwnComplaint() {
+    Complaint c = persisted(ComplaintStatus.IN_REVIEW);
+    service.get(c.getId(), author, null, false);
+    verify(views).toView(c, author);
+  }
+
+  @Test
+  void get_managerWithoutUnit_seesAnyComplaint() {
+    Complaint c = persisted(ComplaintStatus.OPEN);
+    service.get(c.getId(), stranger, null, true);
     verify(views).toView(c, stranger);
   }
 
@@ -99,7 +131,7 @@ class ComplaintServiceTest {
   void get_unknownId_isNotFound() {
     UUID id = UUID.randomUUID();
     when(repo.findById(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> service.get(id, author, false))
+    assertThatThrownBy(() -> service.get(id, author, unit, false))
         .extracting("code")
         .isEqualTo("NOT_FOUND");
   }

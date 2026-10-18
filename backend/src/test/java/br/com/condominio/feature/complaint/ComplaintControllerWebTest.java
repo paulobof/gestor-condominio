@@ -124,10 +124,23 @@ class ComplaintControllerWebTest {
 
   @Test
   void get_passesCanManage() throws Exception {
-    when(service.get(CID, UID, true)).thenReturn(view(ComplaintStatus.OPEN));
+    when(service.get(CID, UID, null, true)).thenReturn(view(ComplaintStatus.OPEN));
     mvc.perform(get("/api/complaints/{id}", CID).with(MockAuth.user(UID, "COMPLAINT_MANAGE")))
         .andExpect(status().isOk());
-    verify(service).get(CID, UID, true);
+    verify(service).get(CID, UID, null, true);
+  }
+
+  @Test
+  void get_passesPrincipalUnit_andNoUnitIs403() throws Exception {
+    UUID unit = UUID.randomUUID();
+    when(service.get(CID, UID, unit, false)).thenReturn(view(ComplaintStatus.FORWARDED));
+    mvc.perform(get("/api/complaints/{id}", CID).with(MockAuth.userWithUnit(UID, unit)))
+        .andExpect(status().isOk());
+
+    when(service.get(CID, UID, null, false))
+        .thenThrow(new ComplaintException("NO_UNIT", "O mural é exclusivo para moradores."));
+    mvc.perform(get("/api/complaints/{id}", CID).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -177,7 +190,7 @@ class ComplaintControllerWebTest {
   @Test
   void photoUrl_setsNoReferrer() throws Exception {
     UUID pid = UUID.randomUUID();
-    when(photoService.photoUrl(CID, pid, UID, false)).thenReturn("http://minio/x");
+    when(photoService.photoUrl(CID, pid, UID, null, false)).thenReturn("http://minio/x");
     mvc.perform(get("/api/complaints/{id}/photos/{pid}/url", CID, pid).with(MockAuth.user(UID)))
         .andExpect(status().isOk())
         .andExpect(header().string("Referrer-Policy", "no-referrer"))

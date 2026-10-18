@@ -4,6 +4,7 @@ import br.com.condominio.feature.complaint.catalog.ComplaintCatalogService;
 import br.com.condominio.feature.complaint.dto.ComplaintView;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -78,9 +79,8 @@ public class ComplaintService {
   }
 
   @Transactional(readOnly = true)
-  public ComplaintView get(UUID id, UUID userId, boolean canManage) {
-    Complaint c = load(id);
-    if (!c.isVisibleTo(userId, canManage)) throw notFound();
+  public ComplaintView get(UUID id, UUID userId, UUID unitId, boolean canManage) {
+    Complaint c = requireVisible(repo.findById(id), userId, unitId, canManage);
     return views.toView(c, userId);
   }
 
@@ -100,6 +100,20 @@ public class ComplaintService {
     c.cancelByAuthor(userId);
     events.flush(c);
     repo.delete(c);
+  }
+
+  /**
+   * Mesma regra do mural: sem unidade (e sem ser autor/gestor) → 403 NO_UNIT, decidido sem olhar se
+   * o chamado existe, para não vazar existência; com unidade, chamado fora do mural → 404.
+   */
+  static Complaint requireVisible(
+      Optional<Complaint> found, UUID userId, UUID unitId, boolean canManage) {
+    Complaint c = found.orElse(null);
+    if (c != null && c.isVisibleTo(userId, unitId, canManage)) return c;
+    if (unitId == null && !canManage) {
+      throw new ComplaintException("NO_UNIT", "O mural é exclusivo para moradores.");
+    }
+    throw notFound();
   }
 
   Complaint load(UUID id) {

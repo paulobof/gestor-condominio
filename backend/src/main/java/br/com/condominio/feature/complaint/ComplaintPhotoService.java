@@ -77,9 +77,8 @@ public class ComplaintPhotoService {
   }
 
   @Transactional(readOnly = true)
-  public String photoUrl(UUID id, UUID photoId, UUID actor, boolean canManage) {
-    Complaint c = load(id);
-    if (!c.isVisibleTo(actor, canManage)) throw ComplaintService.notFound();
+  public String photoUrl(UUID id, UUID photoId, UUID actor, UUID unitId, boolean canManage) {
+    ComplaintService.requireVisible(repo.findById(id), actor, unitId, canManage);
     ComplaintPhoto p =
         photoRepo.findByIdAndComplaintId(photoId, id).orElseThrow(this::photoNotFound);
     return storage.presignedGetUrl(

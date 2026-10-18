@@ -64,7 +64,7 @@ public class ComplaintController {
   @PreAuthorize("isAuthenticated()")
   public ComplaintView get(
       @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return service.get(id, me.userId(), canManage(me));
+    return service.get(id, me.userId(), me.unitId(), canManage(me));
   }
 
   @PutMapping("/{id}")
@@ -109,7 +109,7 @@ public class ComplaintController {
       @PathVariable UUID id,
       @PathVariable UUID photoId,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    String url = photos.photoUrl(id, photoId, me.userId(), canManage(me));
+    String url = photos.photoUrl(id, photoId, me.userId(), me.unitId(), canManage(me));
     return ResponseEntity.ok().header("Referrer-Policy", "no-referrer").body(Map.of("url", url));
   }
 }

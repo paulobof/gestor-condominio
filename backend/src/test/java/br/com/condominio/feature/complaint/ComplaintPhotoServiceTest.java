@@ -119,7 +119,10 @@ class ComplaintPhotoServiceTest {
   @Test
   void photoUrl_strangerNotOnBoard_isNotFound() {
     UUID photoId = UUID.randomUUID();
-    assertThatThrownBy(() -> service.photoUrl(complaint.getId(), photoId, UUID.randomUUID(), false))
+    assertThatThrownBy(
+            () ->
+                service.photoUrl(
+                    complaint.getId(), photoId, UUID.randomUUID(), UUID.randomUUID(), false))
         .extracting("code")
         .isEqualTo("NOT_FOUND");
     verifyNoInteractions(storage);
@@ -132,7 +135,32 @@ class ComplaintPhotoServiceTest {
     when(photoRepo.findByIdAndComplaintId(photoId, complaint.getId())).thenReturn(Optional.of(p));
     when(storage.presignedGetUrl(eq("complaints"), eq("k1"), any())).thenReturn("http://u");
 
-    assertThat(service.photoUrl(complaint.getId(), photoId, UUID.randomUUID(), true))
+    assertThat(service.photoUrl(complaint.getId(), photoId, UUID.randomUUID(), null, true))
+        .isEqualTo("http://u");
+  }
+
+  @Test
+  void photoUrl_boardComplaint_strangerWithoutUnit_isNoUnit() {
+    ReflectionTestUtils.setField(complaint, "status", ComplaintStatus.FORWARDED);
+    UUID photoId = UUID.randomUUID();
+    assertThatThrownBy(
+            () -> service.photoUrl(complaint.getId(), photoId, UUID.randomUUID(), null, false))
+        .extracting("code")
+        .isEqualTo("NO_UNIT");
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void photoUrl_boardComplaint_strangerWithUnit_getsPresignedUrl() {
+    ReflectionTestUtils.setField(complaint, "status", ComplaintStatus.FORWARDED);
+    UUID photoId = UUID.randomUUID();
+    ComplaintPhoto p = ComplaintPhoto.create(complaint.getId(), "k1", "image/jpeg", 10, 0);
+    when(photoRepo.findByIdAndComplaintId(photoId, complaint.getId())).thenReturn(Optional.of(p));
+    when(storage.presignedGetUrl(eq("complaints"), eq("k1"), any())).thenReturn("http://u");
+
+    assertThat(
+            service.photoUrl(
+                complaint.getId(), photoId, UUID.randomUUID(), UUID.randomUUID(), false))
         .isEqualTo("http://u");
   }
 }

@@ -212,8 +212,9 @@ public class Complaint {
     return status == ComplaintStatus.FORWARDED || status == ComplaintStatus.RESOLVED;
   }
 
-  public boolean isVisibleTo(UUID userId, boolean canManage) {
-    return canManage || isAuthor(userId) || isOnBoard();
+  /** Autor e gestor sempre veem; o mural só é visível para quem tem unidade vinculada. */
+  public boolean isVisibleTo(UUID userId, UUID unitId, boolean canManage) {
+    return canManage || isAuthor(userId) || (isOnBoard() && unitId != null);
   }
 
   /** Itens de catálogo já em uso — aceitos mesmo se desativados depois. */

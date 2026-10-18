@@ -6,6 +6,8 @@
  * em America/Sao_Paulo (UTC-3).
  */
 
+import { formatInTimeZone } from 'date-fns-tz';
+
 /** Formata uma data ISO (`yyyy-MM-dd`, com ou sem hora) para `dd/MM/yyyy`. */
 export function formatDateBR(value: string | null | undefined): string {
   if (!value) return '—';
@@ -13,4 +15,14 @@ export function formatDateBR(value: string | null | undefined): string {
   if (!match) return value;
   const [, year, month, day] = match;
   return `${day}/${month}/${year}`;
+}
+
+/**
+ * Formata um instante (timestamp ISO com fuso, ex.: `2026-10-18T02:30:00Z`) como
+ * `dd/MM/yyyy` no fuso America/Sao_Paulo. Use para `Instant`s do backend; para
+ * `LocalDate` use `formatDateBR`.
+ */
+export function formatInstantBR(value: string | null | undefined): string {
+  if (!value) return '—';
+  return formatInTimeZone(value, 'America/Sao_Paulo', 'dd/MM/yyyy');
 }

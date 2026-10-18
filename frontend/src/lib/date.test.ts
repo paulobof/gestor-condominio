@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDateBR } from './date';
+import { formatDateBR, formatInstantBR } from './date';
 
 describe('date utils', () => {
   describe('formatDateBR', () => {
@@ -26,6 +26,19 @@ describe('date utils', () => {
     it('devolve o valor original se não for ISO reconhecível', () => {
       expect(formatDateBR('02/01/1990')).toBe('02/01/1990');
       expect(formatDateBR('abc')).toBe('abc');
+    });
+  });
+
+  describe('formatInstantBR', () => {
+    it('converte instante UTC para a data em America/Sao_Paulo', () => {
+      expect(formatInstantBR('2026-10-18T02:30:00Z')).toBe('17/10/2026');
+      expect(formatInstantBR('2026-10-18T12:00:00Z')).toBe('18/10/2026');
+    });
+
+    it('retorna travessão para nulo/indefinido/vazio', () => {
+      expect(formatInstantBR(null)).toBe('—');
+      expect(formatInstantBR(undefined)).toBe('—');
+      expect(formatInstantBR('')).toBe('—');
     });
   });
 });

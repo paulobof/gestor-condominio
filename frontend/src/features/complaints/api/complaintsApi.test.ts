@@ -46,12 +46,15 @@ describe('complaintsApi', () => {
     expect((form as FormData).get('file')).toBe(file);
   });
 
-  it('lote: preview e criação mandam os ids', async () => {
+  it('lote: preview manda os ids; criação manda ids e o texto exibido', async () => {
     await previewBatch(['a', 'b']);
-    await createBatch(['a', 'b']);
+    await createBatch(['a', 'b'], 'TEXTO');
     expect(post).toHaveBeenNthCalledWith(1, '/admin/complaints/batches/preview', {
       ids: ['a', 'b'],
     });
-    expect(post).toHaveBeenNthCalledWith(2, '/admin/complaints/batches', { ids: ['a', 'b'] });
+    expect(post).toHaveBeenNthCalledWith(2, '/admin/complaints/batches', {
+      ids: ['a', 'b'],
+      expectedText: 'TEXTO',
+    });
   });
 });

@@ -105,7 +105,7 @@ describe('ComplaintForwardPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }));
     await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhados/i }));
-    await waitFor(() => expect(createBatch).toHaveBeenCalledWith(['b']));
+    await waitFor(() => expect(createBatch).toHaveBeenCalledWith(['b'], 'Chamados — LOTE'));
     expect(toast.success).toHaveBeenCalledWith('1 chamado(s) encaminhado(s).');
   });
 
@@ -128,6 +128,35 @@ describe('ComplaintForwardPage', () => {
       )
     );
     expect(adminQueue).toHaveBeenCalledTimes(2);
+  });
+
+  it('texto desatualizado (BATCH_STALE) avisa, limpa o texto e recarrega', async () => {
+    vi.mocked(createBatch).mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          code: 'BATCH_STALE',
+          message:
+            'Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.',
+        },
+      },
+    });
+    renderPage();
+    await screen.findAllByRole('checkbox');
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar texto' }));
+    await screen.findByDisplayValue('Chamados — LOTE');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }));
+    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhados/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.'
+      )
+    );
+    expect(createBatch).toHaveBeenCalledWith(['a', 'b'], 'Chamados — LOTE');
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Texto do lote' })).not.toBeInTheDocument()
+    );
   });
 
   it('sem nada marcado não gera texto', async () => {

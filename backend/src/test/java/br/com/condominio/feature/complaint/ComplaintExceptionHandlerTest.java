@@ -17,6 +17,7 @@ class ComplaintExceptionHandlerTest {
     "NO_UNIT,403",
     "INVALID_STATE,409",
     "DUPLICATE_NAME,409",
+    "BATCH_STALE,409",
     "CATALOG_INVALID,422",
     "INVALID_INPUT,400",
     "DUE_DATE_PAST,400",

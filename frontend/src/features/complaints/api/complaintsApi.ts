@@ -226,8 +226,10 @@ export async function previewBatch(ids: string[]) {
   return (await api.post('/admin/complaints/batches/preview', { ids })).data as BatchPreview;
 }
 
-export async function createBatch(ids: string[]) {
-  return (await api.post('/admin/complaints/batches', { ids })).data as ComplaintBatch;
+/** `expectedText`: o texto exibido/copiado; o backend recusa (409 BATCH_STALE) se mudou. */
+export async function createBatch(ids: string[], expectedText: string) {
+  return (await api.post('/admin/complaints/batches', { ids, expectedText }))
+    .data as ComplaintBatch;
 }
 
 export async function listBatches() {

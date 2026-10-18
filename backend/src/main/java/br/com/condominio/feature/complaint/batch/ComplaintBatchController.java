@@ -33,7 +33,7 @@ public class ComplaintBatchController {
   public ComplaintBatchView create(
       @Valid @RequestBody BatchRequest body,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return service.create(body.ids(), me.userId());
+    return service.create(body.ids(), body.expectedText(), me.userId());
   }
 
   @GetMapping

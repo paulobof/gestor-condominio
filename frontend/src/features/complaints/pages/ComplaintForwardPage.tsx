@@ -89,7 +89,7 @@ export function ComplaintForwardPage() {
   const confirm = async () => {
     setBusy(true);
     try {
-      const batch = await createBatch(ids);
+      const batch = await createBatch(ids, text);
       toast.success(`${batch.complaintCount} chamado(s) encaminhado(s).`);
     } catch (err) {
       toast.error(backendMessage(err, 'Erro ao confirmar o envio.'));

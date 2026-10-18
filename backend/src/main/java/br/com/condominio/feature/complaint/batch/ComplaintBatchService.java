@@ -38,12 +38,21 @@ public class ComplaintBatchService {
    * Tudo ou nada: valida todos antes de mexer em qualquer um. Se outro admin alterou um chamado
    * entre o preview e a confirmação, ou ele já não está READY (409), ou o @Version estoura no
    * commit (409 CONCURRENT_MODIFICATION). Nos dois casos a transação inteira volta.
+   *
+   * <p>{@code expectedText} é o texto que o admin copiou para a síndica; se algum chamado foi
+   * editado depois do preview, o texto gravado divergiria do enviado — então recusa (409).
    */
   @Transactional
-  public ComplaintBatchView create(List<UUID> ids, UUID actor) {
+  public ComplaintBatchView create(List<UUID> ids, String expectedText, UUID actor) {
     List<Complaint> list = loadReady(ids);
     Instant now = clock.now();
     String text = render(list, today(now));
+    if (expectedText != null && !expectedText.equals(text)) {
+      throw new ComplaintException(
+          "BATCH_STALE",
+          "Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes"
+              + " de confirmar.");
+    }
     ComplaintBatch batch = batches.save(ComplaintBatch.create(actor, now, text, list.size()));
     for (Complaint c : list) {
       c.forward(actor, batch.getId(), now);

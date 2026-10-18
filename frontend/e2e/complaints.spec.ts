@@ -114,7 +114,10 @@ test.describe('Chamados', () => {
       (r) => r.method() === 'POST' && r.url().endsWith('/api/admin/complaints/batches')
     );
     await page.getByRole('button', { name: /sim, marcar como encaminhados/i }).click();
-    expect((await batch).postDataJSON()).toEqual({ ids: ['c1'] });
+    expect((await batch).postDataJSON()).toEqual({
+      ids: ['c1'],
+      expectedText: 'Chamados — HELBOR TRILOGY HOME\nLote de 17/10/2026 (1 chamado)',
+    });
 
     const forwarded = { ...ready, status: 'FORWARDED', forwardedAt: '2026-10-17T12:00:00Z' };
     mock.get('/admin/complaints/c1', {

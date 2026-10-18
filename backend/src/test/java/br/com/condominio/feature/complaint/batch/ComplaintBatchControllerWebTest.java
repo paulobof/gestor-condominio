@@ -67,7 +67,7 @@ class ComplaintBatchControllerWebTest {
   @Test
   void create_returns201_andPassesActor() throws Exception {
     UUID id = UUID.randomUUID();
-    when(service.create(List.of(id), UID))
+    when(service.create(List.of(id), null, UID))
         .thenReturn(new ComplaintBatchView(UUID.randomUUID(), Instant.now(), "Ana", 1, "t"));
     mvc.perform(
             post("/api/admin/complaints/batches")
@@ -81,7 +81,7 @@ class ComplaintBatchControllerWebTest {
   @Test
   void create_conflict_is409() throws Exception {
     UUID id = UUID.randomUUID();
-    when(service.create(List.of(id), UID))
+    when(service.create(List.of(id), null, UID))
         .thenThrow(new ComplaintException("INVALID_STATE", "Recarregue."));
     mvc.perform(
             post("/api/admin/complaints/batches")
@@ -89,5 +89,19 @@ class ComplaintBatchControllerWebTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"ids\":[\"" + id + "\"]}"))
         .andExpect(status().isConflict());
+  }
+
+  @Test
+  void create_passesExpectedText_andStaleIs409() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(service.create(List.of(id), "texto copiado", UID))
+        .thenThrow(new ComplaintException("BATCH_STALE", "Gere o texto de novo."));
+    mvc.perform(
+            post("/api/admin/complaints/batches")
+                .with(MockAuth.user(UID, PERM))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"ids\":[\"" + id + "\"],\"expectedText\":\"texto copiado\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BATCH_STALE"));
   }
 }

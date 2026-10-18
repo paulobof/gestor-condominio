@@ -94,7 +94,7 @@ class ComplaintBatchServiceTest {
     Complaint b = complaint(2, ComplaintStatus.READY);
     when(repo.findAllById(any())).thenReturn(List.of(a, b));
 
-    ComplaintBatchView view = service.create(List.of(a.getId(), b.getId(), a.getId()), admin);
+    ComplaintBatchView view = service.create(List.of(a.getId(), b.getId(), a.getId()), null, admin);
 
     assertThat(view.complaintCount()).isEqualTo(2);
     assertThat(a.getStatus()).isEqualTo(ComplaintStatus.FORWARDED);
@@ -110,7 +110,7 @@ class ComplaintBatchServiceTest {
     Complaint rejected = complaint(2, ComplaintStatus.REJECTED);
     when(repo.findAllById(any())).thenReturn(List.of(a, rejected));
 
-    assertThatThrownBy(() -> service.create(List.of(a.getId(), rejected.getId()), admin))
+    assertThatThrownBy(() -> service.create(List.of(a.getId(), rejected.getId()), null, admin))
         .extracting("code")
         .isEqualTo("INVALID_STATE");
     assertThat(a.getStatus()).isEqualTo(ComplaintStatus.READY);
@@ -121,8 +121,35 @@ class ComplaintBatchServiceTest {
   void create_unknownId_isNotFound() {
     Complaint a = complaint(1, ComplaintStatus.READY);
     when(repo.findAllById(any())).thenReturn(List.of(a));
-    assertThatThrownBy(() -> service.create(List.of(a.getId(), UUID.randomUUID()), admin))
+    assertThatThrownBy(() -> service.create(List.of(a.getId(), UUID.randomUUID()), null, admin))
         .extracting("code")
         .isEqualTo("NOT_FOUND");
+  }
+
+  @Test
+  void create_expectedTextMatchesPreview_forwards() {
+    Complaint a = complaint(1, ComplaintStatus.READY);
+    when(repo.findAllById(any())).thenReturn(List.of(a));
+    String shown = service.preview(List.of(a.getId())).text();
+
+    ComplaintBatchView view = service.create(List.of(a.getId()), shown, admin);
+
+    assertThat(view.renderedText()).isEqualTo(shown);
+    assertThat(a.getStatus()).isEqualTo(ComplaintStatus.FORWARDED);
+  }
+
+  @Test
+  void create_textChangedSincePreview_isStaleAndChangesNothing() {
+    Complaint a = complaint(1, ComplaintStatus.READY);
+    when(repo.findAllById(any())).thenReturn(List.of(a));
+    String shown = service.preview(List.of(a.getId())).text();
+    ReflectionTestUtils.setField(a, "description", "Descrição editada pelo admin");
+
+    assertThatThrownBy(() -> service.create(List.of(a.getId()), shown, admin))
+        .isInstanceOf(ComplaintException.class)
+        .extracting("code")
+        .isEqualTo("BATCH_STALE");
+    assertThat(a.getStatus()).isEqualTo(ComplaintStatus.READY);
+    verifyNoInteractions(batches, events);
   }
 }

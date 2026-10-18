@@ -87,7 +87,7 @@ public class GlobalExceptionHandler {
         switch (ex.getCode()) {
           case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
           case "FORBIDDEN", "NO_UNIT" -> HttpStatus.FORBIDDEN;
-          case "INVALID_STATE", "DUPLICATE_NAME" -> HttpStatus.CONFLICT;
+          case "INVALID_STATE", "DUPLICATE_NAME", "BATCH_STALE" -> HttpStatus.CONFLICT;
           case "CATALOG_INVALID" -> HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };

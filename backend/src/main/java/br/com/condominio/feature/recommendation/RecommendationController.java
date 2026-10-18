@@ -118,9 +118,8 @@ public class RecommendationController {
   @GetMapping("/{id}/reviews")
   public List<ReviewView> listReviews(
       @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    boolean canModerate = me != null && me.authorities().contains("RECOMMENDATION_MODERATE");
     return reviewService.list(
-        id, me == null ? null : me.userId(), me == null ? null : me.unitId(), canModerate);
+        id, me == null ? null : me.userId(), me == null ? null : me.unitId(), canModerate(me));
   }
 
   @PostMapping("/{id}/reviews")
@@ -130,7 +129,7 @@ public class RecommendationController {
       @PathVariable UUID id,
       @Valid @RequestBody ReviewRequest req,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return reviewService.create(id, me.userId(), me.unitId(), req);
+    return reviewService.create(id, me.userId(), me.unitId(), canModerate(me), req);
   }
 
   @PutMapping("/{id}/reviews/{reviewId}")
@@ -140,7 +139,7 @@ public class RecommendationController {
       @PathVariable UUID reviewId,
       @Valid @RequestBody ReviewRequest req,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
-    return reviewService.edit(id, reviewId, me.userId(), req);
+    return reviewService.edit(id, reviewId, me.userId(), canModerate(me), req);
   }
 
   @DeleteMapping("/{id}/reviews/{reviewId}")

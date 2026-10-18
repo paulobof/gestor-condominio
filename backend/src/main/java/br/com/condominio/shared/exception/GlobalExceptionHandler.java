@@ -133,12 +133,14 @@ public class GlobalExceptionHandler {
                 requestId()));
   }
 
+  // REVIEW_REQUIRES_UNIT é 403, não 400 (spec §5.1: "sem unidade → 403 com código próprio"): não é
+  // corpo inválido, é o ator que não tem direito de avaliar, mande ele o que mandar.
   @ExceptionHandler(RecommendationException.class)
   public ResponseEntity<ApiError> handleRecommendation(RecommendationException ex) {
     HttpStatus status =
         switch (ex.getCode()) {
           case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
-          case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+          case "FORBIDDEN", "REVIEW_REQUIRES_UNIT" -> HttpStatus.FORBIDDEN;
           default -> HttpStatus.BAD_REQUEST;
         };
     return ResponseEntity.status(status)

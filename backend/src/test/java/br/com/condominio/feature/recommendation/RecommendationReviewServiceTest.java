@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class RecommendationReviewServiceTest {
@@ -66,6 +67,8 @@ class RecommendationReviewServiceTest {
     when(repo.findById(RID)).thenReturn(Optional.of(rec));
     when(repo.save(any(Recommendation.class))).thenAnswer(i -> i.getArgument(0));
     when(reviewRepo.save(any(RecommendationReview.class))).thenAnswer(i -> i.getArgument(0));
+    when(reviewRepo.saveAndFlush(any(RecommendationReview.class)))
+        .thenAnswer(i -> i.getArgument(0));
     when(userRepo.findAllById(any())).thenReturn(List.of(userWith(OTHER_USER, "Ana Moradora")));
     when(unitRepo.findAllById(any())).thenReturn(List.of(unitWith(UNIT, "402A")));
   }
@@ -128,7 +131,7 @@ class RecommendationReviewServiceTest {
     assertThatThrownBy(
             () ->
                 service.create(
-                    RID, ACTOR, null, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
+                    RID, ACTOR, null, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("REVIEW_REQUIRES_UNIT");
@@ -139,11 +142,11 @@ class RecommendationReviewServiceTest {
     // Caminho interno (RecommendationService.create monta o ReviewRequest na mão, sem @Valid):
     // sem esta checagem de dominio, um texto curto so seria barrado pela CHECK do banco (500).
     assertThatThrownBy(
-            () -> service.create(RID, ACTOR, UNIT, req(ReviewSentiment.LIKE, 5, "curto")))
+            () -> service.create(RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "curto")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("REVIEW_INVALID");
-    verify(reviewRepo, never()).save(any());
+    verify(reviewRepo, never()).saveAndFlush(any());
   }
 
   @Test
@@ -154,11 +157,12 @@ class RecommendationReviewServiceTest {
                     RID,
                     ACTOR,
                     UNIT,
+                    false,
                     req(ReviewSentiment.LIKE, 6, "Comentário com dez ou mais caracteres.")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("REVIEW_INVALID");
-    verify(reviewRepo, never()).save(any());
+    verify(reviewRepo, never()).saveAndFlush(any());
   }
 
   @Test
@@ -169,7 +173,7 @@ class RecommendationReviewServiceTest {
     assertThatThrownBy(
             () ->
                 service.create(
-                    RID, ACTOR, UNIT, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
+                    RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("REVIEW_UNIT_ALREADY_REVIEWED");
@@ -181,7 +185,7 @@ class RecommendationReviewServiceTest {
     when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
         .thenReturn(List.of(review(ReviewSentiment.LIKE, 5), review(ReviewSentiment.DISLIKE, 2)));
 
-    service.create(RID, ACTOR, UNIT, req(ReviewSentiment.LIKE, 5, "Serviço muito bom."));
+    service.create(RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom."));
 
     assertThat(rec.getLikeCount()).isEqualTo(1);
     assertThat(rec.getDislikeCount()).isEqualTo(1);
@@ -210,7 +214,11 @@ class RecommendationReviewServiceTest {
     assertThatThrownBy(
             () ->
                 service.edit(
-                    RID, REVIEW_ID, ACTOR, req(ReviewSentiment.LIKE, 4, "Mudei de ideia depois.")))
+                    RID,
+                    REVIEW_ID,
+                    ACTOR,
+                    false,
+                    req(ReviewSentiment.LIKE, 4, "Mudei de ideia depois.")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("FORBIDDEN");
@@ -219,7 +227,7 @@ class RecommendationReviewServiceTest {
   @Test
   void edit_textoCurto_lancaErroDeDominio() {
     assertThatThrownBy(
-            () -> service.edit(RID, REVIEW_ID, ACTOR, req(ReviewSentiment.LIKE, 5, "curto")))
+            () -> service.edit(RID, REVIEW_ID, ACTOR, false, req(ReviewSentiment.LIKE, 5, "curto")))
         .isInstanceOf(RecommendationException.class)
         .extracting("code")
         .isEqualTo("REVIEW_INVALID");
@@ -346,11 +354,180 @@ class RecommendationReviewServiceTest {
   void hide_ocultaSemLiberarAVagaDoApartamento() {
     RecommendationReview r = reviewBy(OTHER_USER, UNIT);
     when(reviewRepo.findByIdAndRecommendationId(REVIEW_ID, RID)).thenReturn(Optional.of(r));
+    // A lista PRECISA ser stubada com a avaliacao: sem isso ela volta vazia e o contador daria
+    // zero mesmo que a recontagem nao acontecesse — o teste passava com o codigo errado.
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID)).thenReturn(List.of(r));
 
     service.hide(RID, REVIEW_ID);
 
     assertThat(r.getStatus()).isEqualTo(ReviewStatus.HIDDEN);
     verify(reviewRepo, never()).delete(any());
+    // Recontou de verdade: a avaliacao existe na lista mas esta HIDDEN, entao nao conta.
     assertThat(rec.getReviewCount()).isZero();
+    assertThat(rec.getRatingSum()).isZero();
+
+    // E a VAGA do apartamento continua ocupada: a linha oculta ainda responde pela unidade, entao
+    // um novo create da mesma UNIT tem que bater em REVIEW_UNIT_ALREADY_REVIEWED. É aqui que a
+    // vaga mora (findByRecommendationIdAndUnitId), e nada exercitava isso.
+    when(reviewRepo.findByRecommendationIdAndUnitId(RID, UNIT)).thenReturn(Optional.of(r));
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_UNIT_ALREADY_REVIEWED");
+  }
+
+  // ---- I3: teto do comentário no caminho interno (sem Bean Validation) --------------
+
+  @Test
+  void create_textoLongoDemais_lancaErroDeDominio() {
+    // RecommendationService.create monta o ReviewRequest na mão: @Size(max=2000) nunca roda ali.
+    // Sem o teto no dominio, um morador autenticado grava texto de tamanho arbitrario (a coluna
+    // e `text`, sem limite, e nao ha CHECK de maximo).
+    String longo = "a".repeat(2001);
+
+    assertThatThrownBy(
+            () -> service.create(RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, longo)))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_INVALID");
+    verify(reviewRepo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void create_textoNoLimiteExato_ehAceito() {
+    when(reviewRepo.findByRecommendationIdAndUnitId(RID, UNIT)).thenReturn(Optional.empty());
+
+    service.create(RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "a".repeat(2000)));
+
+    verify(reviewRepo).saveAndFlush(any(RecommendationReview.class));
+  }
+
+  @Test
+  void edit_textoLongoDemais_lancaErroDeDominio() {
+    assertThatThrownBy(
+            () ->
+                service.edit(
+                    RID, REVIEW_ID, ACTOR, false, req(ReviewSentiment.LIKE, 5, "a".repeat(2001))))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_INVALID");
+    verify(reviewRepo, never()).save(any());
+  }
+
+  // ---- M6: unidade antes do corpo --------------------------------------------------
+
+  @Test
+  void create_semUnidadeEComCorpoInvalido_reclamaDaUnidadePrimeiro() {
+    // A tela traduz o `code` numa explicacao. Se o corpo fosse validado antes, o sindico recebia
+    // "escreva 10 caracteres" quando o problema real e que ele nunca podera avaliar.
+    assertThatThrownBy(
+            () -> service.create(RID, ACTOR, null, false, req(ReviewSentiment.LIKE, 9, "curto")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_REQUIRES_UNIT");
+  }
+
+  // ---- M9: corrida na cota vira erro de dominio, nao 500 ---------------------------
+
+  @Test
+  void create_corridaNaCota_traduzViolacaoDoIndiceUnico() {
+    // Dois moradores do mesmo apartamento enviando ao mesmo tempo passam os dois pela checagem de
+    // aplicacao; o segundo bate em ux_review_unit. Sem a traducao, o handler generico devolve 500.
+    when(reviewRepo.findByRecommendationIdAndUnitId(RID, UNIT)).thenReturn(Optional.empty());
+    when(reviewRepo.saveAndFlush(any(RecommendationReview.class)))
+        .thenThrow(new DataIntegrityViolationException("ux_review_unit"));
+
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("REVIEW_UNIT_ALREADY_REVIEWED");
+  }
+
+  // ---- I2: indicacao oculta esconde as avaliacoes dela ------------------------------
+
+  private void recommendationHidden() {
+    ReflectionTestUtils.setField(rec, "status", RecommendationStatus.HIDDEN);
+  }
+
+  @Test
+  void list_deIndicacaoOculta_paraEstranho_naoEncontra() {
+    recommendationHidden();
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
+        .thenReturn(List.of(reviewBy(OTHER_USER, UNIT)));
+
+    assertThatThrownBy(() -> service.list(RID, ACTOR, UNIT, false))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+  }
+
+  @Test
+  void list_deIndicacaoOculta_paraVisitanteSemSessao_naoEncontra() {
+    recommendationHidden();
+
+    assertThatThrownBy(() -> service.list(RID, null, null, false))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+  }
+
+  @Test
+  void list_deIndicacaoOculta_paraModerador_devolveAsAvaliacoes() {
+    recommendationHidden();
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
+        .thenReturn(List.of(reviewBy(OTHER_USER, UNIT)));
+
+    assertThat(service.list(RID, ACTOR, OUTRA_UNIT, true)).hasSize(1);
+  }
+
+  @Test
+  void list_deIndicacaoOculta_paraAutorDaIndicacao_devolveAsAvaliacoes() {
+    recommendationHidden();
+    ReflectionTestUtils.setField(rec, "recommendedByUserId", ACTOR);
+    when(reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(RID))
+        .thenReturn(List.of(reviewBy(OTHER_USER, UNIT)));
+
+    assertThat(service.list(RID, ACTOR, UNIT, false)).hasSize(1);
+  }
+
+  @Test
+  void create_emIndicacaoOculta_naoEncontra() {
+    recommendationHidden();
+    when(reviewRepo.findByRecommendationIdAndUnitId(RID, UNIT)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    RID, ACTOR, UNIT, false, req(ReviewSentiment.LIKE, 5, "Serviço muito bom.")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+    verify(reviewRepo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void edit_emIndicacaoOculta_naoEncontra() {
+    recommendationHidden();
+    when(reviewRepo.findByIdAndRecommendationId(REVIEW_ID, RID))
+        .thenReturn(Optional.of(reviewBy(ACTOR, UNIT)));
+
+    assertThatThrownBy(
+            () ->
+                service.edit(
+                    RID,
+                    REVIEW_ID,
+                    ACTOR,
+                    false,
+                    req(ReviewSentiment.LIKE, 4, "Mudei de ideia depois.")))
+        .isInstanceOf(RecommendationException.class)
+        .extracting("code")
+        .isEqualTo("NOT_FOUND");
+    verify(reviewRepo, never()).save(any());
   }
 }

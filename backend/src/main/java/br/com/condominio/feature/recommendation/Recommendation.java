@@ -172,6 +172,24 @@ public class Recommendation {
     status = RecommendationStatus.HIDDEN;
   }
 
+  /**
+   * Indicação oculta por moderação só é visível ao autor, ao morador indicado ou a quem modera. É a
+   * regra ÚNICA de visibilidade da indicação: vale para o detalhe e também para tudo que pendura
+   * nela (avaliações). Ocultar uma indicação tem que ocultar o conteúdo dela — senão a listagem de
+   * avaliações continua servindo o que a moderação tirou do ar, e ainda dá para avaliar uma
+   * indicação oculta.
+   *
+   * <p>O {@code actorId != null} não é redundante: {@code residentUserId} é nulo em toda indicação
+   * que não é de morador, e sem a guarda um visitante sem sessão (actorId nulo) casaria com ele por
+   * {@code Objects.equals(null, null)} e veria a indicação oculta — exatamente o público que a
+   * moderação quer barrar.
+   */
+  public boolean isVisibleTo(UUID actorId, boolean canModerate) {
+    if (status == RecommendationStatus.ACTIVE || canModerate) return true;
+    return actorId != null
+        && (actorId.equals(recommendedByUserId) || actorId.equals(residentUserId));
+  }
+
   /** Contadores desnormalizados, recalculados a partir das avaliações ATIVAS. */
   public void updateReviewCounts(int likeCount, int dislikeCount, int reviewCount, int ratingSum) {
     this.likeCount = likeCount;

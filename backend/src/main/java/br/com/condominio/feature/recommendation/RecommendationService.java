@@ -96,10 +96,13 @@ public class RecommendationService {
     repo.save(r);
     replaceHours(r.getId(), req.openingHours());
     if (authorUnitId != null) {
+      // canModerate=false: a indicação acabou de nascer ACTIVE e o ator é o próprio autor, então a
+      // checagem de visibilidade passa sem depender de permissão de moderação.
       reviewService.create(
           r.getId(),
           authorId,
           authorUnitId,
+          false,
           new ReviewRequest(req.sentiment(), req.rating(), req.text()));
     }
     activityNotifier.notify(ActivityAction.CREATED, "Indicação", r.getServiceName(), authorId);
@@ -111,12 +114,10 @@ public class RecommendationService {
   @Transactional
   public RecommendationView getById(UUID id, UUID actorId, boolean canModerate) {
     Recommendation r = load(id);
-    // Indicação HIDDEN (oculta por moderação) só é visível ao autor, ao morador indicado ou a um
-    // moderador. Para os demais, NOT_FOUND (não confirma existência).
-    if (r.getStatus() != RecommendationStatus.ACTIVE
-        && !canModerate
-        && !java.util.Objects.equals(actorId, r.getRecommendedByUserId())
-        && !java.util.Objects.equals(actorId, r.getResidentUserId())) {
+    // Regra de visibilidade mora na entidade (Recommendation#isVisibleTo) porque também vale para
+    // as avaliações penduradas na indicação. Para quem não pode ver, NOT_FOUND (não confirma
+    // existência).
+    if (!r.isVisibleTo(actorId, canModerate)) {
       throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
     }
     return buildView(r);

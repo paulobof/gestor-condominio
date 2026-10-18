@@ -108,6 +108,9 @@ export function RecommendationDetailPage() {
     !!rec &&
     (user.id === rec.recommendedByUserId || user.authorities.includes('RECOMMENDATION_MODERATE'));
   const canModerate = !!user && user.authorities.includes('RECOMMENDATION_MODERATE');
+  // Avaliar exige unidade (spec §3: "Síndico (sem unidade) lê e não avalia"). Sem esta checagem o
+  // formulário aparecia para quem nunca poderia enviá-lo, e o síndico só descobria no 403.
+  const userHasUnit = !!user?.unitId;
 
   const handleDelete = async () => {
     if (!id) return;
@@ -403,12 +406,21 @@ export function RecommendationDetailPage() {
                     </button>
                   )}
                 </div>
+                {/* role="img" + aria-label: sem o role, o aria-label num <p> é ignorado e o
+                    leitor de tela recita as estrelas cruas ("estrela estrela estrela"). Com ele,
+                    as estrelas viram uma imagem única com o texto alternativo da nota, e o
+                    aria-hidden esconde os caracteres decorativos. */}
                 <p
                   className="mt-1 flex items-center gap-1 text-sm"
-                  aria-label={`Nota ${rv.rating} de 5`}
+                  role="img"
+                  aria-label={`Nota ${rv.rating} de 5, ${
+                    rv.sentiment === 'LIKE' ? 'recomenda' : 'não recomenda'
+                  }`}
                 >
-                  {'★'.repeat(rv.rating)}
-                  <span className="text-muted-foreground">{'★'.repeat(5 - rv.rating)}</span>
+                  <span aria-hidden="true">{'★'.repeat(rv.rating)}</span>
+                  <span className="text-muted-foreground" aria-hidden="true">
+                    {'★'.repeat(5 - rv.rating)}
+                  </span>
                   {rv.sentiment === 'LIKE' ? (
                     <ThumbsUp className="ml-1 h-3.5 w-3.5 text-primary" aria-hidden="true" />
                   ) : (
@@ -471,6 +483,11 @@ export function RecommendationDetailPage() {
               </div>
             )}
           </div>
+        ) : !userHasUnit ? (
+          <p className="rounded-md border p-3 text-sm text-muted-foreground">
+            Avaliar é para moradores. Sua conta não está vinculada a uma unidade, então você pode
+            ler as avaliações, mas não publicar uma.
+          </p>
         ) : (
           <ReviewForm onSubmit={handleCreateReview} submitting={submittingReview} />
         )}

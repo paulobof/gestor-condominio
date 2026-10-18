@@ -96,8 +96,12 @@ function review(over: Record<string, unknown> = {}) {
   } as never;
 }
 
-function setUser(id: string | null, authorities: string[] = []) {
-  useAuthMock.mockReturnValue({ user: id ? { id, authorities } : null } as never);
+/**
+ * `unitId` default 'unit-1': quase todo teste aqui é de morador. Passe `null` para o síndico —
+ * quem não tem unidade lê as avaliações mas não vê o formulário (spec §3).
+ */
+function setUser(id: string | null, authorities: string[] = [], unitId: string | null = 'unit-1') {
+  useAuthMock.mockReturnValue({ user: id ? { id, authorities, unitId } : null } as never);
 }
 
 function renderPage() {
@@ -343,6 +347,32 @@ describe('RecommendationDetailPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /apagar/i }));
 
     await waitFor(() => expect(deleteReviewMock).toHaveBeenCalledWith('r1', 'rv1'));
+  });
+
+  it('síndico (sem unidade) lê as avaliações mas não vê o formulário', async () => {
+    // Spec §3: "Síndico (sem unidade) lê e não avalia". Sem isso o formulário aparecia e ele só
+    // descobria o 403 depois de escrever tudo e enviar.
+    setUser('u9', ['RECOMMENDATION_MODERATE'], null);
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ authorName: 'Ana' })]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByText('Muito bom atendimento, recomendo.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Comentário')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /publicar avaliação/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/não está vinculada a uma unidade/i)).toBeInTheDocument();
+  });
+
+  it('a nota da avaliação é anunciada como texto, não como estrelas cruas', async () => {
+    // aria-label num <p> é ignorado; sem role="img" o leitor de tela recita '★★★★★'.
+    setUser('u9');
+    getMock.mockResolvedValue(reco());
+    listReviewsMock.mockResolvedValue([review({ rating: 4, sentiment: 'DISLIKE' })]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Encanador Zé' });
+
+    expect(screen.getByRole('img', { name: 'Nota 4 de 5, não recomenda' })).toBeInTheDocument();
   });
 
   it('moderador pode ocultar uma avaliação individual', async () => {

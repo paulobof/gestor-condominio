@@ -9,7 +9,10 @@ interface StarRatingProps {
   disabled?: boolean;
 }
 
-/** Grupo de 5 botões (não radio nativo — o teclado madeira/click já funciona como botão simples). */
+/**
+ * Grupo de 5 botões, não um radiogroup nativo: como cada estrela é um `<button>`, Tab/Enter/Espaço
+ * já funcionam sem gerenciar roving tabindex nem setas, e `aria-pressed` comunica a nota escolhida.
+ */
 export function StarRating({ value, onChange, disabled = false }: StarRatingProps) {
   return (
     <div role="group" aria-label="Nota" className="flex gap-1">

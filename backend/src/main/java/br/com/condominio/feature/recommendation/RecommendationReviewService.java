@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -31,12 +32,20 @@ public class RecommendationReviewService {
 
   @Transactional
   public ReviewView create(
-      UUID recommendationId, UUID actorId, UUID actorUnitId, ReviewRequest req) {
-    validate(req);
+      UUID recommendationId,
+      UUID actorId,
+      UUID actorUnitId,
+      boolean canModerate,
+      ReviewRequest req) {
+    // Unidade ANTES do corpo: quem não tem unidade não pode avaliar de jeito nenhum, e mandar
+    // REVIEW_INVALID nesse caso faria a tela explicar "escreva 10 caracteres" a um síndico que
+    // nunca poderia avaliar. Ordem definida no plano.
     if (actorUnitId == null) {
       throw new RecommendationException(
           "REVIEW_REQUIRES_UNIT", "Só moradores com unidade podem avaliar indicações.");
     }
+    validate(req);
+    Recommendation recommendation = loadVisible(recommendationId, actorId, canModerate);
     reviewRepo
         .findByRecommendationIdAndUnitId(recommendationId, actorUnitId)
         .ifPresent(
@@ -52,14 +61,26 @@ public class RecommendationReviewService {
             req.sentiment(),
             req.rating().shortValue(),
             req.text());
-    reviewRepo.save(review);
-    recountAndSave(load(recommendationId));
+    try {
+      reviewRepo.saveAndFlush(review);
+    } catch (DataIntegrityViolationException e) {
+      // Corrida: dois moradores do mesmo apartamento enviando ao mesmo tempo passam os dois pela
+      // checagem acima e o segundo bate no índice único ux_review_unit. Traduz para o erro de
+      // domínio (spec §5.2: "a violação da unique é traduzida em erro de domínio, não em 500") em
+      // vez de deixar cair no handler genérico. Catch LOCAL de propósito: um handler global de
+      // DataIntegrityViolationException cobriria toda unique do sistema com esta mensagem.
+      throw new RecommendationException(
+          "REVIEW_UNIT_ALREADY_REVIEWED", "Este apartamento já avaliou esta indicação.");
+    }
+    recountAndSave(recommendation);
     return toViews(List.of(review), actorId, actorUnitId, false).get(0);
   }
 
   @Transactional
-  public ReviewView edit(UUID recommendationId, UUID reviewId, UUID actorId, ReviewRequest req) {
+  public ReviewView edit(
+      UUID recommendationId, UUID reviewId, UUID actorId, boolean canModerate, ReviewRequest req) {
     validate(req);
+    loadVisible(recommendationId, actorId, canModerate);
     RecommendationReview review = loadOwned(recommendationId, reviewId, actorId);
     review.edit(req.sentiment(), req.rating().shortValue(), req.text());
     reviewRepo.save(review);
@@ -78,10 +99,13 @@ public class RecommendationReviewService {
    * Lista as avaliações da indicação. Sem moderação, avaliações ocultas somem da lista. O nome do
    * autor e o código da unidade só aparecem para quem modera ou mora na mesma unidade da avaliação
    * — para todo o resto, {@code authorName}/{@code unitCode} vêm nulos.
+   *
+   * <p>Indicação oculta esconde também as avaliações dela: mesma regra do detalhe.
    */
   @Transactional
   public List<ReviewView> list(
       UUID recommendationId, UUID actorId, UUID actorUnitId, boolean canModerate) {
+    loadVisible(recommendationId, actorId, canModerate);
     List<RecommendationReview> reviews =
         reviewRepo.findByRecommendationIdOrderByCreatedAtDesc(recommendationId);
     List<RecommendationReview> visible =
@@ -104,22 +128,29 @@ public class RecommendationReviewService {
     recountAndSave(load(recommendationId));
   }
 
+  /** Mesmo teto do {@code @Size(max=2000)} de {@link ReviewRequest#text()}. */
+  static final int MAX_TEXT_LENGTH = 2000;
+
   // ReviewRequest#text já chega stripado (compact constructor do record) quando a chamada vem da
   // fronteira HTTP com @Valid — mas ReviewRequest também é montado programaticamente em
   // RecommendationService.create (indicação + primeira avaliação), onde as anotações de Bean
-  // Validation nunca são acionadas. Sem esta checagem de domínio, um texto curto ou uma nota fora
-  // de 1..5 vindos desse caminho só seriam barrados pela CHECK do banco (chk_review_rating /
-  // chk_review_text), virando 500 em vez de 400.
+  // Validation nunca são acionadas. Sem esta checagem de domínio, um texto curto ou longo demais,
+  // ou uma nota fora de 1..5, vindos desse caminho passariam direto: o mínimo e a nota só seriam
+  // barrados pela CHECK do banco (chk_review_rating / chk_review_text), virando 500 em vez de 400,
+  // e o máximo não seria barrado por ninguém — a coluna é `text`, sem limite — deixando um morador
+  // autenticado gravar comentário de tamanho arbitrário.
   private void validate(ReviewRequest req) {
     if (req.sentiment() == null
         || req.rating() == null
         || req.rating() < 1
         || req.rating() > 5
         || req.text() == null
-        || req.text().length() < 10) {
+        || req.text().length() < 10
+        || req.text().length() > MAX_TEXT_LENGTH) {
       throw new RecommendationException(
           "REVIEW_INVALID",
-          "Avaliação precisa de sentimento, nota entre 1 e 5 e comentário com pelo menos 10"
+          "Avaliação precisa de sentimento, nota entre 1 e 5 e comentário de 10 a "
+              + MAX_TEXT_LENGTH
               + " caracteres.");
     }
   }
@@ -199,6 +230,19 @@ public class RecommendationReviewService {
   private Recommendation load(UUID id) {
     return repo.findById(id)
         .orElseThrow(() -> new RecommendationException("NOT_FOUND", "Indicação não encontrada."));
+  }
+
+  /**
+   * Carrega a indicação aplicando a MESMA regra de visibilidade do detalhe ({@link
+   * Recommendation#isVisibleTo}). Ocultar a indicação tem que ocultar as avaliações dela e impedir
+   * novas — senão a moderação tira do ar só a casca.
+   */
+  private Recommendation loadVisible(UUID id, UUID actorId, boolean canModerate) {
+    Recommendation r = load(id);
+    if (!r.isVisibleTo(actorId, canModerate)) {
+      throw new RecommendationException("NOT_FOUND", "Indicação não encontrada.");
+    }
+    return r;
   }
 
   private RecommendationReview loadOwned(UUID recommendationId, UUID reviewId, UUID actorId) {

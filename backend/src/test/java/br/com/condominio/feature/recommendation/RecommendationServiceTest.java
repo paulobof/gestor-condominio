@@ -240,7 +240,8 @@ class RecommendationServiceTest {
 
     service.create(author, unitId, true, req);
 
-    verify(reviewService).create(any(UUID.class), eq(author), eq(unitId), any(ReviewRequest.class));
+    verify(reviewService)
+        .create(any(UUID.class), eq(author), eq(unitId), eq(false), any(ReviewRequest.class));
   }
 
   @Test
@@ -319,6 +320,19 @@ class RecommendationServiceTest {
     Recommendation r = persisted(id, author, RecommendationStatus.HIDDEN);
     when(repo.findById(id)).thenReturn(Optional.of(r));
     assertThatThrownBy(() -> service.getById(id, stranger, false))
+        .isInstanceOf(RecommendationException.class)
+        .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
+  }
+
+  @Test
+  void getById_hidden_porVisitanteSemSessao_notFound() {
+    // residentUserId é null em indicação que não é de morador; com actorId também null,
+    // Objects.equals(null, null) casava e o visitante via a indicação OCULTA. A guarda de
+    // actorId != null em Recommendation#isVisibleTo fecha isso.
+    UUID id = UUID.randomUUID();
+    when(repo.findById(id))
+        .thenReturn(Optional.of(persisted(id, author, RecommendationStatus.HIDDEN)));
+    assertThatThrownBy(() -> service.getById(id, null, false))
         .isInstanceOf(RecommendationException.class)
         .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
   }

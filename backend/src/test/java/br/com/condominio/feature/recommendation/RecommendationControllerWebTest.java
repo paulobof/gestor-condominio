@@ -303,7 +303,8 @@ class RecommendationControllerWebTest {
   @Test
   void editReview_comSessao_delegaParaOServico() throws Exception {
     ReviewRequest req = new ReviewRequest(ReviewSentiment.LIKE, 5, "Serviço muito bom.");
-    when(reviewService.edit(eq(RID), eq(REVIEW_ID), eq(UID), eq(req))).thenReturn(reviewView());
+    when(reviewService.edit(eq(RID), eq(REVIEW_ID), eq(UID), eq(false), eq(req)))
+        .thenReturn(reviewView());
 
     mvc.perform(
             put("/api/recommendations/{id}/reviews/{rev}", RID, REVIEW_ID)
@@ -312,7 +313,7 @@ class RecommendationControllerWebTest {
                 .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
         .andExpect(status().isOk());
 
-    verify(reviewService).edit(RID, REVIEW_ID, UID, req);
+    verify(reviewService).edit(RID, REVIEW_ID, UID, false, req);
   }
 
   @Test
@@ -330,6 +331,50 @@ class RecommendationControllerWebTest {
         .andExpect(status().isNoContent());
 
     verify(reviewService).delete(RID, REVIEW_ID, UID);
+  }
+
+  @Test
+  void createReview_semUnidade_returns403() throws Exception {
+    // Spec §5.1: "sem unidade -> 403 com código próprio". Nao e corpo invalido (400): e o ator que
+    // nao tem direito de avaliar. A tela usa o code para explicar em vez de mostrar erro generico.
+    when(reviewService.create(eq(RID), eq(UID), isNull(), eq(false), any()))
+        .thenThrow(
+            new RecommendationException(
+                "REVIEW_REQUIRES_UNIT", "Só moradores com unidade podem avaliar indicações."));
+
+    mvc.perform(
+            post("/api/recommendations/{id}/reviews", RID)
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("REVIEW_REQUIRES_UNIT"));
+  }
+
+  @Test
+  void createReview_comUnidade_propagaCanModerateFalse() throws Exception {
+    when(reviewService.create(eq(RID), eq(UID), eq(UNIT_ID), eq(false), any()))
+        .thenReturn(reviewView());
+
+    mvc.perform(
+            post("/api/recommendations/{id}/reviews", RID)
+                .with(MockAuth.userWithUnit(UID, UNIT_ID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sentiment\":\"LIKE\",\"rating\":5,\"text\":\"Serviço muito bom.\"}"))
+        .andExpect(status().isCreated());
+
+    verify(reviewService).create(eq(RID), eq(UID), eq(UNIT_ID), eq(false), any());
+  }
+
+  @Test
+  void listReviews_comModerate_propagaCanModerateTrue() throws Exception {
+    // canModerate carrega duas decisoes: revelar PII e enxergar avaliacao de indicacao oculta.
+    when(reviewService.list(eq(RID), eq(UID), isNull(), eq(true))).thenReturn(List.of());
+
+    mvc.perform(get("/api/recommendations/{id}/reviews", RID).with(MockAuth.user(UID, MODERATE)))
+        .andExpect(status().isOk());
+
+    verify(reviewService).list(RID, UID, null, true);
   }
 
   @Test

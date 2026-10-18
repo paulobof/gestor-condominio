@@ -24,7 +24,10 @@ public record CreateRecommendationRequest(
     @Size(max = 40) String priceRange,
     ReviewSentiment sentiment,
     @Min(1) @Max(5) Integer rating,
-    String text,
+    // Mesmo teto do ReviewRequest#text: este campo vira a primeira avaliação. Só o máximo aqui — o
+    // mínimo de 10 não pode ser anotação porque o campo é opcional para autor sem unidade; quem
+    // fecha os dois lados é a validação de domínio em RecommendationReviewService#validate.
+    @Size(max = 2000) String text,
     List<String> tagSlugs,
     List<OpeningHoursDto> openingHours,
     @Size(max = 255) @Pattern(regexp = "^$|https?://.*", message = "URL deve começar com https://")

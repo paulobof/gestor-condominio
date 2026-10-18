@@ -85,6 +85,15 @@ public class ComplaintAdminController {
     return service.setDueDate(id, me.userId(), body.dueDate());
   }
 
+  @PutMapping("/{id}/response")
+  @PreAuthorize(CAN)
+  public ComplaintAdminDetailView response(
+      @PathVariable UUID id,
+      @Valid @RequestBody SyndicResponseRequest body,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.setSyndicResponse(id, me.userId(), body.text());
+  }
+
   @PostMapping("/{id}/resolve")
   @PreAuthorize(CAN)
   public ComplaintAdminDetailView resolve(

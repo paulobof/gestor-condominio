@@ -231,4 +231,48 @@ class ComplaintTest {
         .extracting("code")
         .isEqualTo("INVALID_STATE");
   }
+
+  @Test
+  void syndicResponse_setEditClear_onlyAfterForward() {
+    Complaint c = inStatus(ComplaintStatus.FORWARDED);
+    c.updateSyndicResponse(admin, "  Orçamento aprovado, pintor vem dia 30.  ", now);
+    assertThat(c.getSyndicResponse()).isEqualTo("Orçamento aprovado, pintor vem dia 30.");
+    assertThat(c.getSyndicResponseAt()).isEqualTo(now);
+    assertThat(c.drainChanges())
+        .singleElement()
+        .satisfies(
+            ch -> {
+              assertThat(ch.kind()).isEqualTo(ComplaintEventKind.RESPONSE_SET);
+              assertThat(ch.toValue()).isNull(); // conteúdo não vai para o log
+            });
+
+    c.updateSyndicResponse(admin, "Orçamento aprovado, pintor vem dia 30.", now.plusSeconds(5));
+    assertThat(c.drainChanges()).isEmpty(); // igual ao atual: nada muda
+    assertThat(c.getSyndicResponseAt()).isEqualTo(now);
+
+    c.updateSyndicResponse(admin, "   ", now.plusSeconds(10));
+    assertThat(c.getSyndicResponse()).isNull();
+    assertThat(c.getSyndicResponseAt()).isNull();
+
+    Complaint resolved = inStatus(ComplaintStatus.RESOLVED);
+    resolved.updateSyndicResponse(admin, "Concluído.", now);
+    assertThat(resolved.getSyndicResponse()).isEqualTo("Concluído.");
+  }
+
+  @Test
+  void syndicResponse_beforeForward_isInvalidState() {
+    assertThatThrownBy(() -> inStatus(ComplaintStatus.READY).updateSyndicResponse(admin, "x", now))
+        .extracting("code")
+        .isEqualTo("INVALID_STATE");
+  }
+
+  @Test
+  void syndicResponse_tooLong_isInvalidInput() {
+    assertThatThrownBy(
+            () ->
+                inStatus(ComplaintStatus.FORWARDED)
+                    .updateSyndicResponse(admin, "x".repeat(2001), now))
+        .extracting("code")
+        .isEqualTo("INVALID_INPUT");
+  }
 }

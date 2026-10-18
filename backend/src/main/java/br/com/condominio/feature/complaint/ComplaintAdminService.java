@@ -112,6 +112,11 @@ public class ComplaintAdminService {
   }
 
   @Transactional
+  public ComplaintAdminDetailView setSyndicResponse(UUID id, UUID actor, String text) {
+    return act(id, c -> c.updateSyndicResponse(actor, text, clock.now()));
+  }
+
+  @Transactional
   public ComplaintAdminDetailView resolve(UUID id, UUID actor, String note) {
     return act(id, c -> c.resolve(actor, note, clock.now()));
   }

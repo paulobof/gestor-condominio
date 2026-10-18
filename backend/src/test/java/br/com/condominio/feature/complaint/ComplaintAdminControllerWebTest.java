@@ -116,4 +116,25 @@ class ComplaintAdminControllerWebTest {
     mvc.perform(post("/api/admin/complaints/{id}/resolve", CID).with(MockAuth.user(UID, PERM)))
         .andExpect(status().isOk());
   }
+
+  @Test
+  void response_passesText() throws Exception {
+    when(service.setSyndicResponse(CID, UID, "Pintor vem dia 30.")).thenReturn(detail());
+    mvc.perform(
+            put("/api/admin/complaints/{id}/response", CID)
+                .with(MockAuth.user(UID, PERM))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"Pintor vem dia 30.\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void response_withoutPermission_is403() throws Exception {
+    mvc.perform(
+            put("/api/admin/complaints/{id}/response", CID)
+                .with(MockAuth.user(UID))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"x\"}"))
+        .andExpect(status().isForbidden());
+  }
 }

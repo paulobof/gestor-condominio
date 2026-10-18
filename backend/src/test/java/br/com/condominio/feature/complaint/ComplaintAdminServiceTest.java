@@ -162,4 +162,17 @@ class ComplaintAdminServiceTest {
         .extracting("code")
         .isEqualTo("NOT_FOUND");
   }
+
+  @Test
+  void setSyndicResponse_stampsWithClock() {
+    Instant now = Instant.parse("2026-10-24T12:00:00Z");
+    when(clock.now()).thenReturn(now);
+    Complaint c = persisted(ComplaintStatus.FORWARDED);
+
+    service.setSyndicResponse(c.getId(), admin, "Pintor vem dia 30.");
+
+    assertThat(c.getSyndicResponse()).isEqualTo("Pintor vem dia 30.");
+    assertThat(c.getSyndicResponseAt()).isEqualTo(now);
+    verify(events).flush(c);
+  }
 }

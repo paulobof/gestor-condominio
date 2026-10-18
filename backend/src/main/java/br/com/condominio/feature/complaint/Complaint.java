@@ -69,6 +69,13 @@ public class Complaint {
   @Column(name = "resolution_note", length = REASON_MAX)
   private String resolutionNote;
 
+  /** Resposta da síndica, redigida pelo admin; visível aos moradores. */
+  @Column(name = "syndic_response", length = DESCRIPTION_MAX)
+  private String syndicResponse;
+
+  @Column(name = "syndic_response_at")
+  private Instant syndicResponseAt;
+
   @Column(name = "batch_id")
   private UUID batchId;
 
@@ -164,6 +171,19 @@ public class Complaint {
     String from = dueDate == null ? null : dueDate.toString();
     dueDate = due;
     record(ComplaintEventKind.DUE_DATE_SET, actor, from, due.toString());
+  }
+
+  /** Uma resposta por chamado; o admin edita à vontade. Em branco limpa. */
+  public void updateSyndicResponse(UUID actor, String text, Instant now) {
+    requireStatus(ComplaintStatus.FORWARDED, ComplaintStatus.RESOLVED);
+    String t = text == null || text.isBlank() ? null : text.strip();
+    if (t != null && t.length() > DESCRIPTION_MAX) {
+      throw invalidInput("A resposta deve ter até 2000 caracteres.");
+    }
+    if (Objects.equals(t, syndicResponse)) return;
+    syndicResponse = t;
+    syndicResponseAt = t == null ? null : now;
+    record(ComplaintEventKind.RESPONSE_SET, actor, null, null);
   }
 
   public void resolve(UUID actor, String note, Instant now) {

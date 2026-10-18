@@ -5,6 +5,7 @@ public enum ComplaintEventKind {
   EDITED,
   STATUS_CHANGED,
   DUE_DATE_SET,
+  RESPONSE_SET,
   PHOTO_ADDED,
   PHOTO_REMOVED,
   CANCELLED

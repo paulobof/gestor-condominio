@@ -188,7 +188,12 @@ export function ComplaintsPage() {
       )}
       <ul className="space-y-3">
         {list.map((c) => (
-          <ComplaintCard key={c.id} c={c} to={`/chamados/${c.id}`} />
+          <ComplaintCard
+            key={c.id}
+            c={c}
+            to={`/chamados/${c.id}`}
+            showThumbnail={tab === 'board'}
+          />
         ))}
       </ul>
       {tab === 'board' && !loading && boardPage.number + 1 < boardPage.totalPages && (

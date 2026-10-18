@@ -136,4 +136,27 @@ describe('ComplaintForwardPage', () => {
     for (const b of boxes) await userEvent.click(b);
     expect(screen.getByRole('button', { name: 'Gerar texto' })).toBeDisabled();
   });
+
+  it('carrega todas as páginas de prontos e mostra o total real', async () => {
+    vi.mocked(adminQueue)
+      .mockResolvedValueOnce({
+        content: [
+          { complaint: mk('a', 1), authorName: 'X', unitCode: 'T1-1' },
+          { complaint: mk('b', 2), authorName: 'Y', unitCode: 'T1-2' },
+        ],
+        totalElements: 3,
+        totalPages: 2,
+        number: 0,
+      })
+      .mockResolvedValueOnce({
+        content: [{ complaint: mk('c', 3), authorName: 'Z', unitCode: 'T1-3' }],
+        totalElements: 3,
+        totalPages: 2,
+        number: 1,
+      });
+    renderPage();
+    expect(await screen.findAllByRole('checkbox')).toHaveLength(3);
+    expect(adminQueue).toHaveBeenCalledWith(['READY'], 1);
+    expect(screen.getByText(/Prontos para encaminhar \(3\)/)).toBeInTheDocument();
+  });
 });

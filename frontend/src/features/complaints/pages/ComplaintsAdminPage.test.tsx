@@ -78,4 +78,33 @@ describe('ComplaintsAdminPage', () => {
       '/admin/chamados/encaminhar'
     );
   });
+
+  it('"Carregar mais" acrescenta a próxima página e some no fim', async () => {
+    vi.mocked(adminQueue)
+      .mockResolvedValueOnce({
+        content: [{ complaint: c, authorName: 'Ana Souza', unitCode: 'T2-51' }],
+        totalElements: 2,
+        totalPages: 2,
+        number: 0,
+      })
+      .mockResolvedValueOnce({
+        content: [
+          { complaint: { ...c, id: 'c2', code: 8 }, authorName: 'Beto Lima', unitCode: 'T1-10' },
+        ],
+        totalElements: 2,
+        totalPages: 2,
+        number: 1,
+      });
+    render(
+      <MemoryRouter>
+        <ComplaintsAdminPage />
+      </MemoryRouter>
+    );
+    await screen.findByText(/Ana Souza/);
+    await userEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+    expect(await screen.findByText(/Beto Lima/)).toBeInTheDocument();
+    expect(screen.getByText(/Ana Souza/)).toBeInTheDocument();
+    expect(adminQueue).toHaveBeenLastCalledWith(['OPEN', 'IN_REVIEW', 'READY'], 1);
+    expect(screen.queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+  });
 });

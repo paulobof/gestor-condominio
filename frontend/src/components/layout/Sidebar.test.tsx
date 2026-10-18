@@ -15,8 +15,8 @@ const useFeaturesMock = vi.mocked(useFeatures);
 /** Por padrão tudo ligado; os testes de flag passam a lista do que está ligado. */
 let enabledFeatures: string[] | null = null;
 
-function renderSidebar(authorities: string[] = [], path = '/') {
-  useAuthMock.mockReturnValue({ user: { id: 'u1', authorities } } as never);
+function renderSidebar(authorities: string[] = [], path = '/', unitId: string | null = null) {
+  useAuthMock.mockReturnValue({ user: { id: 'u1', authorities, unitId } } as never);
   useFeaturesMock.mockReturnValue({
     enabled: (name: string) => enabledFeatures === null || enabledFeatures.includes(name),
     loading: false,
@@ -34,6 +34,19 @@ beforeEach(() => {
 });
 
 describe('Sidebar', () => {
+  it('"Chamados" só aparece para quem tem unidade ou COMPLAINT_MANAGE', () => {
+    const { unmount } = renderSidebar([]);
+    expect(screen.queryAllByRole('link', { name: 'Chamados' })).toHaveLength(0);
+    unmount();
+
+    const withUnit = renderSidebar([], '/', 'unit-1');
+    expect(screen.getAllByRole('link', { name: 'Chamados' }).length).toBeGreaterThan(0);
+    withUnit.unmount();
+
+    renderSidebar(['COMPLAINT_MANAGE']);
+    expect(screen.getAllByRole('link', { name: 'Chamados' }).length).toBeGreaterThan(0);
+  });
+
   it('visitante vê com cadeado tudo que exige conta; áreas abertas ficam sem', () => {
     useAuthMock.mockReturnValue({ user: null } as never);
     useFeaturesMock.mockReturnValue({ enabled: () => true, loading: false });

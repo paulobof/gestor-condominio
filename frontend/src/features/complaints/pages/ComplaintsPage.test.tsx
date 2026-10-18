@@ -94,4 +94,49 @@ describe('ComplaintsPage', () => {
       '/chamados/novo'
     );
   });
+
+  it('"Carregar mais" acrescenta a próxima página do mural', async () => {
+    vi.mocked(listBoard)
+      .mockResolvedValueOnce({ content: [base], totalElements: 2, totalPages: 2, number: 0 })
+      .mockResolvedValueOnce({
+        content: [{ ...base, id: 'c9', code: 200 }],
+        totalElements: 2,
+        totalPages: 2,
+        number: 1,
+      });
+    renderPage();
+    await screen.findByText('#123');
+    await userEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+    expect(await screen.findByText('#200')).toBeInTheDocument();
+    expect(screen.getByText('#123')).toBeInTheDocument();
+    expect(listBoard).toHaveBeenLastCalledWith({
+      typeId: undefined,
+      locationId: undefined,
+      status: undefined,
+      page: 1,
+    });
+    expect(screen.queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+  });
+
+  it('trocar filtro volta para a primeira página', async () => {
+    vi.mocked(listBoard)
+      .mockResolvedValueOnce({ content: [base], totalElements: 2, totalPages: 2, number: 0 })
+      .mockResolvedValueOnce({
+        content: [{ ...base, id: 'c9', code: 200 }],
+        totalElements: 2,
+        totalPages: 2,
+        number: 1,
+      });
+    renderPage();
+    await screen.findByText('#123');
+    await userEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+    await screen.findByText('#200');
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'RESOLVED');
+    expect(listBoard).toHaveBeenLastCalledWith({
+      typeId: undefined,
+      locationId: undefined,
+      status: 'RESOLVED',
+      page: 0,
+    });
+  });
 });

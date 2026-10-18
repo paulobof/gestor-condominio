@@ -16,18 +16,39 @@ export function ComplaintsAdminPage() {
   const [tab, setTab] = useState(TABS[0]);
   const [rows, setRows] = useState<AdminComplaintRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState({ number: 0, totalPages: 1 });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     adminQueue(tab.statuses, 0)
-      .then((p) => active && setRows(p.content))
-      .catch(() => active && setRows([]))
+      .then((p) => {
+        if (!active) return;
+        setRows(p.content);
+        setPage({ number: p.number, totalPages: p.totalPages });
+      })
+      .catch(() => {
+        if (!active) return;
+        setRows([]);
+        setPage({ number: 0, totalPages: 1 });
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [tab]);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    adminQueue(tab.statuses, page.number + 1)
+      .then((p) => {
+        setRows((prev) => [...prev, ...p.content]);
+        setPage({ number: p.number, totalPages: p.totalPages });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 p-4">
@@ -85,6 +106,16 @@ export function ComplaintsAdminPage() {
           </li>
         ))}
       </ul>
+      {!loading && page.number + 1 < page.totalPages && (
+        <Button
+          variant="outline"
+          className="min-h-[44px]"
+          disabled={loadingMore}
+          onClick={loadMore}
+        >
+          Carregar mais
+        </Button>
+      )}
     </main>
   );
 }

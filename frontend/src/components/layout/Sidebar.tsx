@@ -37,6 +37,8 @@ interface NavItem {
   requiresFeature?: string;
   /** Área só para quem tem conta: visitante vê o item com cadeado e cai no login ao clicar. */
   requiresLogin?: boolean;
+  /** Logado, só aparece para quem mora numa unidade (ou tem a permission indicada em `requires`). */
+  requiresUnit?: string;
 }
 
 interface NavChild {
@@ -127,6 +129,7 @@ const ENTRIES: NavEntry[] = [
     brand: 'orange',
     requiresFeature: 'complaints',
     requiresLogin: true,
+    requiresUnit: 'COMPLAINT_MANAGE',
   },
   {
     kind: 'item',
@@ -316,8 +319,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     !requires || (user?.authorities.includes(requires) ?? false);
   // Visitante nao e barrado por permission em item com cadeado: ele ve o item e o clique abre o
   // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o item.
-  const canSee = (item: NavItem) =>
-    user ? hasAuthority(item.requires) : !item.requires || !!item.requiresLogin;
+  const canSee = (item: NavItem) => {
+    if (!user) return !item.requires || !!item.requiresLogin;
+    if (item.requiresUnit && !(user as { unitId?: string | null }).unitId) {
+      return hasAuthority(item.requiresUnit);
+    }
+    return hasAuthority(item.requires);
+  };
   const on = (feature?: string) => !feature || enabled(feature);
 
   return (

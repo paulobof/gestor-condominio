@@ -15,19 +15,32 @@ import {
   type ComplaintBatch,
 } from '../api/complaintsApi';
 
+/** Carrega TODAS as páginas de chamados READY: o lote não pode deixar nenhum de fora. */
+async function loadAllReady(): Promise<Complaint[]> {
+  const all: Complaint[] = [];
+  let pageNo = 0;
+  for (;;) {
+    const p = await adminQueue(['READY'], pageNo);
+    all.push(...p.content.map((r) => r.complaint));
+    if (p.number + 1 >= p.totalPages) return all;
+    pageNo = p.number + 1;
+  }
+}
+
 export function ComplaintForwardPage() {
   const [ready, setReady] = useState<Complaint[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [text, setText] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [total, setTotal] = useState(0);
   const [batches, setBatches] = useState<ComplaintBatch[]>([]);
 
   const load = useCallback(() => {
-    adminQueue(['READY'], 0)
-      .then((p) => {
-        const list = p.content.map((r) => r.complaint);
+    loadAllReady()
+      .then((list) => {
         setReady(list);
+        setTotal(list.length);
         setSelected(new Set(list.map((c) => c.id)));
       })
       .catch(() => toast.error('Erro ao carregar os chamados prontos.'));
@@ -97,7 +110,7 @@ export function ComplaintForwardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Prontos para encaminhar ({ready.length})</CardTitle>
+          <CardTitle className="text-lg">Prontos para encaminhar ({total})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {ready.length === 0 && <p className="text-muted-foreground">Nenhum chamado pronto.</p>}

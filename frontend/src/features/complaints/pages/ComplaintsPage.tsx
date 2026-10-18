@@ -26,6 +26,8 @@ export function ComplaintsPage() {
   const [mine, setMine] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [boardPage, setBoardPage] = useState({ number: 0, totalPages: 1 });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     getCatalog()
@@ -44,7 +46,11 @@ export function ComplaintsPage() {
       status: status || undefined,
       page: 0,
     })
-      .then((p) => active && setBoard(p.content))
+      .then((p) => {
+        if (!active) return;
+        setBoard(p.content);
+        setBoardPage({ number: p.number, totalPages: p.totalPages });
+      })
       .catch(() => active && setError(true))
       .finally(() => active && setLoading(false));
     return () => {
@@ -67,6 +73,22 @@ export function ComplaintsPage() {
   }, [tab]);
 
   const list = tab === 'board' ? board : mine;
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    listBoard({
+      typeId: typeId || undefined,
+      locationId: locationId || undefined,
+      status: status || undefined,
+      page: boardPage.number + 1,
+    })
+      .then((p) => {
+        setBoard((prev) => [...prev, ...p.content]);
+        setBoardPage({ number: p.number, totalPages: p.totalPages });
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoadingMore(false));
+  };
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
@@ -169,6 +191,16 @@ export function ComplaintsPage() {
           <ComplaintCard key={c.id} c={c} to={`/chamados/${c.id}`} />
         ))}
       </ul>
+      {tab === 'board' && !loading && boardPage.number + 1 < boardPage.totalPages && (
+        <Button
+          variant="outline"
+          className="min-h-[44px]"
+          disabled={loadingMore}
+          onClick={loadMore}
+        >
+          Carregar mais
+        </Button>
+      )}
     </main>
   );
 }

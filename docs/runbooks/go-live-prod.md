@@ -117,7 +117,7 @@ openssl rand -base64 24   # APP_ADMIN_INITIAL_PASSWORD
 
 - **App:** redeploy do último SHA/tag bom via Dokploy (ou `promote-to-prod` com a tag anterior).
 - **Banco:** migrations são expand/contract (backward-compatible) → rollback de app não exige rollback de schema. Para corrupção de dados, ver `restore-postgres.md`.
-- **Feature isolada com problema:** desligar a flag específica no Dokploy (`APP_FEATURE_<X>_ENABLED=false`) + redeploy backend, registrando na issue. Não precisa reverter código.
+- **Feature isolada com problema:** o projeto não usa mais feature flags — reverter o commit da feature na `main` (ou redeploy do SHA anterior) e corrigir em branch.
 
 ## Promoção via workflow (após HML)
 

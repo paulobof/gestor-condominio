@@ -11,7 +11,7 @@ Sistema de gestão do **HELBOR TRILOGY HOME**. Spec: `docs/superpowers/specs/202
 - **SOLID, KISS, STRIDE, POO** (domínio rico, não DTOs anêmicos).
 - **TDD**: testes primeiro, depois implementação mínima.
 - Português (UI), Inglês (código/dados).
-- **Trunk-Based**: PR ≤400 linhas, branch ≤2 dias, feature flag para WIP.
+- **Trunk-Based**: PR ≤400 linhas, branch ≤2 dias.
 
 ## Soft delete
 
@@ -69,7 +69,7 @@ Limitações: `@SQLRestriction` **não filtra** queries nativas nem `JdbcTemplat
 
 ## Feature flags
 
-`@Value("${app.feature.<nome>.enabled:false}")`. Padrão Prod=`false`. Mudança em prod **registrada em issue do GitHub** com `actor`, `flag`, `from`, `to`, `motivo`.
+O projeto **não usa feature flags**. Toda funcionalidade entregue fica ligada em todos os ambientes (dev, HML, prod). Trabalho incompleto fica na branch até estar pronto — não entra na `main` escondido atrás de flag.
 
 ## HML
 

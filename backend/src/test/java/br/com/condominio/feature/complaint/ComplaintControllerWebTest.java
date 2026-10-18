@@ -189,4 +189,22 @@ class ComplaintControllerWebTest {
         .andExpect(status().isNoContent());
     verify(photoService).removePhoto(CID, pid, UID);
   }
+
+  @Test
+  void board_passesFiltersAndUnit_andHidesAuthor() throws Exception {
+    UUID typeId = UUID.randomUUID();
+    when(service.board(UID, UNIT, false, typeId, null, ComplaintStatus.FORWARDED, 0, 20))
+        .thenReturn(
+            new org.springframework.data.domain.PageImpl<>(
+                List.of(view(ComplaintStatus.FORWARDED))));
+    mvc.perform(
+            get("/api/complaints/board")
+                .param("typeId", typeId.toString())
+                .param("status", "FORWARDED")
+                .with(MockAuth.userWithUnit(UID, UNIT)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].status").value("FORWARDED"))
+        .andExpect(jsonPath("$.content[0].authorUserId").doesNotExist())
+        .andExpect(jsonPath("$.content[0].authorUnitId").doesNotExist());
+  }
 }

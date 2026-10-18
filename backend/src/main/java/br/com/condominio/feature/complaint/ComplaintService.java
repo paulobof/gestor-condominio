@@ -2,10 +2,13 @@ package br.com.condominio.feature.complaint;
 
 import br.com.condominio.feature.complaint.catalog.ComplaintCatalogService;
 import br.com.condominio.feature.complaint.dto.ComplaintView;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,44 @@ public class ComplaintService {
   @Transactional(readOnly = true)
   public List<ComplaintView> mine(UUID userId) {
     return views.toViews(repo.findByAuthorUserIdOrderByCreatedAtDesc(userId), userId);
+  }
+
+  private static final Set<ComplaintStatus> BOARD =
+      EnumSet.of(ComplaintStatus.FORWARDED, ComplaintStatus.RESOLVED);
+
+  /**
+   * Mural: só o que já foi encaminhado. Ordenar por status ASC põe FORWARDED antes de RESOLVED
+   * porque a ordem alfabética coincide com a desejada; se um status novo entrar no mural, trocar
+   * por CASE numa query explícita.
+   */
+  @Transactional(readOnly = true)
+  public Page<ComplaintView> board(
+      UUID viewerId,
+      UUID unitId,
+      boolean canManage,
+      UUID typeId,
+      UUID locationId,
+      ComplaintStatus status,
+      int page,
+      int size) {
+    if (unitId == null && !canManage) {
+      throw new ComplaintException("NO_UNIT", "O mural é exclusivo para moradores.");
+    }
+    if (status != null && !BOARD.contains(status)) {
+      throw new ComplaintException("INVALID_INPUT", "Filtro de status inválido para o mural.");
+    }
+    Specification<Complaint> spec =
+        Specification.where(ComplaintSpecs.statusIn(status == null ? BOARD : Set.of(status)))
+            .and(ComplaintSpecs.typeIs(typeId))
+            .and(ComplaintSpecs.locationIs(locationId));
+    PageRequest pr =
+        PageRequest.of(
+            Math.max(page, 0),
+            Math.min(Math.max(size, 1), 100),
+            Sort.by(Sort.Order.asc("status"), Sort.Order.desc("forwardedAt")));
+    Page<Complaint> result = repo.findAll(spec, pr);
+    List<ComplaintView> content = views.toViews(result.getContent(), viewerId);
+    return new PageImpl<>(content, pr, result.getTotalElements());
   }
 
   @Transactional(readOnly = true)

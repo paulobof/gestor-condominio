@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class ComplaintServiceTest {
@@ -137,5 +140,47 @@ class ComplaintServiceTest {
     when(repo.findByAuthorUserIdOrderByCreatedAtDesc(author)).thenReturn(List.of(c));
     service.mine(author);
     verify(views).toViews(List.of(c), author);
+  }
+
+  @Test
+  void board_withoutUnitAndWithoutManage_isNoUnit() {
+    assertThatThrownBy(() -> service.board(author, null, false, null, null, null, 0, 20))
+        .extracting("code")
+        .isEqualTo("NO_UNIT");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void board_managerWithoutUnit_isAllowed() {
+    when(repo.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of()));
+    service.board(author, null, true, null, null, null, 0, 20);
+    verify(repo).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  void board_statusOutsideBoard_isInvalidInput() {
+    assertThatThrownBy(
+            () -> service.board(author, unit, false, null, null, ComplaintStatus.OPEN, 0, 20))
+        .extracting("code")
+        .isEqualTo("INVALID_INPUT");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void board_sortsForwardedBeforeResolved_thenMostRecent() {
+    when(repo.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of()));
+    ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+
+    service.board(author, unit, false, null, null, null, 2, 500);
+
+    verify(repo).findAll(any(Specification.class), pageable.capture());
+    Pageable p = pageable.getValue();
+    assertThat(p.getPageNumber()).isEqualTo(2);
+    assertThat(p.getPageSize()).isEqualTo(100);
+    assertThat(p.getSort().getOrderFor("status").getDirection()).isEqualTo(Sort.Direction.ASC);
+    assertThat(p.getSort().getOrderFor("forwardedAt").getDirection())
+        .isEqualTo(Sort.Direction.DESC);
   }
 }

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,6 +45,19 @@ public class ComplaintController {
   @PreAuthorize("isAuthenticated()")
   public List<ComplaintView> mine(@AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return service.mine(me.userId());
+  }
+
+  @GetMapping("/board")
+  @PreAuthorize("isAuthenticated()")
+  public Page<ComplaintView> board(
+      @RequestParam(required = false) UUID typeId,
+      @RequestParam(required = false) UUID locationId,
+      @RequestParam(required = false) ComplaintStatus status,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.board(
+        me.userId(), me.unitId(), canManage(me), typeId, locationId, status, page, size);
   }
 
   @GetMapping("/{id}")

@@ -24,6 +24,8 @@ export const MOCK_USER = {
     'FAQ_MANAGE',
     'INFO_MANAGE',
     'REGISTRATION_VIEW',
+    'COMPLAINT_MANAGE',
+    'COMPLAINT_CATALOG_MANAGE',
   ],
   mustChangePassword: false,
 };

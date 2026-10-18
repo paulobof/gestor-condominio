@@ -27,6 +27,13 @@ import { InfoAdminPage } from '@/features/generalinfo/pages/InfoAdminPage';
 import { AccessManagementPage } from '@/features/access/pages/AccessManagementPage';
 import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
 import { ParkingRentalsListPage } from '@/features/parking-rentals/pages/ParkingRentalsListPage';
+import { ComplaintsPage } from '@/features/complaints/pages/ComplaintsPage';
+import { ComplaintFormPage } from '@/features/complaints/pages/ComplaintFormPage';
+import { ComplaintDetailPage } from '@/features/complaints/pages/ComplaintDetailPage';
+import { ComplaintsAdminPage } from '@/features/complaints/pages/ComplaintsAdminPage';
+import { ComplaintAdminDetailPage } from '@/features/complaints/pages/ComplaintAdminDetailPage';
+import { ComplaintForwardPage } from '@/features/complaints/pages/ComplaintForwardPage';
+import { ComplaintCatalogPage } from '@/features/complaints/pages/ComplaintCatalogPage';
 import { ParkingRentalDetailPage } from '@/features/parking-rentals/pages/ParkingRentalDetailPage';
 import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingRentalFormPage';
 import { DocumentsPage } from '@/features/documents/pages/DocumentsPage';
@@ -102,6 +109,14 @@ const router = createBrowserRouter([
           { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
           { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },
           { path: '/vagas/aluguel/:id/editar', element: <ParkingRentalFormPage /> },
+          { path: '/chamados', element: <ComplaintsPage /> },
+          { path: '/chamados/novo', element: <ComplaintFormPage /> },
+          { path: '/chamados/:id', element: <ComplaintDetailPage /> },
+          { path: '/chamados/:id/editar', element: <ComplaintFormPage /> },
+          { path: '/admin/chamados', element: <ComplaintsAdminPage /> },
+          { path: '/admin/chamados/encaminhar', element: <ComplaintForwardPage /> },
+          { path: '/admin/chamados/catalogo', element: <ComplaintCatalogPage /> },
+          { path: '/admin/chamados/:id', element: <ComplaintAdminDetailPage /> },
         ],
       },
     ],

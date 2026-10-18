@@ -18,8 +18,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -82,6 +84,32 @@ class ComplaintAdminServiceTest {
         .thenReturn(new PageImpl<>(List.of()));
     service.queue(Set.of(), 0, 20);
     verify(repo).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void queue_pendingFilter_sortsOldestFirst_withIdTiebreak() {
+    Sort sort = captureQueueSort(Set.of());
+    assertThat(sort.getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.ASC);
+    assertThat(sort.getOrderFor("id")).isNotNull();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void queue_closedFilter_sortsNewestFirst_withIdTiebreak() {
+    Sort sort = captureQueueSort(Set.of(ComplaintStatus.FORWARDED));
+    assertThat(sort.getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    assertThat(sort.getOrderFor("id")).isNotNull();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Sort captureQueueSort(Set<ComplaintStatus> statuses) {
+    when(repo.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of()));
+    service.queue(statuses, 0, 20);
+    ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+    verify(repo).findAll(any(Specification.class), pageable.capture());
+    return pageable.getValue().getSort();
   }
 
   @Test

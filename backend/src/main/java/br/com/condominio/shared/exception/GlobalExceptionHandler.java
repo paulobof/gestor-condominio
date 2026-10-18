@@ -25,6 +25,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -257,6 +258,18 @@ public class GlobalExceptionHandler {
                 "MALFORMED_REQUEST",
                 "Corpo da requisição inválido ou ilegível.",
                 requestId()));
+  }
+
+  /**
+   * Parâmetro de query/path com tipo inválido (ex.: enum desconhecido) é erro do cliente (400), não
+   * 500. Mensagem genérica: não ecoa o valor recebido.
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    return ResponseEntity.badRequest()
+        .body(
+            ApiError.of(
+                400, "Bad Request", "INVALID_PARAMETER", "Parâmetro inválido.", requestId()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)

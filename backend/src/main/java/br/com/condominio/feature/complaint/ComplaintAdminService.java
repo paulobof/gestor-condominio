@@ -46,11 +46,14 @@ public class ComplaintAdminService {
   @Transactional(readOnly = true)
   public Page<ComplaintAdminView> queue(Set<ComplaintStatus> statuses, int page, int size) {
     Set<ComplaintStatus> filter = effectiveStatuses(statuses);
+    // Abas pendentes: mais antigo primeiro (fila). Demais filtros (histórico): mais recente
+    // primeiro.
+    Sort.Direction dir = PENDING.containsAll(filter) ? Sort.Direction.ASC : Sort.Direction.DESC;
     PageRequest pr =
         PageRequest.of(
             Math.max(page, 0),
             Math.min(Math.max(size, 1), 100),
-            Sort.by(Sort.Direction.ASC, "createdAt"));
+            Sort.by(new Sort.Order(dir, "createdAt"), Sort.Order.asc("id")));
     Page<Complaint> result = repo.findAll(ComplaintSpecs.statusIn(filter), pr);
     List<Complaint> content = result.getContent();
     List<ComplaintView> complaintViews = views.toViews(content, null);

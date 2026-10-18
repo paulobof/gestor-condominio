@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.SQLDelete;
@@ -85,7 +86,8 @@ public class Complaint {
   @Column(name = "resolved_at")
   private Instant resolvedAt;
 
-  @Column(name = "created_at", insertable = false, updatable = false)
+  @CreationTimestamp
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   @Column(name = "updated_at", insertable = false)
@@ -228,7 +230,9 @@ public class Complaint {
   /** Aplica os campos e devolve os nomes dos campos alterados (para o evento, sem conteúdo). */
   private String apply(ComplaintFields f) {
     String desc = f.description() == null ? "" : f.description().strip();
-    if (desc.length() < DESCRIPTION_MIN || desc.length() > DESCRIPTION_MAX) {
+    // O CHECK do banco conta code points (length(btrim)); alinhar para não divergir com emojis.
+    int descLen = desc.codePointCount(0, desc.length());
+    if (descLen < DESCRIPTION_MIN || descLen > DESCRIPTION_MAX) {
       throw invalidInput("A descrição deve ter entre 10 e 2000 caracteres.");
     }
     String detail =

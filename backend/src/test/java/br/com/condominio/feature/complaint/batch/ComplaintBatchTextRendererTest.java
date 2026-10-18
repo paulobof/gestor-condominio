@@ -53,6 +53,16 @@ class ComplaintBatchTextRendererTest {
   }
 
   @Test
+  void flattensLocationDetailToOneLine() {
+    String detail = String.join(System.lineSeparator(), "hall", "  do 5º", "andar");
+    String text =
+        renderer.render(
+            date,
+            List.of(new BatchLine(1, "Outros", 5, "Outros", "Torre 1", detail, "Interfone mudo")));
+    assertThat(text).contains("Torre 1 (hall do 5º andar)");
+  }
+
+  @Test
   void singular_whenOneComplaint() {
     String text =
         renderer.render(

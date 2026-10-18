@@ -44,7 +44,9 @@ public class ComplaintBatchTextRenderer {
           .append(l.subtypeName())
           .append(" — ")
           .append(l.locationName());
-      if (l.locationDetail() != null) sb.append(" (").append(l.locationDetail()).append(')');
+      if (l.locationDetail() != null) {
+        sb.append(" (").append(oneLine(l.locationDetail())).append(')');
+      }
       sb.append("\n   ").append(oneLine(l.description())).append('\n');
     }
     return sb.toString().stripTrailing();

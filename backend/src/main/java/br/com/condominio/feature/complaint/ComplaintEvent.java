@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 /** Histórico imutável de um chamado (sem soft delete, como os demais logs). */
 @Entity
@@ -32,7 +33,8 @@ public class ComplaintEvent {
   @Column(name = "to_value", length = 500, updatable = false)
   private String toValue;
 
-  @Column(name = "created_at", insertable = false, updatable = false)
+  @CreationTimestamp
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   public static ComplaintEvent of(UUID complaintId, ComplaintChange ch) {

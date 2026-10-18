@@ -209,4 +209,14 @@ class ComplaintControllerWebTest {
         .andExpect(jsonPath("$.content[0].authorUserId").doesNotExist())
         .andExpect(jsonPath("$.content[0].authorUnitId").doesNotExist());
   }
+
+  @Test
+  void board_invalidStatusParam_is400() throws Exception {
+    mvc.perform(
+            get("/api/complaints/board")
+                .param("status", "XYZ")
+                .with(MockAuth.userWithUnit(UID, UNIT)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));
+  }
 }

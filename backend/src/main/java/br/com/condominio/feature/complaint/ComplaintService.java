@@ -70,7 +70,8 @@ public class ComplaintService {
         PageRequest.of(
             Math.max(page, 0),
             Math.min(Math.max(size, 1), 100),
-            Sort.by(Sort.Order.asc("status"), Sort.Order.desc("forwardedAt")));
+            Sort.by(
+                Sort.Order.asc("status"), Sort.Order.desc("forwardedAt"), Sort.Order.asc("id")));
     Page<Complaint> result = repo.findAll(spec, pr);
     List<ComplaintView> content = views.toViews(result.getContent(), viewerId);
     return new PageImpl<>(content, pr, result.getTotalElements());

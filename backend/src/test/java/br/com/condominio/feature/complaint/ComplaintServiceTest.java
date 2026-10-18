@@ -182,5 +182,6 @@ class ComplaintServiceTest {
     assertThat(p.getSort().getOrderFor("status").getDirection()).isEqualTo(Sort.Direction.ASC);
     assertThat(p.getSort().getOrderFor("forwardedAt").getDirection())
         .isEqualTo(Sort.Direction.DESC);
+    assertThat(p.getSort().getOrderFor("id").getDirection()).isEqualTo(Sort.Direction.ASC);
   }
 }

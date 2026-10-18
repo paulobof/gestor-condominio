@@ -48,6 +48,15 @@ class ComplaintTest {
   }
 
   @Test
+  void create_descriptionCountsCodePoints_notUtf16Units() {
+    // 5 emojis = 10 UTF-16 units but only 5 code points (DB CHECK counts code points)
+    String emojis = "😀".repeat(5);
+    assertThatThrownBy(() -> Complaint.create(author, unit, fields(emojis)))
+        .extracting("code")
+        .isEqualTo("INVALID_INPUT");
+  }
+
+  @Test
   void create_blankOrShortDescription_isInvalidInput() {
     assertThatThrownBy(() -> Complaint.create(author, unit, fields("          ")))
         .extracting("code")

@@ -14,6 +14,7 @@ vi.mock('../api/complaintsApi', async (orig) => {
     adminEdit: vi.fn(),
     adminSetDueDate: vi.fn(),
     adminResolve: vi.fn(),
+    adminSetSyndicResponse: vi.fn(),
     getCatalog: vi.fn(),
     getComplaintPhotoUrl: vi.fn(),
   };
@@ -25,6 +26,7 @@ import {
   adminDetail,
   adminReject,
   adminSetDueDate,
+  adminSetSyndicResponse,
   getCatalog,
   type AdminComplaintDetail,
   type ComplaintStatus,
@@ -48,6 +50,8 @@ function detail(status: ComplaintStatus): AdminComplaintDetail {
       dueDate: null,
       rejectionReason: null,
       resolutionNote: null,
+      syndicResponse: null,
+      syndicResponseAt: null,
       createdAt: '2026-10-10T12:00:00Z',
       forwardedAt: null,
       resolvedAt: null,
@@ -122,5 +126,19 @@ describe('ComplaintAdminDetailPage', () => {
     renderAt();
     expect(await screen.findByText('Ana Souza · T2-51')).toBeInTheDocument();
     expect(screen.getByText(/Aberto por Ana Souza/)).toBeInTheDocument();
+  });
+
+  it('encaminhado: salva a resposta da síndica', async () => {
+    vi.mocked(adminDetail).mockResolvedValue(detail('FORWARDED'));
+    vi.mocked(adminSetSyndicResponse).mockResolvedValue(detail('FORWARDED'));
+    renderAt();
+    await userEvent.type(
+      await screen.findByLabelText('Resposta da síndica (visível aos moradores)'),
+      'Pintor vem dia 30.'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar resposta' }));
+    await waitFor(() =>
+      expect(adminSetSyndicResponse).toHaveBeenCalledWith('c1', 'Pintor vem dia 30.')
+    );
   });
 });

@@ -37,6 +37,8 @@ const open: Complaint = {
   dueDate: null,
   rejectionReason: null,
   resolutionNote: null,
+  syndicResponse: null,
+  syndicResponseAt: null,
   createdAt: '2026-10-10T12:00:00Z',
   forwardedAt: null,
   resolvedAt: null,
@@ -75,6 +77,20 @@ describe('ComplaintDetailPage', () => {
     renderAt('c1');
     await screen.findByText('Óleo no piso');
     expect(screen.queryByRole('button', { name: /cancelar chamado/i })).not.toBeInTheDocument();
+  });
+
+  it('mostra a resposta da síndica com a data', async () => {
+    vi.mocked(getComplaint).mockResolvedValue({
+      ...open,
+      status: 'FORWARDED',
+      editable: false,
+      syndicResponse: 'Orçamento aprovado, pintor vem dia 30.',
+      syndicResponseAt: '2026-10-24T12:00:00Z',
+    });
+    renderAt('c1');
+    expect(await screen.findByRole('heading', { name: 'Resposta da síndica' })).toBeInTheDocument();
+    expect(screen.getByText('Orçamento aprovado, pintor vem dia 30.')).toBeInTheDocument();
+    expect(screen.getByText('Atualizada em 24/10/2026')).toBeInTheDocument();
   });
 
   it('mostra nota de resolução', async () => {

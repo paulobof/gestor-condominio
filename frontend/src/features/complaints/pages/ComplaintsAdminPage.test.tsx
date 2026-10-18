@@ -26,6 +26,8 @@ const c: Complaint = {
   dueDate: null,
   rejectionReason: null,
   resolutionNote: null,
+  syndicResponse: null,
+  syndicResponseAt: null,
   createdAt: '2026-10-10T12:00:00Z',
   forwardedAt: null,
   resolvedAt: null,

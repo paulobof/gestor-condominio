@@ -26,6 +26,8 @@ const base: Complaint = {
   dueDate: '2026-11-30',
   rejectionReason: null,
   resolutionNote: null,
+  syndicResponse: 'Pintor vem dia 30.',
+  syndicResponseAt: null,
   createdAt: '2026-10-10T12:00:00Z',
   forwardedAt: '2026-10-17T12:00:00Z',
   resolvedAt: null,
@@ -64,6 +66,7 @@ describe('ComplaintsPage', () => {
     // "Encaminhado" também é opção do filtro de status: procurar dentro do card
     const card = screen.getByRole('link', { name: /#123/ });
     expect(within(card).getByText('Encaminhado')).toBeInTheDocument();
+    expect(within(card).getByText('Síndica: Pintor vem dia 30.')).toBeInTheDocument();
   });
 
   it('aba "Meus chamados" mostra o motivo da recusa', async () => {

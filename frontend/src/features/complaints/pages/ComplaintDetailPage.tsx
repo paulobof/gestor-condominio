@@ -78,6 +78,17 @@ export function ComplaintDetailPage() {
             {c.dueDate && <div className="font-medium">Prazo: {formatDateBR(c.dueDate)}</div>}
             {c.resolvedAt && <div>Resolvido em {formatInstantBR(c.resolvedAt)}</div>}
           </dl>
+          {c.syndicResponse && (
+            <section className="space-y-1 rounded-md border-l-4 border-indigo-500 bg-indigo-50 p-3">
+              <h2 className="text-sm font-semibold">Resposta da síndica</h2>
+              <p className="whitespace-pre-wrap">{c.syndicResponse}</p>
+              {c.syndicResponseAt && (
+                <p className="text-xs text-muted-foreground">
+                  Atualizada em {formatInstantBR(c.syndicResponseAt)}
+                </p>
+              )}
+            </section>
+          )}
           {c.rejectionReason && <p className="text-red-800">Motivo: {c.rejectionReason}</p>}
           {c.resolutionNote && <p>Resolução: {c.resolutionNote}</p>}
 

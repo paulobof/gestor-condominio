@@ -14,6 +14,7 @@ import {
   adminEdit,
   adminReject,
   adminResolve,
+  adminSetSyndicResponse,
   adminSetDueDate,
   backendMessage,
   getCatalog,
@@ -43,6 +44,8 @@ function describeEvent(e: ComplaintEvent): string {
       return `${who} adicionou uma foto`;
     case 'PHOTO_REMOVED':
       return `${who} removeu uma foto`;
+    case 'RESPONSE_SET':
+      return `${who} atualizou a resposta da síndica`;
     case 'CANCELLED':
       return `Cancelado por ${who}`;
   }
@@ -65,6 +68,7 @@ export function ComplaintAdminDetailPage() {
   const [reason, setReason] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
+  const [response, setResponse] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -305,6 +309,33 @@ export function ComplaintAdminDetailPage() {
                   Marcar como resolvido
                 </Button>
               </div>
+            </div>
+          )}
+
+          {(c.status === 'FORWARDED' || c.status === 'RESOLVED') && (
+            <div className="space-y-2">
+              <Label htmlFor="adm-response">Resposta da síndica (visível aos moradores)</Label>
+              <textarea
+                id="adm-response"
+                rows={4}
+                maxLength={2000}
+                value={response ?? c.syndicResponse ?? ''}
+                onChange={(e) => setResponse(e.target.value)}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <Button
+                className="min-h-[44px]"
+                disabled={busy || response === null}
+                onClick={async () => {
+                  const ok = await run(
+                    () => adminSetSyndicResponse(id, (response ?? '').trim()),
+                    'Resposta salva.'
+                  );
+                  if (ok) setResponse(null);
+                }}
+              >
+                Salvar resposta
+              </Button>
             </div>
           )}
 

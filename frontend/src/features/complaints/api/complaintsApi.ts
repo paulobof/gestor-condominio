@@ -38,6 +38,8 @@ export interface Complaint {
   dueDate: string | null;
   rejectionReason: string | null;
   resolutionNote: string | null;
+  syndicResponse: string | null;
+  syndicResponseAt: string | null;
   createdAt: string;
   forwardedAt: string | null;
   resolvedAt: string | null;
@@ -90,7 +92,8 @@ export interface ComplaintEvent {
     | 'DUE_DATE_SET'
     | 'PHOTO_ADDED'
     | 'PHOTO_REMOVED'
-    | 'CANCELLED';
+    | 'CANCELLED'
+    | 'RESPONSE_SET';
   actorName: string | null;
   fromValue: string | null;
   toValue: string | null;
@@ -265,4 +268,8 @@ export async function updateLocation(id: string, body: CatalogItemBody) {
 /** Mensagem de erro do backend (ApiError.message) ou um fallback. */
 export function backendMessage(e: unknown, fallback: string): string {
   return (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback;
+}
+
+export async function adminSetSyndicResponse(id: string, text: string) {
+  return (await api.put(`/admin/complaints/${id}/response`, { text })).data as AdminComplaintDetail;
 }

@@ -25,6 +25,7 @@ export function ComplaintCard({ c, to }: { c: Complaint; to: string }) {
         </p>
         <p className="line-clamp-2 text-sm">{c.description}</p>
         {c.dueDate && <p className="text-sm font-medium">Prazo: {formatDateBR(c.dueDate)}</p>}
+        {c.syndicResponse && <p className="line-clamp-2 text-sm">Síndica: {c.syndicResponse}</p>}
         {c.status === 'REJECTED' && c.rejectionReason && (
           <p className="text-sm text-red-800">Motivo: {c.rejectionReason}</p>
         )}

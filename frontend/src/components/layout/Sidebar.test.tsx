@@ -23,17 +23,17 @@ beforeEach(() => {
 });
 
 describe('Sidebar', () => {
-  it('"Chamados" só aparece para quem tem unidade ou COMPLAINT_MANAGE', () => {
+  it('"Reclamações" só aparece para quem tem unidade ou COMPLAINT_MANAGE', () => {
     const { unmount } = renderSidebar([]);
-    expect(screen.queryAllByRole('link', { name: 'Chamados' })).toHaveLength(0);
+    expect(screen.queryAllByRole('link', { name: 'Reclamações' })).toHaveLength(0);
     unmount();
 
     const withUnit = renderSidebar([], '/', 'unit-1');
-    expect(screen.getAllByRole('link', { name: 'Chamados' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Reclamações' }).length).toBeGreaterThan(0);
     withUnit.unmount();
 
     renderSidebar(['COMPLAINT_MANAGE']);
-    expect(screen.getAllByRole('link', { name: 'Chamados' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Reclamações' }).length).toBeGreaterThan(0);
   });
 
   it('visitante vê com cadeado tudo que exige conta; áreas abertas ficam sem', () => {

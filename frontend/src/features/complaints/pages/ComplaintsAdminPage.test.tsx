@@ -63,7 +63,7 @@ describe('ComplaintsAdminPage', () => {
       </MemoryRouter>
     );
     await screen.findByText(/Ana Souza/);
-    await userEvent.click(screen.getByRole('tab', { name: 'Encaminhados' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Encaminhadas' }));
     expect(adminQueue).toHaveBeenLastCalledWith(['FORWARDED'], 0);
   });
 
@@ -75,7 +75,7 @@ describe('ComplaintsAdminPage', () => {
     );
     expect(screen.getByRole('link', { name: /encaminhar à síndica/i })).toHaveAttribute(
       'href',
-      '/admin/chamados/encaminhar'
+      '/admin/reclamacoes/encaminhar'
     );
   });
 

@@ -74,9 +74,9 @@ function detail(status: ComplaintStatus): AdminComplaintDetail {
 
 function renderAt() {
   return render(
-    <MemoryRouter initialEntries={['/admin/chamados/c1']}>
+    <MemoryRouter initialEntries={['/admin/reclamacoes/c1']}>
       <Routes>
-        <Route path="/admin/chamados/:id" element={<ComplaintAdminDetailPage />} />
+        <Route path="/admin/reclamacoes/:id" element={<ComplaintAdminDetailPage />} />
       </Routes>
     </MemoryRouter>
   );
@@ -88,13 +88,13 @@ beforeEach(() => {
 });
 
 describe('ComplaintAdminDetailPage', () => {
-  it('chamado aberto: iniciar análise', async () => {
+  it('reclamação aberta: iniciar análise', async () => {
     vi.mocked(adminDetail).mockResolvedValue(detail('OPEN'));
     vi.mocked(adminAction).mockResolvedValue(detail('IN_REVIEW'));
     renderAt();
     await userEvent.click(await screen.findByRole('button', { name: 'Iniciar análise' }));
     expect(adminAction).toHaveBeenCalledWith('c1', 'start-review');
-    expect(await screen.findByRole('button', { name: 'Marcar como pronto' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Marcar como pronta' })).toBeInTheDocument();
   });
 
   it('recusar exige motivo', async () => {
@@ -125,7 +125,7 @@ describe('ComplaintAdminDetailPage', () => {
     vi.mocked(adminDetail).mockResolvedValue(detail('OPEN'));
     renderAt();
     expect(await screen.findByText('Ana Souza · T2-51')).toBeInTheDocument();
-    expect(screen.getByText(/Aberto por Ana Souza/)).toBeInTheDocument();
+    expect(screen.getByText(/Aberta por Ana Souza/)).toBeInTheDocument();
   });
 
   it('encaminhado: salva a resposta da síndica', async () => {

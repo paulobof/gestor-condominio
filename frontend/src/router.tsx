@@ -28,6 +28,7 @@ import { AccessManagementPage } from '@/features/access/pages/AccessManagementPa
 import { MyUnitMembersPage } from '@/features/units/pages/MyUnitMembersPage';
 import { ParkingRentalsListPage } from '@/features/parking-rentals/pages/ParkingRentalsListPage';
 import { ComplaintsPage } from '@/features/complaints/pages/ComplaintsPage';
+import { LegacyComplaintsRedirect } from '@/features/complaints/components/LegacyComplaintsRedirect';
 import { ComplaintFormPage } from '@/features/complaints/pages/ComplaintFormPage';
 import { ComplaintDetailPage } from '@/features/complaints/pages/ComplaintDetailPage';
 import { ComplaintsAdminPage } from '@/features/complaints/pages/ComplaintsAdminPage';
@@ -109,14 +110,17 @@ const router = createBrowserRouter([
           { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
           { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },
           { path: '/vagas/aluguel/:id/editar', element: <ParkingRentalFormPage /> },
-          { path: '/chamados', element: <ComplaintsPage /> },
-          { path: '/chamados/novo', element: <ComplaintFormPage /> },
-          { path: '/chamados/:id', element: <ComplaintDetailPage /> },
-          { path: '/chamados/:id/editar', element: <ComplaintFormPage /> },
-          { path: '/admin/chamados', element: <ComplaintsAdminPage /> },
-          { path: '/admin/chamados/encaminhar', element: <ComplaintForwardPage /> },
-          { path: '/admin/chamados/catalogo', element: <ComplaintCatalogPage /> },
-          { path: '/admin/chamados/:id', element: <ComplaintAdminDetailPage /> },
+          { path: '/reclamacoes', element: <ComplaintsPage /> },
+          { path: '/reclamacoes/nova', element: <ComplaintFormPage /> },
+          { path: '/reclamacoes/:id', element: <ComplaintDetailPage /> },
+          { path: '/reclamacoes/:id/editar', element: <ComplaintFormPage /> },
+          { path: '/admin/reclamacoes', element: <ComplaintsAdminPage /> },
+          { path: '/admin/reclamacoes/encaminhar', element: <ComplaintForwardPage /> },
+          { path: '/admin/reclamacoes/catalogo', element: <ComplaintCatalogPage /> },
+          { path: '/admin/reclamacoes/:id', element: <ComplaintAdminDetailPage /> },
+          // Endereços antigos (feature se chamava "Chamados"): mantém favoritos funcionando.
+          { path: '/chamados/*', element: <LegacyComplaintsRedirect /> },
+          { path: '/admin/chamados/*', element: <LegacyComplaintsRedirect /> },
         ],
       },
     ],

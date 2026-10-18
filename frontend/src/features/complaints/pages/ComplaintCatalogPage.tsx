@@ -173,13 +173,13 @@ export function ComplaintCatalogPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to="/admin/chamados">
+        <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
-      <h1 className="text-2xl font-semibold">Catálogo de chamados</h1>
+      <h1 className="text-2xl font-semibold">Catálogo de reclamações</h1>
       <p className="text-sm text-muted-foreground">
-        Itens desativados somem do formulário, mas chamados antigos continuam com eles.
+        Itens desativados somem do formulário, mas reclamações antigas continuam com eles.
       </p>
 
       <Card>

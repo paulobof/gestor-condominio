@@ -7,9 +7,9 @@ import { StatusBadge } from '../components/StatusBadge';
 
 const TABS: { key: string; label: string; statuses: ComplaintStatus[] }[] = [
   { key: 'pending', label: 'Pendentes', statuses: ['OPEN', 'IN_REVIEW', 'READY'] },
-  { key: 'forwarded', label: 'Encaminhados', statuses: ['FORWARDED'] },
-  { key: 'resolved', label: 'Resolvidos', statuses: ['RESOLVED'] },
-  { key: 'rejected', label: 'Recusados', statuses: ['REJECTED'] },
+  { key: 'forwarded', label: 'Encaminhadas', statuses: ['FORWARDED'] },
+  { key: 'resolved', label: 'Resolvidas', statuses: ['RESOLVED'] },
+  { key: 'rejected', label: 'Recusadas', statuses: ['REJECTED'] },
 ];
 
 export function ComplaintsAdminPage() {
@@ -53,15 +53,15 @@ export function ComplaintsAdminPage() {
   return (
     <main className="mx-auto max-w-4xl space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Gestão de chamados</h1>
+        <h1 className="text-2xl font-semibold">Gestão de reclamações</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" className="min-h-[44px]">
-            <Link to="/admin/chamados/catalogo">
+            <Link to="/admin/reclamacoes/catalogo">
               <ListTree aria-hidden="true" /> Catálogo
             </Link>
           </Button>
           <Button asChild className="min-h-[44px]">
-            <Link to="/admin/chamados/encaminhar">
+            <Link to="/admin/reclamacoes/encaminhar">
               <Send aria-hidden="true" /> Encaminhar à síndica
             </Link>
           </Button>
@@ -85,12 +85,14 @@ export function ComplaintsAdminPage() {
       </div>
 
       {loading && <p>Carregando…</p>}
-      {!loading && rows.length === 0 && <p className="text-muted-foreground">Nenhum chamado.</p>}
+      {!loading && rows.length === 0 && (
+        <p className="text-muted-foreground">Nenhuma reclamação.</p>
+      )}
       <ul className="space-y-2">
         {rows.map(({ complaint: c, authorName, unitCode }) => (
           <li key={c.id}>
             <Link
-              to={`/admin/chamados/${c.id}`}
+              to={`/admin/reclamacoes/${c.id}`}
               className="flex min-h-[44px] flex-col gap-1 rounded-lg border p-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>

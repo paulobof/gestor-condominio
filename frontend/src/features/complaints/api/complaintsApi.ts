@@ -9,12 +9,12 @@ export type ComplaintStatus =
   | 'REJECTED';
 
 export const STATUS_LABEL: Record<ComplaintStatus, string> = {
-  OPEN: 'Aberto',
+  OPEN: 'Aberta',
   IN_REVIEW: 'Em análise',
-  READY: 'Pronto p/ encaminhar',
-  FORWARDED: 'Encaminhado',
-  RESOLVED: 'Resolvido',
-  REJECTED: 'Recusado',
+  READY: 'Pronta p/ encaminhar',
+  FORWARDED: 'Encaminhada',
+  RESOLVED: 'Resolvida',
+  REJECTED: 'Recusada',
 };
 
 export interface ComplaintPhoto {

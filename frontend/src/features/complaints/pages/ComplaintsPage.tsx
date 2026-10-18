@@ -93,10 +93,10 @@ export function ComplaintsPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Chamados</h1>
+        <h1 className="text-2xl font-semibold">Reclamações</h1>
         <Button asChild className="min-h-[44px]">
-          <Link to="/chamados/novo">
-            <Plus aria-hidden="true" /> Abrir chamado
+          <Link to="/reclamacoes/nova">
+            <Plus aria-hidden="true" /> Nova reclamação
           </Link>
         </Button>
       </div>
@@ -105,7 +105,7 @@ export function ComplaintsPage() {
         {(
           [
             ['board', 'Mural'],
-            ['mine', 'Meus chamados'],
+            ['mine', 'Minhas reclamações'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -165,8 +165,8 @@ export function ComplaintsPage() {
               onChange={(e) => setStatus(e.target.value as typeof status)}
             >
               <option value="">Todos</option>
-              <option value="FORWARDED">Encaminhado</option>
-              <option value="RESOLVED">Resolvido</option>
+              <option value="FORWARDED">Encaminhada</option>
+              <option value="RESOLVED">Resolvida</option>
             </select>
           </div>
         </div>
@@ -174,16 +174,18 @@ export function ComplaintsPage() {
 
       {tab === 'board' && (
         <p className="text-sm text-muted-foreground">
-          Chamados já encaminhados à síndica. Antes de abrir um novo, veja se o problema já está
-          aqui.
+          Reclamações já encaminhadas à síndica. Antes de registrar uma nova, veja se o problema já
+          está aqui.
         </p>
       )}
 
       {loading && <p>Carregando…</p>}
-      {!loading && error && <p role="alert">Não foi possível carregar os chamados.</p>}
+      {!loading && error && <p role="alert">Não foi possível carregar as reclamações.</p>}
       {!loading && !error && list.length === 0 && (
         <p className="text-muted-foreground">
-          {tab === 'board' ? 'Nenhum chamado encaminhado.' : 'Você ainda não abriu chamados.'}
+          {tab === 'board'
+            ? 'Nenhuma reclamação encaminhada.'
+            : 'Você ainda não registrou reclamações.'}
         </p>
       )}
       <ul className="space-y-3">
@@ -191,7 +193,7 @@ export function ComplaintsPage() {
           <ComplaintCard
             key={c.id}
             c={c}
-            to={`/chamados/${c.id}`}
+            to={`/reclamacoes/${c.id}`}
             showThumbnail={tab === 'board'}
           />
         ))}

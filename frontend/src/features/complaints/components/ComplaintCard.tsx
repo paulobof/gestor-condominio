@@ -67,7 +67,7 @@ export function ComplaintCard({
         {thumb && (
           <img
             src={thumb}
-            alt={c.code != null ? `Foto do chamado #${c.code}` : 'Foto do chamado'}
+            alt={c.code != null ? `Foto da reclamação #${c.code}` : 'Foto da reclamação'}
             loading="lazy"
             decoding="async"
             width={64}

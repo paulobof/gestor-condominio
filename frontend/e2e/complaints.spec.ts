@@ -37,18 +37,18 @@ const COMPLAINT = {
   syndicResponseAt: null,
 };
 
-test.describe('Chamados', () => {
+test.describe('Reclamações', () => {
   test.beforeEach(async ({ mock }) => {
     mock.get('/complaints/catalog', CATALOG);
   });
 
-  test('morador abre chamado com foto', async ({ page, mock }) => {
+  test('morador registra reclamação com foto', async ({ page, mock }) => {
     mock.post('/complaints', COMPLAINT);
     mock.post('/complaints/c1/photos', { id: 'p1', ordering: 0, contentType: 'image/png' });
     mock.get('/complaints/c1', COMPLAINT);
     mock.get(/\/complaints\/c1\/photos\/p1\/url$/, { url: 'about:blank' });
 
-    await page.goto('/chamados/novo');
+    await page.goto('/reclamacoes/nova');
     await page.getByLabel('Tipo', { exact: true }).selectOption('t1');
     await page.getByLabel('Subtipo').selectOption('s1');
     await page.getByLabel('Local', { exact: true }).selectOption('l1');
@@ -72,14 +72,14 @@ test.describe('Chamados', () => {
     const uploaded = page.waitForRequest(
       (r) => r.method() === 'POST' && r.url().endsWith('/api/complaints/c1/photos')
     );
-    await page.getByRole('button', { name: 'Abrir chamado' }).click();
+    await page.getByRole('button', { name: 'Enviar reclamação' }).click();
     expect((await created).postDataJSON()).toMatchObject({
       typeId: 't1',
       subtypeId: 's1',
       locationId: 'l1',
     });
     await uploaded;
-    await expect(page).toHaveURL(/\/chamados\/c1$/);
+    await expect(page).toHaveURL(/\/reclamacoes\/c1$/);
     await expect(page.getByText('Parede descascando no hall')).toBeVisible();
   });
 
@@ -93,7 +93,7 @@ test.describe('Chamados', () => {
     });
     mock.get('/admin/complaints/batches', []);
     mock.post('/admin/complaints/batches/preview', {
-      text: 'Chamados — HELBOR TRILOGY HOME\nLote de 17/10/2026 (1 chamado)',
+      text: 'Reclamações — HELBOR TRILOGY HOME\nLote de 17/10/2026 (1 reclamação)',
       count: 1,
     });
     mock.post('/admin/complaints/batches', {
@@ -104,7 +104,7 @@ test.describe('Chamados', () => {
       renderedText: 'x',
     });
 
-    await page.goto('/admin/chamados/encaminhar');
+    await page.goto('/admin/reclamacoes/encaminhar');
     await expect(page.getByRole('checkbox')).toBeChecked();
     await page.getByRole('button', { name: 'Gerar texto' }).click();
     await expect(page.getByLabel('Texto do lote')).toHaveValue(/Lote de 17\/10\/2026/);
@@ -112,10 +112,10 @@ test.describe('Chamados', () => {
     const batch = page.waitForRequest(
       (r) => r.method() === 'POST' && r.url().endsWith('/api/admin/complaints/batches')
     );
-    await page.getByRole('button', { name: /sim, marcar como encaminhados/i }).click();
+    await page.getByRole('button', { name: /sim, marcar como encaminhadas/i }).click();
     expect((await batch).postDataJSON()).toEqual({
       ids: ['c1'],
-      expectedText: 'Chamados — HELBOR TRILOGY HOME\nLote de 17/10/2026 (1 chamado)',
+      expectedText: 'Reclamações — HELBOR TRILOGY HOME\nLote de 17/10/2026 (1 reclamação)',
     });
 
     const forwarded = { ...ready, status: 'FORWARDED', forwardedAt: '2026-10-17T12:00:00Z' };
@@ -131,7 +131,7 @@ test.describe('Chamados', () => {
       unitCode: 'T2-51',
       events: [],
     });
-    await page.goto('/admin/chamados/c1');
+    await page.goto('/admin/reclamacoes/c1');
     await page.getByLabel('Prazo informado pela síndica').fill('2026-11-30');
     await page.getByRole('button', { name: 'Salvar prazo' }).click();
     await expect(page.getByText('Prazo atual: 30/11/2026')).toBeVisible();
@@ -142,7 +142,15 @@ test.describe('Chamados', () => {
       totalPages: 1,
       number: 0,
     });
-    await page.goto('/chamados');
+    await page.goto('/reclamacoes');
     await expect(page.getByText('Prazo: 30/11/2026')).toBeVisible();
+  });
+
+  test('endereço antigo /chamados redireciona para /reclamacoes', async ({ page, mock }) => {
+    mock.get('/complaints/c1', COMPLAINT);
+
+    await page.goto('/chamados/c1');
+    await expect(page).toHaveURL(/\/reclamacoes\/c1$/);
+    await expect(page.getByText('Parede descascando no hall')).toBeVisible();
   });
 });

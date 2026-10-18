@@ -31,9 +31,9 @@ function describeEvent(e: ComplaintEvent): string {
   const who = e.actorName ?? 'alguém';
   switch (e.kind) {
     case 'CREATED':
-      return `Aberto por ${who}`;
+      return `Aberta por ${who}`;
     case 'EDITED':
-      return `Editado por ${who}`;
+      return `Editada por ${who}`;
     case 'STATUS_CHANGED':
       return `${who}: ${STATUS_LABEL[e.fromValue as ComplaintStatus] ?? e.fromValue} → ${
         STATUS_LABEL[e.toValue as ComplaintStatus] ?? e.toValue
@@ -47,7 +47,7 @@ function describeEvent(e: ComplaintEvent): string {
     case 'RESPONSE_SET':
       return `${who} atualizou a resposta da síndica`;
     case 'CANCELLED':
-      return `Cancelado por ${who}`;
+      return `Cancelada por ${who}`;
   }
 }
 
@@ -74,7 +74,7 @@ export function ComplaintAdminDetailPage() {
     if (!id) return;
     adminDetail(id)
       .then(setD)
-      .catch(() => toast.error('Erro ao carregar o chamado.'));
+      .catch(() => toast.error('Erro ao carregar a reclamação.'));
     getCatalog()
       .then(setCatalog)
       .catch(() => {});
@@ -114,7 +114,7 @@ export function ComplaintAdminDetailPage() {
           locationDetail: detailText.trim() || null,
           description: description.trim(),
         }),
-      'Chamado atualizado.'
+      'Reclamação atualizada.'
     );
     if (ok) setEditing(false);
   };
@@ -124,14 +124,14 @@ export function ComplaintAdminDetailPage() {
       toast.error('Informe o motivo da recusa.');
       return;
     }
-    const ok = await run(() => adminReject(id, reason.trim()), 'Chamado recusado.');
+    const ok = await run(() => adminReject(id, reason.trim()), 'Reclamação recusada.');
     if (ok) setRejecting(false);
   };
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to="/admin/chamados">
+        <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
@@ -214,9 +214,9 @@ export function ComplaintAdminDetailPage() {
               <Button
                 className="min-h-[44px]"
                 disabled={busy}
-                onClick={() => run(() => adminAction(id, 'ready'), 'Pronto para encaminhar.')}
+                onClick={() => run(() => adminAction(id, 'ready'), 'Pronta para encaminhar.')}
               >
-                Marcar como pronto
+                Marcar como pronta
               </Button>
             )}
             {c.status === 'READY' && (
@@ -304,9 +304,9 @@ export function ComplaintAdminDetailPage() {
                   variant="outline"
                   className="min-h-[44px]"
                   disabled={busy}
-                  onClick={() => run(() => adminResolve(id, note.trim()), 'Chamado resolvido.')}
+                  onClick={() => run(() => adminResolve(id, note.trim()), 'Reclamação resolvida.')}
                 >
-                  Marcar como resolvido
+                  Marcar como resolvida
                 </Button>
               </div>
             </div>

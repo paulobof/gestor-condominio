@@ -34,8 +34,8 @@ export function ComplaintDetailPage() {
     setBusy(true);
     try {
       await cancelComplaint(id);
-      toast.success('Chamado cancelado.');
-      navigate('/chamados', { replace: true });
+      toast.success('Reclamação cancelada.');
+      navigate('/reclamacoes', { replace: true });
     } catch (err) {
       toast.error(backendMessage(err, 'Erro ao cancelar.'));
     } finally {
@@ -43,13 +43,13 @@ export function ComplaintDetailPage() {
     }
   };
 
-  if (notFound) return <main className="mx-auto max-w-2xl p-4">Chamado não encontrado.</main>;
+  if (notFound) return <main className="mx-auto max-w-2xl p-4">Reclamação não encontrada.</main>;
   if (!c) return <main className="mx-auto max-w-2xl p-4">Carregando…</main>;
 
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to="/chamados">
+        <Link to="/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
@@ -73,10 +73,10 @@ export function ComplaintDetailPage() {
           <p className="whitespace-pre-wrap">{c.description}</p>
           <ComplaintPhotos complaintId={c.id} photos={c.photos} />
           <dl className="space-y-1 text-sm">
-            <div>Aberto em {formatInstantBR(c.createdAt)}</div>
-            {c.forwardedAt && <div>Encaminhado em {formatInstantBR(c.forwardedAt)}</div>}
+            <div>Aberta em {formatInstantBR(c.createdAt)}</div>
+            {c.forwardedAt && <div>Encaminhada em {formatInstantBR(c.forwardedAt)}</div>}
             {c.dueDate && <div className="font-medium">Prazo: {formatDateBR(c.dueDate)}</div>}
-            {c.resolvedAt && <div>Resolvido em {formatInstantBR(c.resolvedAt)}</div>}
+            {c.resolvedAt && <div>Resolvida em {formatInstantBR(c.resolvedAt)}</div>}
           </dl>
           {c.syndicResponse && (
             <section className="space-y-1 rounded-md border-l-4 border-indigo-500 bg-indigo-50 p-3">
@@ -95,14 +95,14 @@ export function ComplaintDetailPage() {
           {c.editable && !confirming && (
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild variant="outline" className="min-h-[44px]">
-                <Link to={`/chamados/${c.id}/editar`}>Editar</Link>
+                <Link to={`/reclamacoes/${c.id}/editar`}>Editar</Link>
               </Button>
               <Button
                 variant="destructive"
                 className="min-h-[44px]"
                 onClick={() => setConfirming(true)}
               >
-                Cancelar chamado
+                Cancelar reclamação
               </Button>
             </div>
           )}
@@ -112,7 +112,7 @@ export function ComplaintDetailPage() {
               aria-label="Confirmar cancelamento"
               className="space-y-2 rounded-md border p-3"
             >
-              <p>Cancelar este chamado? Essa ação não pode ser desfeita.</p>
+              <p>Cancelar esta reclamação? Essa ação não pode ser desfeita.</p>
               <div className="flex gap-2">
                 <Button
                   variant="destructive"

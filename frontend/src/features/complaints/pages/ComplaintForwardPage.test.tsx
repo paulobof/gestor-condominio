@@ -64,13 +64,13 @@ beforeEach(() => {
     number: 0,
   });
   vi.mocked(listBatches).mockResolvedValue([]);
-  vi.mocked(previewBatch).mockResolvedValue({ text: 'Chamados — LOTE', count: 1 });
+  vi.mocked(previewBatch).mockResolvedValue({ text: 'Reclamações — LOTE', count: 1 });
   vi.mocked(createBatch).mockResolvedValue({
     id: 'b1',
     sentAt: '2026-10-17T12:00:00Z',
     sentByName: 'Admin',
     complaintCount: 1,
-    renderedText: 'Chamados — LOTE',
+    renderedText: 'Reclamações — LOTE',
   });
 });
 
@@ -83,7 +83,7 @@ function renderPage() {
 }
 
 describe('ComplaintForwardPage', () => {
-  it('lista os prontos, todos marcados por padrão', async () => {
+  it('lista as prontas, todas marcadas por padrão', async () => {
     renderPage();
     expect(adminQueue).toHaveBeenCalledWith(['READY'], 0);
     const boxes = await screen.findAllByRole('checkbox');
@@ -98,33 +98,33 @@ describe('ComplaintForwardPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Gerar texto' }));
 
     expect(previewBatch).toHaveBeenCalledWith(['b']);
-    expect(await screen.findByDisplayValue('Chamados — LOTE')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Reclamações — LOTE')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Copiar' }));
-    expect(writeText).toHaveBeenCalledWith('Chamados — LOTE');
+    expect(writeText).toHaveBeenCalledWith('Reclamações — LOTE');
 
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }));
-    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhados/i }));
-    await waitFor(() => expect(createBatch).toHaveBeenCalledWith(['b'], 'Chamados — LOTE'));
-    expect(toast.success).toHaveBeenCalledWith('1 chamado(s) encaminhado(s).');
+    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhadas/i }));
+    await waitFor(() => expect(createBatch).toHaveBeenCalledWith(['b'], 'Reclamações — LOTE'));
+    expect(toast.success).toHaveBeenCalledWith('1 reclamação(ões) encaminhada(s).');
   });
 
   it('conflito ao confirmar mostra a mensagem do backend e recarrega', async () => {
     vi.mocked(createBatch).mockRejectedValue({
       response: {
-        data: { message: 'O chamado #2 não está mais pronto para encaminhar. Recarregue.' },
+        data: { message: 'A reclamação #2 não está mais pronta para encaminhar. Recarregue.' },
       },
     });
     renderPage();
     await screen.findAllByRole('checkbox');
     await userEvent.click(screen.getByRole('button', { name: 'Gerar texto' }));
-    await screen.findByDisplayValue('Chamados — LOTE');
+    await screen.findByDisplayValue('Reclamações — LOTE');
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }));
-    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhados/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhadas/i }));
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        'O chamado #2 não está mais pronto para encaminhar. Recarregue.'
+        'A reclamação #2 não está mais pronta para encaminhar. Recarregue.'
       )
     );
     expect(adminQueue).toHaveBeenCalledTimes(2);
@@ -137,23 +137,23 @@ describe('ComplaintForwardPage', () => {
         data: {
           code: 'BATCH_STALE',
           message:
-            'Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.',
+            'Alguma reclamação mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.',
         },
       },
     });
     renderPage();
     await screen.findAllByRole('checkbox');
     await userEvent.click(screen.getByRole('button', { name: 'Gerar texto' }));
-    await screen.findByDisplayValue('Chamados — LOTE');
+    await screen.findByDisplayValue('Reclamações — LOTE');
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }));
-    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhados/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sim, marcar como encaminhadas/i }));
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        'Algum chamado mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.'
+        'Alguma reclamação mudou depois que o texto foi gerado. Gere o texto de novo e copie antes de confirmar.'
       )
     );
-    expect(createBatch).toHaveBeenCalledWith(['a', 'b'], 'Chamados — LOTE');
+    expect(createBatch).toHaveBeenCalledWith(['a', 'b'], 'Reclamações — LOTE');
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: 'Texto do lote' })).not.toBeInTheDocument()
     );
@@ -166,7 +166,7 @@ describe('ComplaintForwardPage', () => {
     expect(screen.getByRole('button', { name: 'Gerar texto' })).toBeDisabled();
   });
 
-  it('carrega todas as páginas de prontos e mostra o total real', async () => {
+  it('carrega todas as páginas de prontas e mostra o total real', async () => {
     vi.mocked(adminQueue)
       .mockResolvedValueOnce({
         content: [
@@ -186,6 +186,6 @@ describe('ComplaintForwardPage', () => {
     renderPage();
     expect(await screen.findAllByRole('checkbox')).toHaveLength(3);
     expect(adminQueue).toHaveBeenCalledWith(['READY'], 1);
-    expect(screen.getByText(/Prontos para encaminhar \(3\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Prontas para encaminhar \(3\)/)).toBeInTheDocument();
   });
 });

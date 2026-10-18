@@ -48,9 +48,9 @@ const open: Complaint = {
 
 function renderAt(id: string) {
   return render(
-    <MemoryRouter initialEntries={[`/chamados/${id}`]}>
+    <MemoryRouter initialEntries={[`/reclamacoes/${id}`]}>
       <Routes>
-        <Route path="/chamados/:id" element={<ComplaintDetailPage />} />
+        <Route path="/reclamacoes/:id" element={<ComplaintDetailPage />} />
       </Routes>
     </MemoryRouter>
   );
@@ -59,24 +59,24 @@ function renderAt(id: string) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('ComplaintDetailPage', () => {
-  it('autor de chamado aberto pode editar e cancelar (com confirmação)', async () => {
+  it('autor de reclamação aberta pode editar e cancelar (com confirmação)', async () => {
     vi.mocked(getComplaint).mockResolvedValue(open);
     renderAt('c1');
     expect(await screen.findByRole('link', { name: /editar/i })).toHaveAttribute(
       'href',
-      '/chamados/c1/editar'
+      '/reclamacoes/c1/editar'
     );
-    await userEvent.click(screen.getByRole('button', { name: /cancelar chamado/i }));
+    await userEvent.click(screen.getByRole('button', { name: /cancelar reclamação/i }));
     await userEvent.click(screen.getByRole('button', { name: /sim, cancelar/i }));
     await waitFor(() => expect(cancelComplaint).toHaveBeenCalledWith('c1'));
-    expect(navigateMock).toHaveBeenCalledWith('/chamados', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/reclamacoes', { replace: true });
   });
 
-  it('chamado não editável não mostra ações', async () => {
+  it('reclamação não editável não mostra ações', async () => {
     vi.mocked(getComplaint).mockResolvedValue({ ...open, status: 'FORWARDED', editable: false });
     renderAt('c1');
     await screen.findByText('Óleo no piso');
-    expect(screen.queryByRole('button', { name: /cancelar chamado/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cancelar reclamação/i })).not.toBeInTheDocument();
   });
 
   it('mostra a resposta da síndica com a data', async () => {
@@ -107,6 +107,6 @@ describe('ComplaintDetailPage', () => {
   it('mostra datas de instante no fuso de São Paulo', async () => {
     vi.mocked(getComplaint).mockResolvedValue({ ...open, createdAt: '2026-10-18T02:30:00Z' });
     renderAt('c1');
-    expect(await screen.findByText('Aberto em 17/10/2026')).toBeInTheDocument();
+    expect(await screen.findByText('Aberta em 17/10/2026')).toBeInTheDocument();
   });
 });

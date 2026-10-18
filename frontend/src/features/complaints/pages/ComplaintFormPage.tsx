@@ -58,7 +58,7 @@ export function ComplaintFormPage() {
   useEffect(() => {
     getCatalog()
       .then(setCatalog)
-      .catch(() => toast.error('Erro ao carregar as opções do chamado.'));
+      .catch(() => toast.error('Erro ao carregar as opções da reclamação.'));
   }, []);
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export function ComplaintFormPage() {
             .catch(() => {})
         );
       })
-      .catch(() => toast.error('Erro ao carregar o chamado.'));
+      .catch(() => toast.error('Erro ao carregar a reclamação.'));
   }, [id]);
 
   const photoCount = isEdit ? photos.length : pending.length;
@@ -92,7 +92,7 @@ export function ComplaintFormPage() {
     if (!raw) return;
     if (fileRef.current) fileRef.current.value = '';
     if (photoCount >= MAX_PHOTOS) {
-      toast.error(`Máximo de ${MAX_PHOTOS} fotos por chamado.`);
+      toast.error(`Máximo de ${MAX_PHOTOS} fotos por reclamação.`);
       return;
     }
     const file = await compress(raw);
@@ -157,8 +157,8 @@ export function ComplaintFormPage() {
     try {
       if (isEdit && id) {
         await updateComplaint(id, body);
-        toast.success('Chamado atualizado.');
-        navigate(`/chamados/${id}`);
+        toast.success('Reclamação atualizada.');
+        navigate(`/reclamacoes/${id}`);
         return;
       }
       const created = await createComplaint(body);
@@ -173,14 +173,14 @@ export function ComplaintFormPage() {
       }
       if (failed > 0) {
         toast.error(
-          `Chamado aberto, mas ${failed} foto(s) não foram enviadas. Adicione na edição.`
+          `Reclamação enviada, mas ${failed} foto(s) não foram enviadas. Adicione na edição.`
         );
       } else {
-        toast.success('Chamado aberto.');
+        toast.success('Reclamação enviada.');
       }
-      navigate(`/chamados/${created.id}`, { replace: true });
+      navigate(`/reclamacoes/${created.id}`, { replace: true });
     } catch (err) {
-      toast.error(backendMessage(err, 'Erro ao salvar o chamado.'));
+      toast.error(backendMessage(err, 'Erro ao salvar a reclamação.'));
     } finally {
       setSaving(false);
     }
@@ -189,14 +189,14 @@ export function ComplaintFormPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to={isEdit && id ? `/chamados/${id}` : '/chamados'}>
+        <Link to={isEdit && id ? `/reclamacoes/${id}` : '/reclamacoes'}>
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
 
       <Card>
         <CardHeader>
-          <CardTitle>{isEdit ? 'Editar chamado' : 'Abrir chamado'}</CardTitle>
+          <CardTitle>{isEdit ? 'Editar reclamação' : 'Nova reclamação'}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -235,7 +235,7 @@ export function ComplaintFormPage() {
               </p>
             </div>
             <Button type="submit" disabled={saving} className="min-h-[44px] w-full">
-              {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Abrir chamado'}
+              {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Enviar reclamação'}
             </Button>
           </form>
         </CardContent>

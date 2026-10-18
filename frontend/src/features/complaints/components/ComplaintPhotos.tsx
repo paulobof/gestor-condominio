@@ -34,7 +34,7 @@ export function ComplaintPhotos({
             <a href={urls[p.id]} target="_blank" rel="noreferrer">
               <img
                 src={urls[p.id]}
-                alt={`Foto ${i + 1} do chamado`}
+                alt={`Foto ${i + 1} da reclamação`}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />

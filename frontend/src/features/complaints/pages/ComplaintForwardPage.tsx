@@ -43,7 +43,7 @@ export function ComplaintForwardPage() {
         setTotal(list.length);
         setSelected(new Set(list.map((c) => c.id)));
       })
-      .catch(() => toast.error('Erro ao carregar os chamados prontos.'));
+      .catch(() => toast.error('Erro ao carregar as reclamações prontas.'));
     listBatches()
       .then(setBatches)
       .catch(() => {});
@@ -90,7 +90,7 @@ export function ComplaintForwardPage() {
     setBusy(true);
     try {
       const batch = await createBatch(ids, text);
-      toast.success(`${batch.complaintCount} chamado(s) encaminhado(s).`);
+      toast.success(`${batch.complaintCount} reclamação(ões) encaminhada(s).`);
     } catch (err) {
       toast.error(backendMessage(err, 'Erro ao confirmar o envio.'));
     } finally {
@@ -102,7 +102,7 @@ export function ComplaintForwardPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
       <Button asChild variant="ghost" className="min-h-[44px] px-2">
-        <Link to="/admin/chamados">
+        <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
@@ -110,10 +110,12 @@ export function ComplaintForwardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Prontos para encaminhar ({total})</CardTitle>
+          <CardTitle className="text-lg">Prontas para encaminhar ({total})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {ready.length === 0 && <p className="text-muted-foreground">Nenhum chamado pronto.</p>}
+          {ready.length === 0 && (
+            <p className="text-muted-foreground">Nenhuma reclamação pronta.</p>
+          )}
           <ul className="space-y-1">
             {ready.map((c) => (
               <li key={c.id}>
@@ -167,12 +169,12 @@ export function ComplaintForwardPage() {
                 className="space-y-2 rounded-md border p-3"
               >
                 <p>
-                  Você já enviou este texto à síndica? Os {ids.length} chamado(s) vão aparecer no
-                  mural como encaminhados.
+                  Você já enviou este texto à síndica? As {ids.length} reclamação(ões) vão aparecer
+                  no mural como encaminhadas.
                 </p>
                 <div className="flex gap-2">
                   <Button className="min-h-[44px]" disabled={busy} onClick={confirm}>
-                    Sim, marcar como encaminhados
+                    Sim, marcar como encaminhadas
                   </Button>
                   <Button
                     variant="outline"
@@ -199,7 +201,7 @@ export function ComplaintForwardPage() {
               <li key={b.id}>
                 <details className="rounded-md border p-2">
                   <summary className="min-h-[44px] cursor-pointer py-2">
-                    {formatInstantBR(b.sentAt)} — {b.complaintCount} chamado(s) —{' '}
+                    {formatInstantBR(b.sentAt)} — {b.complaintCount} reclamação(ões) —{' '}
                     {b.sentByName ?? '—'}
                   </summary>
                   <pre className="whitespace-pre-wrap text-sm">{b.renderedText}</pre>

@@ -45,9 +45,9 @@ const CATALOG = {
 
 function renderNew() {
   return render(
-    <MemoryRouter initialEntries={['/chamados/novo']}>
+    <MemoryRouter initialEntries={['/reclamacoes/nova']}>
       <Routes>
-        <Route path="/chamados/novo" element={<ComplaintFormPage />} />
+        <Route path="/reclamacoes/nova" element={<ComplaintFormPage />} />
       </Routes>
     </MemoryRouter>
   );
@@ -78,7 +78,7 @@ describe('ComplaintFormPage (abrir)', () => {
     await userEvent.selectOptions(screen.getByLabelText('Subtipo'), 's1');
     await userEvent.selectOptions(screen.getByLabelText('Local'), 'l1');
     await userEvent.type(screen.getByLabelText(/descrição/i), 'curto');
-    await userEvent.click(screen.getByRole('button', { name: /abrir chamado/i }));
+    await userEvent.click(screen.getByRole('button', { name: /enviar reclamação/i }));
 
     expect(toast.error).toHaveBeenCalledWith('A descrição precisa ter pelo menos 10 caracteres.');
     expect(createComplaint).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe('ComplaintFormPage (abrir)', () => {
     await fillValid();
     const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' });
     await userEvent.upload(screen.getByLabelText(/adicionar foto/i), file);
-    await userEvent.click(screen.getByRole('button', { name: /abrir chamado/i }));
+    await userEvent.click(screen.getByRole('button', { name: /enviar reclamação/i }));
 
     await waitFor(() =>
       expect(createComplaint).toHaveBeenCalledWith({
@@ -107,7 +107,7 @@ describe('ComplaintFormPage (abrir)', () => {
       })
     );
     expect(uploadComplaintPhoto).toHaveBeenCalledWith('c1', file);
-    expect(navigateMock).toHaveBeenCalledWith('/chamados/c1', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/reclamacoes/c1', { replace: true });
   });
 
   it('recusa a 4ª foto', async () => {

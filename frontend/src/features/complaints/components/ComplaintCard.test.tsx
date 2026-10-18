@@ -38,7 +38,7 @@ function renderCard(c: Complaint, showThumbnail = true) {
   return render(
     <MemoryRouter>
       <ul>
-        <ComplaintCard c={c} to="/chamados/c1" showThumbnail={showThumbnail} />
+        <ComplaintCard c={c} to="/reclamacoes/c1" showThumbnail={showThumbnail} />
       </ul>
     </MemoryRouter>
   );
@@ -58,7 +58,7 @@ describe('ComplaintCard', () => {
         { id: 'p1', ordering: 0, contentType: 'image/jpeg' },
       ],
     });
-    const img = await screen.findByRole('img', { name: 'Foto do chamado #123' });
+    const img = await screen.findByRole('img', { name: 'Foto da reclamação #123' });
     expect(img).toHaveAttribute('src', 'http://minio/thumb.jpg');
     expect(img).toHaveAttribute('loading', 'lazy');
     expect(img).toHaveAttribute('referrerpolicy', 'no-referrer');

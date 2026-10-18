@@ -58,20 +58,20 @@ function renderPage() {
 }
 
 describe('ComplaintsPage', () => {
-  it('mural mostra encaminhados com prazo', async () => {
+  it('mural mostra encaminhadas com prazo', async () => {
     renderPage();
     expect(await screen.findByText('#123')).toBeInTheDocument();
     expect(screen.getByText('Manutenção › Pintura')).toBeInTheDocument();
     expect(screen.getByText('Prazo: 30/11/2026')).toBeInTheDocument();
-    // "Encaminhado" também é opção do filtro de status: procurar dentro do card
+    // "Encaminhada" também é opção do filtro de status: procurar dentro do card
     const card = screen.getByRole('link', { name: /#123/ });
-    expect(within(card).getByText('Encaminhado')).toBeInTheDocument();
+    expect(within(card).getByText('Encaminhada')).toBeInTheDocument();
     expect(within(card).getByText('Síndica: Pintor vem dia 30.')).toBeInTheDocument();
   });
 
-  it('aba "Meus chamados" mostra o motivo da recusa', async () => {
+  it('aba "Minhas reclamações" mostra o motivo da recusa', async () => {
     renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: 'Meus chamados' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Minhas reclamações' }));
     expect(await screen.findByText('Motivo: Duplicado do #123')).toBeInTheDocument();
   });
 
@@ -87,11 +87,11 @@ describe('ComplaintsPage', () => {
     });
   });
 
-  it('tem link para abrir chamado', async () => {
+  it('tem link para nova reclamação', async () => {
     renderPage();
-    expect(screen.getByRole('link', { name: /abrir chamado/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /nova reclamação/i })).toHaveAttribute(
       'href',
-      '/chamados/novo'
+      '/reclamacoes/nova'
     );
   });
 

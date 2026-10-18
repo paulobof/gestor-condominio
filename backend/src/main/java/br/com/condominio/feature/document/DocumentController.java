@@ -5,7 +5,6 @@ import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,16 +22,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Documentos do condomínio. Leitura/download liberados a qualquer autenticado; upload/exclusão só
- * com a authority {@code DOCUMENT_MANAGE} (role "Editor de Documentos"). Gated pela flag {@code
- * app.feature.documents.enabled}.
+ * com a authority {@code DOCUMENT_MANAGE} (role "Editor de Documentos").
  */
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.documents.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class DocumentController {
 
   private final DocumentService service;

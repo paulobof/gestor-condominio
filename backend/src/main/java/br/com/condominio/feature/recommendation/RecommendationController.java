@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -20,10 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/recommendations")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.recommendations.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class RecommendationController {
 
   private final RecommendationService service;

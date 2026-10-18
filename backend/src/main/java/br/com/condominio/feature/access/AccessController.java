@@ -11,7 +11,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -20,17 +19,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Gestão de acessos. Toda a superfície exige {@code ROLE_ASSIGN} (hoje só do Síndico). Atrás da
- * feature flag {@code app.feature.accessmanagement.enabled}.
- */
+/** Gestão de acessos. Toda a superfície exige {@code ROLE_ASSIGN} (hoje só do Síndico). */
 @RestController
 @RequestMapping("/api/access")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.accessmanagement.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class AccessController {
 
   private final AccessService service;

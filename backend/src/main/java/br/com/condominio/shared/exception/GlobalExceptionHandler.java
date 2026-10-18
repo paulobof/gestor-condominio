@@ -331,9 +331,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Rota/recurso não mapeado (ex.: endpoint atrás de feature flag desligada). Sem este handler, o
-   * catch-all {@link #handleGeneric} transformaria o 404 do framework em 500, poluindo métricas de
-   * erro e disparando alertas para 404s benignos.
+   * Rota/recurso não mapeado (ex.: rota inexistente). Sem este handler, o catch-all {@link
+   * #handleGeneric} transformaria o 404 do framework em 500, poluindo métricas de erro e disparando
+   * alertas para 404s benignos.
    */
   @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
   public ResponseEntity<ApiError> handleNotFound(Exception ex) {

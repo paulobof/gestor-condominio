@@ -22,9 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(
-    controllers = {ComplaintCatalogController.class, ComplaintCatalogAdminController.class},
-    properties = "app.feature.complaints.enabled=true")
+@WebMvcTest(controllers = {ComplaintCatalogController.class, ComplaintCatalogAdminController.class})
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class ComplaintCatalogWebTest {
 

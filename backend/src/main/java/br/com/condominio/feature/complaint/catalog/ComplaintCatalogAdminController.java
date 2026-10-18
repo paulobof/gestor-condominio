@@ -4,7 +4,6 @@ import br.com.condominio.feature.complaint.catalog.dto.*;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/complaint-catalog")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.complaints.enabled", havingValue = "true")
 public class ComplaintCatalogAdminController {
 
   private static final String CAN = "hasAuthority('COMPLAINT_CATALOG_MANAGE')";

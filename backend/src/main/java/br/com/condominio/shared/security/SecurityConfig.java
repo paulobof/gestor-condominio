@@ -52,10 +52,7 @@ public class SecurityConfig {
                         "/api/auth/password/consume-reset")
                     .permitAll()
                     .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/units/lookup",
-                        "/api/privacy/document/current",
-                        "/api/features")
+                        HttpMethod.GET, "/api/units/lookup", "/api/privacy/document/current")
                     .permitAll()
                     // Conteudo aberto a visitante (decisao do controlador dos dados, 2026-08-25):
                     // informacoes gerais, indicacoes, classificados e tags. Mural de avisos, FAQ e

@@ -32,12 +32,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Contrato HTTP do {@link AnnouncementController}: feature flag; leitura para autenticados; escrita
- * exige {@code ANNOUNCEMENT_MANAGE} (403 sem); validação e exceção→status.
+ * Contrato HTTP do {@link AnnouncementController}: leitura para autenticados; escrita exige {@code
+ * ANNOUNCEMENT_MANAGE} (403 sem); validação e exceção→status.
  */
-@WebMvcTest(
-    controllers = AnnouncementController.class,
-    properties = "app.feature.announcements.enabled=true")
+@WebMvcTest(controllers = AnnouncementController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class AnnouncementControllerWebTest {
 

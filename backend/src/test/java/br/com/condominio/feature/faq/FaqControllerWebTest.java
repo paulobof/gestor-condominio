@@ -30,10 +30,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Contrato HTTP do {@link FaqController}: feature flag; leitura para autenticados; escrita exige
- * {@code FAQ_MANAGE} (403 sem); validação de entrada.
+ * Contrato HTTP do {@link FaqController}: leitura para autenticados; escrita exige {@code
+ * FAQ_MANAGE} (403 sem); validação de entrada.
  */
-@WebMvcTest(controllers = FaqController.class, properties = "app.feature.faq.enabled=true")
+@WebMvcTest(controllers = FaqController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class FaqControllerWebTest {
 

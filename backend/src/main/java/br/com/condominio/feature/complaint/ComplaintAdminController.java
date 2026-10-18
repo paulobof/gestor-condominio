@@ -6,7 +6,6 @@ import jakarta.validation.Valid;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/complaints")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.complaints.enabled", havingValue = "true")
 public class ComplaintAdminController {
 
   private static final String CAN = "hasAuthority('COMPLAINT_MANAGE')";

@@ -1,8 +1,11 @@
-package br.com.condominio.feature.classified;
+package br.com.condominio.shared.exception;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.condominio.feature.parkingrental.ParkingRentalController;
+import br.com.condominio.feature.parkingrental.ParkingRentalService;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -15,23 +18,19 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-/**
- * Com a feature flag de classificados desligada, o {@code @ConditionalOnProperty} não registra o
- * controller — endpoint ausente (404) mesmo autenticado.
- */
-@WebMvcTest(
-    controllers = ClassifiedController.class,
-    properties = "app.feature.classifieds.enabled=false")
+/** Rota não mapeada responde 404 (e não 500 pelo catch-all do {@link GlobalExceptionHandler}). */
+@WebMvcTest(controllers = ParkingRentalController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
-class ClassifiedFeatureFlagOffWebTest {
+class UnmappedRouteWebTest {
 
   @Autowired private MockMvc mvc;
-  @MockBean private ClassifiedService service;
+  @MockBean private ParkingRentalService service;
   @MockBean private JwtService jwtService;
 
   @Test
-  void endpoint_isAbsent_whenFlagOff() throws Exception {
-    mvc.perform(get("/api/classifieds").with(MockAuth.user(UUID.randomUUID())))
-        .andExpect(status().isNotFound());
+  void unmappedRoute_returns404() throws Exception {
+    mvc.perform(get("/api/does-not-exist").with(MockAuth.user(UUID.randomUUID())))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
   }
 }

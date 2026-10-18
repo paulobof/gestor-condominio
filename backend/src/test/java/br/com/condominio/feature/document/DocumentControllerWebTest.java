@@ -27,9 +27,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(
-    controllers = DocumentController.class,
-    properties = "app.feature.documents.enabled=true")
+@WebMvcTest(controllers = DocumentController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class DocumentControllerWebTest {
 

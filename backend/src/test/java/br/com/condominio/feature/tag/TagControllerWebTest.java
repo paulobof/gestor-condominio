@@ -27,12 +27,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Contrato HTTP do {@link TagController}: feature flag ligada, {@code isAuthenticated()} no
- * autocomplete/criação e {@code TAG_MANAGE} obrigatório no delete (Plano 3B, Task 12 Step 3.7).
+ * Contrato HTTP do {@link TagController}: {@code isAuthenticated()} no autocomplete/criação e
+ * {@code TAG_MANAGE} obrigatório no delete (Plano 3B, Task 12 Step 3.7).
  */
-@WebMvcTest(
-    controllers = TagController.class,
-    properties = "app.feature.recommendations.enabled=true")
+@WebMvcTest(controllers = TagController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class TagControllerWebTest {
 

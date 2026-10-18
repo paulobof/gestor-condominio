@@ -38,12 +38,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Contrato HTTP do {@link AccessController}: feature flag ligada; todos os endpoints exigem {@code
- * ROLE_ASSIGN} (403 sem; 401 anônimo); limite atingido vira 409.
+ * Contrato HTTP do {@link AccessController}: todos os endpoints exigem {@code ROLE_ASSIGN} (403
+ * sem; 401 anônimo); limite atingido vira 409.
  */
-@WebMvcTest(
-    controllers = AccessController.class,
-    properties = "app.feature.accessmanagement.enabled=true")
+@WebMvcTest(controllers = AccessController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class AccessControllerWebTest {
 

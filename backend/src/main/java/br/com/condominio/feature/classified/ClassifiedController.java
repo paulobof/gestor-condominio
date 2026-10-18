@@ -9,7 +9,6 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -22,10 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/classifieds")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.classifieds.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class ClassifiedController {
 
   private final ClassifiedService service;

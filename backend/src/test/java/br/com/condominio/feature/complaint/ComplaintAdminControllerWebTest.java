@@ -24,9 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(
-    controllers = ComplaintAdminController.class,
-    properties = "app.feature.complaints.enabled=true")
+@WebMvcTest(controllers = ComplaintAdminController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class ComplaintAdminControllerWebTest {
 

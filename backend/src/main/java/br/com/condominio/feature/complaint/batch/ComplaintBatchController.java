@@ -5,7 +5,6 @@ import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/complaints/batches")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.complaints.enabled", havingValue = "true")
 public class ComplaintBatchController {
 
   private static final String CAN = "hasAuthority('COMPLAINT_MANAGE')";

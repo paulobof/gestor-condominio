@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/complaints")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.feature.complaints.enabled", havingValue = "true")
 public class ComplaintController {
 
   static final String MANAGE = "COMPLAINT_MANAGE";

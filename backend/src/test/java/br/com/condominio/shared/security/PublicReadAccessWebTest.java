@@ -38,12 +38,6 @@ import org.springframework.test.web.servlet.MockMvc;
       ClassifiedController.class
     })
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
-@org.springframework.test.context.TestPropertySource(
-    properties = {
-      "app.feature.announcements.enabled=true",
-      "app.feature.recommendations.enabled=true",
-      "app.feature.classifieds.enabled=true"
-    })
 class PublicReadAccessWebTest {
 
   @Autowired private MockMvc mvc;

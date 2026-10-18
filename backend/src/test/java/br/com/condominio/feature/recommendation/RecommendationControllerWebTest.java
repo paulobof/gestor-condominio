@@ -40,12 +40,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Contrato HTTP do {@link RecommendationController} (equivalente automatizado do checklist e2e do
- * Plano 3B, Task 12 Step 3): feature flag ligada, matriz de autorização {@code @PreAuthorize},
- * propagação de {@code canModerate} (proteção de PII), serialização e mapeamento exceção→status.
+ * Plano 3B, Task 12 Step 3): matriz de autorização {@code @PreAuthorize}, propagação de {@code
+ * canModerate} (proteção de PII), serialização e mapeamento exceção→status.
  */
-@WebMvcTest(
-    controllers = RecommendationController.class,
-    properties = "app.feature.recommendations.enabled=true")
+@WebMvcTest(controllers = RecommendationController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class RecommendationControllerWebTest {
 

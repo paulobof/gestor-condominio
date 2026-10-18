@@ -32,9 +32,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(
-    controllers = ParkingRentalController.class,
-    properties = "app.feature.parkingrental.enabled=true")
+@WebMvcTest(controllers = ParkingRentalController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class ParkingRentalControllerWebTest {
 

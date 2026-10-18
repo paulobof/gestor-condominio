@@ -7,7 +7,6 @@ import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -19,10 +18,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/parking-rentals")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.parkingrental.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class ParkingRentalController {
 
   private final ParkingRentalService service;

@@ -37,11 +37,9 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Contrato HTTP do {@link ClassifiedController} (3A). Diferente do 3B, a moderação não é por
  * {@code @PreAuthorize} e sim autor-ou-moderador no service — então o foco é a propagação de {@code
- * canModerate}, a feature flag, validação e o mapeamento exceção→status.
+ * canModerate}, validação e o mapeamento exceção→status.
  */
-@WebMvcTest(
-    controllers = ClassifiedController.class,
-    properties = "app.feature.classifieds.enabled=true")
+@WebMvcTest(controllers = ClassifiedController.class)
 @Import({SecurityConfig.class, JwtAuthenticationConverter.class})
 class ClassifiedControllerWebTest {
 

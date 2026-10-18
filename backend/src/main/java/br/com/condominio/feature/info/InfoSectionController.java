@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,10 +20,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/info-sections")
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.feature.generalinfo.enabled",
-    havingValue = "true",
-    matchIfMissing = true)
 public class InfoSectionController {
 
   private final InfoSectionService service;

@@ -11,11 +11,9 @@ import {
   UserCog,
   Users,
   SquareParking,
-  Lock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
-import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
 
@@ -27,7 +25,7 @@ interface NavItem {
   brand: Brand;
   /** Permissão exigida para ver o item; ausente = qualquer visitante. */
   requires?: string;
-  /** Área só para quem tem conta: visitante vê o card com cadeado e cai no login ao clicar. */
+  /** Área só para quem tem conta: visitante (sem login) não vê o card. */
   requiresLogin?: boolean;
 }
 
@@ -111,13 +109,11 @@ const hsl = (b: Brand, alpha?: number) =>
 
 export default function App() {
   const { user } = useAuth();
-  const { promptLogin } = useLoginPrompt();
-  // Visitante nao e barrado por permission em card com cadeado: ele ve o card e o clique abre o
-  // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o card.
+  // Visitante só vê o que pode acessar sem conta; logado, a permission decide.
   const can = (item: NavItem) =>
     user
       ? !item.requires || user.authorities.includes(item.requires)
-      : !item.requires || !!item.requiresLogin;
+      : !item.requires && !item.requiresLogin;
   const items = NAV.filter(can);
 
   return (
@@ -135,32 +131,12 @@ export default function App() {
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const Icon = item.icon;
-            const locked = !user && item.requiresLogin;
-            const Wrapper = ({ children }: { children: React.ReactNode }) =>
-              locked ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    promptLogin({
-                      reason: `${item.title} é para quem tem conta.`,
-                      destination: item.to,
-                    })
-                  }
-                  className="block w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  {children}
-                </button>
-              ) : (
+            return (
+              <li key={item.to}>
                 <Link
                   to={item.to}
                   className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  {children}
-                </Link>
-              );
-            return (
-              <li key={item.to}>
-                <Wrapper>
                   <Card
                     className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
                     style={
@@ -179,21 +155,13 @@ export default function App() {
                       </span>
                       <CardTitle className="flex flex-1 items-center gap-2 text-base">
                         {item.title}
-                        {locked && (
-                          <Lock
-                            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                            aria-label="Requer login"
-                          />
-                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        {locked ? 'Entre na sua conta para ver.' : item.desc}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{item.desc}</p>
                     </CardContent>
                   </Card>
-                </Wrapper>
+                </Link>
               </li>
             );
           })}

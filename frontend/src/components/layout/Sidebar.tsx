@@ -16,11 +16,9 @@ import {
   ListTree,
   ChevronDown,
   ChevronRight,
-  Lock,
 } from 'lucide-react';
 // nota: 'Privacidade' foi removida do menu a pedido; rota /privacidade segue por URL.
 import { useAuth } from '@/features/auth/useAuth';
-import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 import { DeveloperCredit } from '@/components/branding/DeveloperCredit';
 
 type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
@@ -32,7 +30,7 @@ interface NavItem {
   brand: Brand;
   end?: boolean;
   requires?: string;
-  /** Área só para quem tem conta: visitante vê o item com cadeado e cai no login ao clicar. */
+  /** Área só para quem tem conta: visitante (sem login) não vê o item. */
   requiresLogin?: boolean;
   /** Logado, só aparece para quem mora numa unidade (ou tem a permission indicada em `requires`). */
   requiresUnit?: string;
@@ -169,37 +167,8 @@ const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
 const hsl = (b: Brand, a?: number) =>
   a == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${a})`;
 
-function ItemLink({
-  item,
-  locked,
-  onNavigate,
-}: {
-  item: NavItem;
-  locked?: boolean;
-  onNavigate?: () => void;
-}) {
+function ItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const Icon = item.icon;
-  const { promptLogin } = useLoginPrompt();
-
-  if (locked) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          onNavigate?.();
-          promptLogin({
-            reason: `${item.label} é para quem tem conta.`,
-            destination: item.to,
-          });
-        }}
-        className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-      >
-        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" style={{ color: hsl(item.brand) }} />
-        <span className="flex-1 text-left">{item.label}</span>
-        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Requer login" />
-      </button>
-    );
-  }
 
   return (
     <NavLink
@@ -224,12 +193,6 @@ function ItemLink({
             style={{ color: hsl(item.brand) }}
           />
           <span className="flex-1">{item.label}</span>
-          {locked && (
-            <Lock
-              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-              aria-label="Requer login"
-            />
-          )}
         </>
       )}
     </NavLink>
@@ -302,10 +265,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
   const hasAuthority = (requires?: string) =>
     !requires || (user?.authorities.includes(requires) ?? false);
-  // Visitante nao e barrado por permission em item com cadeado: ele ve o item e o clique abre o
-  // popup de entrada. Sem cadeado (area de admin), a permission continua escondendo o item.
+  // Visitante só vê o que pode acessar sem conta; logado, unidade/permission decidem.
   const canSee = (item: NavItem) => {
-    if (!user) return !item.requires || !!item.requiresLogin;
+    if (!user) return !item.requires && !item.requiresLogin;
     if (item.requiresUnit && !(user as { unitId?: string | null }).unitId) {
       return hasAuthority(item.requiresUnit);
     }
@@ -318,14 +280,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         {ENTRIES.map((entry) => {
           if (entry.kind === 'item') {
             if (!canSee(entry)) return null;
-            return (
-              <ItemLink
-                key={entry.to}
-                item={entry}
-                locked={!user && entry.requiresLogin}
-                onNavigate={onNavigate}
-              />
-            );
+            return <ItemLink key={entry.to} item={entry} onNavigate={onNavigate} />;
           }
           const children = entry.children.filter((c) => hasAuthority(c.requires));
           if (children.length === 0) return null;

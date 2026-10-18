@@ -36,7 +36,7 @@ describe('Sidebar', () => {
     expect(screen.getAllByRole('link', { name: 'Reclamações' }).length).toBeGreaterThan(0);
   });
 
-  it('visitante vê com cadeado tudo que exige conta; áreas abertas ficam sem', () => {
+  it('visitante só vê as áreas abertas; o que exige conta some do menu', () => {
     useAuthMock.mockReturnValue({ user: null } as never);
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -44,16 +44,20 @@ describe('Sidebar', () => {
       </MemoryRouter>
     );
 
-    // Area com cadeado nao e link: e botao, porque abre o popup de entrada sem tirar
-    // o visitante da pagina em que ele estava.
-    for (const label of [/avisos/i, /perguntas frequentes/i, /documentos/i, /vagas/i]) {
-      const locked = screen.getAllByRole('button', { name: label })[0];
-      expect(locked.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+    for (const label of [
+      /avisos/i,
+      /perguntas frequentes/i,
+      /documentos/i,
+      /vagas/i,
+      /reclamações/i,
+    ]) {
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument();
     }
+    expect(screen.queryByLabelText('Requer login')).not.toBeInTheDocument();
 
     for (const label of [/indicações/i, /informações/i, /classificados/i]) {
-      const open = screen.getAllByRole('link', { name: label })[0];
-      expect(open.querySelector('[aria-label="Requer login"]')).toBeNull();
+      expect(screen.getAllByRole('link', { name: label }).length).toBeGreaterThan(0);
     }
   });
 

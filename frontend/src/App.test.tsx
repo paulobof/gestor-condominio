@@ -141,11 +141,12 @@ describe('App (visitante)', () => {
     );
   }
 
-  it('mostra "Vagas" com cadeado, como botão de login e não como link', () => {
+  it('não mostra ao visitante as áreas que exigem conta', () => {
     renderVisitor();
-    expect(screen.queryByRole('link', { name: /vagas/i })).not.toBeInTheDocument();
-    const card = screen.getByRole('button', { name: /vagas/i });
-    expect(card.querySelector('[aria-label="Requer login"]')).toBeTruthy();
+    for (const nome of [/vagas/i, /mural de avisos/i, /perguntas frequentes/i]) {
+      expect(screen.queryByRole('link', { name: nome })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: nome })).not.toBeInTheDocument();
+    }
   });
 
   it('mantém as áreas abertas como link, sem cadeado', () => {

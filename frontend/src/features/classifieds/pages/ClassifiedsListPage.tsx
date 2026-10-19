@@ -47,9 +47,12 @@ export function ClassifiedsListPage() {
           />
           Classificados
         </h1>
-        <Button asChild className="min-h-[44px]">
-          <Link to="/classificados/novo">Novo anúncio</Link>
-        </Button>
+        {/* Anunciar exige conta: visitante só navega. */}
+        {user && (
+          <Button asChild className="min-h-[44px]">
+            <Link to="/classificados/novo">Novo anúncio</Link>
+          </Button>
+        )}
       </div>
       {/* Visitante só vê anúncios ativos (o backend também força isso), então o filtro some. */}
       {user && (

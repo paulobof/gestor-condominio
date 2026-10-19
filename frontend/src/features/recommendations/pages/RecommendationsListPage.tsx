@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/features/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,10 +22,13 @@ function formatAverageRating(r: Pick<Recommendation, 'reviewCount' | 'ratingSum'
 }
 
 export function RecommendationsListPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [tag, setTag] = useState(''); // slug aplicado ao filtro
   const [tagQuery, setTagQuery] = useState(''); // texto digitado no campo de autocomplete
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
+  // Busca de sugestões concluída para o texto atual (distingue "carregando" de "nenhuma tag").
+  const [tagSearched, setTagSearched] = useState(false);
 
   const [items, setItems] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +59,7 @@ export function RecommendationsListPage() {
   useEffect(() => {
     const q = tagQuery.trim();
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setTagSearched(false);
     if (!q) {
       setTagSuggestions([]);
       return;
@@ -62,7 +67,8 @@ export function RecommendationsListPage() {
     debounceRef.current = setTimeout(() => {
       searchTags(q)
         .then(setTagSuggestions)
-        .catch(() => setTagSuggestions([]));
+        .catch(() => setTagSuggestions([]))
+        .finally(() => setTagSearched(true));
     }, 250);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -92,9 +98,12 @@ export function RecommendationsListPage() {
           />
           Indicações
         </h1>
-        <Button asChild className="min-h-[44px]">
-          <Link to="/indicacoes/nova">Nova indicação</Link>
-        </Button>
+        {/* Indicar exige conta: visitante só navega. */}
+        {user && (
+          <Button asChild className="min-h-[44px]">
+            <Link to="/indicacoes/nova">Nova indicação</Link>
+          </Button>
+        )}
       </div>
 
       <div className="mb-6 space-y-4">
@@ -120,6 +129,13 @@ export function RecommendationsListPage() {
               }}
               placeholder="Ex.: encanador"
               autoComplete="off"
+              onKeyDown={(e) => {
+                // Enter aplica a primeira sugestão: digitar a tag e confirmar já filtra.
+                if (e.key === 'Enter' && tagSuggestions.length > 0) {
+                  e.preventDefault();
+                  pickTag(tagSuggestions[0]);
+                }
+              }}
             />
             {tag && (
               <Button type="button" variant="secondary" className="min-h-[44px]" onClick={clearTag}>
@@ -127,6 +143,9 @@ export function RecommendationsListPage() {
               </Button>
             )}
           </div>
+          {!tag && tagSearched && tagQuery.trim() && tagSuggestions.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhuma tag encontrada.</p>
+          )}
           {tagSuggestions.length > 0 && (
             <ul className="rounded-md border bg-popover">
               {tagSuggestions.map((t) => (

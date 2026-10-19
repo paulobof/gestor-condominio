@@ -65,4 +65,18 @@ describe('ClassifiedsListPage', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Ativos' })).not.toBeInTheDocument();
   });
+
+  it('visitante não vê o botão "Novo anúncio"; logado vê', async () => {
+    vi.mocked(useAuth).mockReturnValue({ user: null } as never);
+    listMock.mockResolvedValue(page([]));
+    const { unmount } = renderPage();
+    await screen.findByText('Nenhum anúncio.');
+    expect(screen.queryByRole('link', { name: /novo anúncio/i })).not.toBeInTheDocument();
+    unmount();
+
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1', authorities: [] } } as never);
+    renderPage();
+    await screen.findByText('Nenhum anúncio.');
+    expect(screen.getByRole('link', { name: /novo anúncio/i })).toBeInTheDocument();
+  });
 });

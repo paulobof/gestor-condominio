@@ -5,11 +5,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/recommendationsApi', () => ({ listRecommendations: vi.fn() }));
 vi.mock('../api/tagsApi', () => ({ searchTags: vi.fn() }));
+vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { RecommendationsListPage } from './RecommendationsListPage';
 import { listRecommendations } from '../api/recommendationsApi';
 import { searchTags } from '../api/tagsApi';
+import { useAuth } from '@/features/auth/useAuth';
 
 const listMock = vi.mocked(listRecommendations);
 const searchTagsMock = vi.mocked(searchTags);
@@ -52,6 +54,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1', authorities: [] } } as never);
   searchTagsMock.mockResolvedValue([]);
 });
 
@@ -106,5 +109,46 @@ describe('RecommendationsListPage', () => {
 
     await waitFor(() => expect(searchTagsMock).toHaveBeenCalledWith('enc'));
     expect(await screen.findByRole('button', { name: 'Encanador' })).toBeInTheDocument();
+  });
+
+  it('visitante não vê o botão "Nova indicação"', async () => {
+    vi.mocked(useAuth).mockReturnValue({ user: null } as never);
+    listMock.mockResolvedValue(page([]));
+    renderPage();
+    await screen.findByText('Nenhuma indicação.');
+    expect(screen.queryByRole('link', { name: /nova indicação/i })).not.toBeInTheDocument();
+  });
+
+  it('logado vê o botão "Nova indicação"', async () => {
+    listMock.mockResolvedValue(page([]));
+    renderPage();
+    await screen.findByText('Nenhuma indicação.');
+    expect(screen.getByRole('link', { name: /nova indicação/i })).toBeInTheDocument();
+  });
+
+  it('Enter no campo de tag aplica a primeira sugestão e filtra', async () => {
+    listMock.mockResolvedValue(page([]));
+    searchTagsMock.mockResolvedValue([{ id: 't1', slug: 'vidro', label: 'Vidro', color: null }]);
+    renderPage();
+    await screen.findByText('Nenhuma indicação.');
+
+    const input = screen.getByLabelText('Filtrar por tag');
+    await userEvent.type(input, 'vid');
+    await screen.findByRole('button', { name: 'Vidro' });
+    await userEvent.type(input, '{Enter}');
+
+    await waitFor(() =>
+      expect(listMock).toHaveBeenLastCalledWith(expect.objectContaining({ tag: 'vidro' }))
+    );
+  });
+
+  it('avisa quando nenhuma tag casa com o texto', async () => {
+    listMock.mockResolvedValue(page([]));
+    searchTagsMock.mockResolvedValue([]);
+    renderPage();
+    await screen.findByText('Nenhuma indicação.');
+
+    await userEvent.type(screen.getByLabelText('Filtrar por tag'), 'xyz');
+    expect(await screen.findByText('Nenhuma tag encontrada.')).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,13 @@ export function Shell() {
   const { promptLogin } = useLoginPrompt();
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
 
-  // Fecha o drawer ao trocar de rota e com Esc.
-  useEffect(() => setNavOpen(false), [location.pathname]);
+  // Ao trocar de rota: fecha o drawer e volta a área central ao topo (ela rola sozinha, não a janela).
+  useEffect(() => {
+    setNavOpen(false);
+    mainRef.current?.scrollTo?.(0, 0);
+  }, [location.pathname]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setNavOpen(false);
     window.addEventListener('keydown', onKey);
@@ -29,8 +33,10 @@ export function Shell() {
 
   return (
     <>
-      <div className="min-h-dvh bg-background text-foreground">
-        <div className="sticky top-0 z-30">
+      {/* Altura da tela, sem rolar a janela: topo fixo e, abaixo, menu e conteúdo com rolagens
+          independentes. */}
+      <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+        <div className="z-30 shrink-0 bg-background">
           <IndependentNotice />
           <header className="border-b border-border bg-card text-foreground">
             <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
@@ -100,9 +106,12 @@ export function Shell() {
           </header>
         </div>
 
-        <div className="flex">
+        <div className="flex min-h-0 flex-1">
           <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
-          <main className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col">
+          <main
+            ref={mainRef}
+            className="flex min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          >
             <div className="flex-1">
               <Outlet />
             </div>

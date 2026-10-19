@@ -77,8 +77,8 @@ interface SidebarProps {
 export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
-      {/* Desktop: fixo, sempre visível */}
-      <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 shrink-0 overflow-y-auto border-r border-border bg-card lg:block">
+      {/* Desktop: sempre visível, com rolagem própria (independente do conteúdo) */}
+      <aside className="hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-r border-border bg-card lg:block">
         <SidebarNav />
       </aside>
 
@@ -96,7 +96,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             className="absolute inset-0 bg-black/50"
             onClick={onClose}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[82%] flex-col overflow-y-auto border-r border-border bg-card shadow-xl">
+          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[82%] flex-col overflow-y-auto overscroll-contain border-r border-border bg-card shadow-xl">
             <div className="px-4 py-3 font-heading text-sm font-semibold text-muted-foreground">
               Menu
             </div>

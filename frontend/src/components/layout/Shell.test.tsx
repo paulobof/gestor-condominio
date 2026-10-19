@@ -57,4 +57,20 @@ describe('Shell', () => {
     expect(header).toHaveClass('bg-card', 'text-foreground');
     expect(header.getAttribute('style') ?? '').not.toContain('brand-ink');
   });
+
+  it('menu e conteúdo rolam de forma independente, sob um topo opaco', () => {
+    renderShell({ id: 'u1', fullName: 'Ana', authorities: [] });
+    const main = screen.getByRole('main');
+    expect(main.className).toContain('overflow-y-auto');
+
+    const sidebarDesktop = screen
+      .getAllByRole('navigation', { name: 'Navegação principal' })[0]
+      .closest('aside');
+    expect(sidebarDesktop?.className).toContain('overflow-y-auto');
+    expect(sidebarDesktop?.className).not.toContain('sticky');
+
+    // o conteúdo não passa por trás de uma faixa transparente: o topo tem fundo próprio
+    const header = screen.getByRole('banner');
+    expect(header.parentElement?.className).toContain('bg-background');
+  });
 });

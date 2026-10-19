@@ -11,7 +11,7 @@ import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
 
 /**
  * Casca do app autenticado: top bar de marca (logo HELBOR + tema + sair) e menu LATERAL — fixo no
- * desktop, drawer no mobile (hambúrguer). Header no preto do logo (--brand-ink) para identidade.
+ * desktop, drawer no mobile (hambúrguer). Header segue o tema claro/escuro (fundo do card).
  */
 export function Shell() {
   const { user, logout } = useAuth();
@@ -32,17 +32,14 @@ export function Shell() {
       <div className="min-h-dvh bg-background text-foreground">
         <div className="sticky top-0 z-30">
           <IndependentNotice />
-          <header
-            className="border-b border-white/10 text-white"
-            style={{ backgroundColor: 'hsl(var(--brand-ink))' }}
-          >
+          <header className="border-b border-border bg-card text-foreground">
             <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setNavOpen(true)}
                 aria-label="Abrir menu"
-                className="text-white hover:bg-white/10 hover:text-white lg:hidden"
+                className="text-foreground hover:bg-accent hover:text-foreground lg:hidden"
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -60,17 +57,17 @@ export function Shell() {
                   height={36}
                 />
                 <span className="font-heading text-sm font-semibold leading-tight sm:text-base">
-                  HELBOR <span className="text-white/70">TRILOGY HOME</span>
+                  HELBOR <span className="text-muted-foreground">TRILOGY HOME</span>
                 </span>
               </Link>
 
               <div className="flex-1" />
 
               <div className="flex items-center gap-1 text-sm">
-                <ThemeToggle className="text-white hover:bg-white/10 hover:text-white" />
+                <ThemeToggle className="text-foreground hover:bg-accent hover:text-foreground" />
                 {user ? (
                   <>
-                    <span className="hidden text-white/70 sm:inline">
+                    <span className="hidden text-muted-foreground sm:inline">
                       {user.greetingName || user.fullName}
                     </span>
                     <Button
@@ -78,7 +75,7 @@ export function Shell() {
                       size="sm"
                       onClick={logout}
                       aria-label="Sair"
-                      className="text-white hover:bg-white/10 hover:text-white"
+                      className="text-foreground hover:bg-accent hover:text-foreground"
                     >
                       <LogOut className="h-4 w-4" />
                       <span className="ml-2 hidden sm:inline">Sair</span>
@@ -92,7 +89,7 @@ export function Shell() {
                     size="sm"
                     aria-label="Entrar"
                     onClick={() => promptLogin()}
-                    className="text-white hover:bg-white/10 hover:text-white"
+                    className="text-foreground hover:bg-accent hover:text-foreground"
                   >
                     <LogIn className="h-4 w-4" />
                     <span className="ml-2">Entrar</span>

@@ -50,4 +50,11 @@ describe('Shell', () => {
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /^entrar$/i })).not.toBeInTheDocument();
   });
+
+  it('a barra do topo segue o tema (fundo do card), sem cor escura fixa', () => {
+    renderShell(null);
+    const header = screen.getByRole('banner');
+    expect(header).toHaveClass('bg-card', 'text-foreground');
+    expect(header.getAttribute('style') ?? '').not.toContain('brand-ink');
+  });
 });

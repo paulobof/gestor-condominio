@@ -2,7 +2,7 @@ package br.com.condominio.feature.retention;
 
 import br.com.condominio.feature.privacy.AccountAnonymizer;
 import br.com.condominio.feature.user.UserRepository;
-import java.time.Clock;
+import br.com.condominio.shared.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -31,7 +31,7 @@ public class InactiveAccountAnonymizationScheduler {
 
   @Scheduled(cron = "0 50 3 * * *")
   public void run() {
-    Instant cutoff = clock.instant().minus(INACTIVITY_DAYS, ChronoUnit.DAYS);
+    Instant cutoff = clock.now().minus(INACTIVITY_DAYS, ChronoUnit.DAYS);
     int done = 0;
     for (UUID id : userRepo.findInactiveAnonymizationCandidates(cutoff)) {
       try {

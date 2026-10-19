@@ -8,9 +8,8 @@ import static org.mockito.Mockito.*;
 import br.com.condominio.feature.privacy.AccountAnonymizer;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserRepository;
-import java.time.Clock;
+import br.com.condominio.shared.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -24,9 +23,13 @@ class InactiveAccountAnonymizationSchedulerTest {
 
   private final UserRepository userRepo = mock(UserRepository.class);
   private final AccountAnonymizer anonymizer = mock(AccountAnonymizer.class);
+  private final Clock clock = mock(Clock.class);
   private final InactiveAccountAnonymizationScheduler scheduler =
-      new InactiveAccountAnonymizationScheduler(
-          userRepo, anonymizer, Clock.fixed(NOW, ZoneOffset.UTC));
+      new InactiveAccountAnonymizationScheduler(userRepo, anonymizer, clock);
+
+  {
+    when(clock.now()).thenReturn(NOW);
+  }
 
   @Test
   void buscaContasSemUsoHa12MesesEAnonimizaCadaUma() {

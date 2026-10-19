@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
+import { NAV_ITEMS, canSee } from './components/layout/navigation';
 import { AuthContext } from './features/auth/AuthProvider';
 
 function authValue(authorities: string[]) {
@@ -155,5 +156,39 @@ describe('App (visitante)', () => {
       const aberto = screen.getByRole('link', { name: nome });
       expect(aberto.querySelector('[aria-label="Requer login"]')).toBeNull();
     }
+  });
+});
+
+describe('App — mesma oferta do menu lateral', () => {
+  const ALL = [
+    'REGISTRATION_VIEW',
+    'ROLE_ASSIGN',
+    'COMPLAINT_MANAGE',
+    'COMPLAINT_CATALOG_MANAGE',
+    'RESIDENT_MANAGE',
+  ];
+
+  it('mostra um card para cada item do menu que a pessoa pode ver (exceto Início)', () => {
+    renderApp(ALL);
+    const user = { authorities: ALL, unitId: null };
+    const esperados = NAV_ITEMS.filter((i) => !i.sidebarOnly && canSee(i, user));
+    expect(esperados.length).toBeGreaterThan(10);
+    for (const item of esperados) {
+      const links = screen.getAllByRole('link').filter((l) => l.getAttribute('href') === item.to);
+      expect(links, item.to).toHaveLength(1);
+    }
+  });
+
+  it('agrupa Moradores e Alterar cadastro em "Configuração"', () => {
+    renderApp(['RESIDENT_MANAGE']);
+    const config = screen.getByRole('navigation', { name: 'Configuração' });
+    expect(within(config).getByRole('link', { name: /^moradores/i })).toHaveAttribute(
+      'href',
+      '/minha-unidade/moradores'
+    );
+    expect(within(config).getByRole('link', { name: /^alterar cadastro/i })).toHaveAttribute(
+      'href',
+      '/meu-cadastro'
+    );
   });
 });

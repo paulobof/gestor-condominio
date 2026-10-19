@@ -1,120 +1,13 @@
 import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Home,
-  Megaphone,
-  Lightbulb,
-  ShoppingBag,
-  ClipboardCheck,
-  Info,
-  BookOpen,
-  UserCog,
-  Users,
-  SquareParking,
-} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
-
-type Brand = 'red' | 'orange' | 'green' | 'blue' | 'ink';
-
-interface NavItem {
-  to: string;
-  title: string;
-  desc: string;
-  icon: typeof Home;
-  brand: Brand;
-  /** Permissão exigida para ver o item; ausente = qualquer visitante. */
-  requires?: string;
-  /** Área só para quem tem conta: visitante (sem login) não vê o card. */
-  requiresLogin?: boolean;
-}
-
-const NAV: NavItem[] = [
-  {
-    to: '/informacoes',
-    title: 'Informações',
-    desc: 'Informações gerais do condomínio.',
-    icon: Info,
-    brand: 'blue',
-  },
-  {
-    to: '/indicacoes',
-    title: 'Indicações',
-    desc: 'Serviços recomendados por moradores.',
-    icon: Lightbulb,
-    brand: 'orange',
-  },
-  {
-    to: '/classificados',
-    title: 'Classificados',
-    desc: 'Compra e venda entre moradores.',
-    icon: ShoppingBag,
-    brand: 'green',
-  },
-  {
-    to: '/avisos',
-    requiresLogin: true,
-    title: 'Mural de avisos',
-    desc: 'Comunicados do condomínio.',
-    icon: Megaphone,
-    brand: 'red',
-  },
-  {
-    to: '/faq',
-    requiresLogin: true,
-    title: 'Perguntas Frequentes',
-    desc: 'Dúvidas comuns do condomínio.',
-    icon: BookOpen,
-    brand: 'blue',
-  },
-  {
-    to: '/vagas/aluguel',
-    requiresLogin: true,
-    title: 'Vagas',
-    desc: 'Anuncie: procura, aluguel ou troca de vaga.',
-    icon: SquareParking,
-    brand: 'blue',
-  },
-  {
-    to: '/admin/registrations',
-    title: 'Cadastros pendentes',
-    desc: 'Aprovar ou recusar novos moradores.',
-    icon: ClipboardCheck,
-    brand: 'ink',
-    requires: 'REGISTRATION_VIEW',
-  },
-  {
-    to: '/admin/acessos',
-    title: 'Gestão de usuários',
-    desc: 'Acessos e dados dos usuários.',
-    icon: UserCog,
-    brand: 'ink',
-    requires: 'ROLE_ASSIGN',
-  },
-  {
-    to: '/minha-unidade/moradores',
-    title: 'Moradores',
-    desc: 'Cadastre e gerencie os moradores da sua unidade.',
-    icon: Users,
-    brand: 'ink',
-    requires: 'RESIDENT_MANAGE',
-  },
-];
-
-// 'ink' (itens de sistema) segue --foreground como cor/borda para manter
-// contraste no dark; --brand-ink (preto fixo do wordmark) fica só para fundos.
-const brandVar = (b: Brand) => (b === 'ink' ? '--foreground' : `--brand-${b}`);
-const hsl = (b: Brand, alpha?: number) =>
-  alpha == null ? `hsl(var(${brandVar(b)}))` : `hsl(var(${brandVar(b)}) / ${alpha})`;
+import { brandColor as hsl, visibleSections } from '@/components/layout/navigation';
 
 export default function App() {
   const { user } = useAuth();
-  // Visitante só vê o que pode acessar sem conta; logado, a permission decide.
-  const can = (item: NavItem) =>
-    user
-      ? !item.requires || user.authorities.includes(item.requires)
-      : !item.requires && !item.requiresLogin;
-  const items = NAV.filter(can);
+  // Mesma lista e mesma regra do menu lateral: a home mostra tudo o que o menu mostra.
+  const sections = visibleSections(user, (item) => !item.sidebarOnly);
 
   return (
     <section className="container space-y-6 py-6">
@@ -127,46 +20,49 @@ export default function App() {
         </p>
       </div>
 
-      <nav aria-label="Áreas do portal">
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <Card
-                    className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
-                    style={
-                      {
-                        borderLeftColor: hsl(item.brand),
-                        '--card-hover': hsl(item.brand, 0.1),
-                      } as CSSProperties
-                    }
+      {sections.map(({ section, title, items }) => (
+        <nav key={section} aria-label={title ?? 'Áreas do portal'} className="space-y-3">
+          {title && <h2 className="font-heading text-lg font-semibold">{title}</h2>}
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                      <span
-                        className="flex h-10 w-10 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) }}
-                      >
-                        <Icon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <CardTitle className="flex flex-1 items-center gap-2 text-base">
-                        {item.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">{item.desc}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                    <Card
+                      className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
+                      style={
+                        {
+                          borderLeftColor: hsl(item.brand),
+                          '--card-hover': hsl(item.brand, 0.1),
+                        } as CSSProperties
+                      }
+                    >
+                      <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                        <span
+                          className="flex h-10 w-10 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: hsl(item.brand, 0.12), color: hsl(item.brand) }}
+                        >
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <CardTitle className="flex flex-1 items-center gap-2 text-base">
+                          {item.homeTitle ?? item.label}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">{item.desc}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      ))}
     </section>
   );
 }

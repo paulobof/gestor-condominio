@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -191,5 +191,29 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: /pedidos de unidade/i })).not.toBeInTheDocument();
     // a fila de excecao do admin continua
     expect(screen.getAllByRole('link', { name: /cadastros pendentes/i })[0]).toBeInTheDocument();
+  });
+
+  it('separa Moradores e Alterar cadastro na divisão "Configuração"', () => {
+    renderSidebar(['RESIDENT_MANAGE']);
+    const config = screen.getAllByRole('group', { name: 'Configuração' })[0];
+    expect(within(config).getByRole('link', { name: 'Moradores' })).toHaveAttribute(
+      'href',
+      '/minha-unidade/moradores'
+    );
+    expect(within(config).getByRole('link', { name: 'Alterar cadastro' })).toHaveAttribute(
+      'href',
+      '/meu-cadastro'
+    );
+  });
+
+  it('visitante não vê a divisão "Configuração"', () => {
+    useAuthMock.mockReturnValue({ user: null } as never);
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Sidebar open={true} onClose={() => {}} />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('group', { name: 'Configuração' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Alterar cadastro' })).not.toBeInTheDocument();
   });
 });

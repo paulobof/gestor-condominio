@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchCurrent } from './api/consentApi';
+import { PolicyText } from './PolicyText';
 
 interface Props {
   accepted: boolean;
@@ -19,8 +20,8 @@ export function ConsentBox({ accepted, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-3 text-sm whitespace-pre-wrap bg-muted/30">
-        {doc.body}
+      <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+        <PolicyText body={doc.body} />
       </div>
       <label className="flex items-start gap-2 text-sm cursor-pointer">
         <input

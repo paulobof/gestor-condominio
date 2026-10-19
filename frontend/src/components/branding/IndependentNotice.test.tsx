@@ -23,4 +23,9 @@ describe('IndependentNotice', () => {
     render(<IndependentNotice />);
     expect(screen.getByRole('note')).not.toHaveTextContent(/WIZOR/i);
   });
+
+  it('fica sempre escura, no preto da marca, sem seguir o tema', () => {
+    render(<IndependentNotice />);
+    expect(screen.getByRole('note')).toHaveStyle({ backgroundColor: 'hsl(var(--brand-ink))' });
+  });
 });

@@ -1,6 +1,5 @@
 package br.com.condominio.feature.privacy;
 
-import br.com.condominio.feature.auth.RefreshTokenRepository;
 import br.com.condominio.feature.privacy.dto.PersonalDataExportResponse;
 import br.com.condominio.feature.privacy.dto.ProcessingActivityView;
 import br.com.condominio.feature.role.Role;
@@ -34,7 +33,7 @@ public class PrivacyService {
   private final UserRoleRepository userRoleRepo;
   private final RoleRepository roleRepo;
   private final UnitRepository unitRepo;
-  private final RefreshTokenRepository refreshTokenRepo;
+  private final AccountAnonymizer anonymizer;
   private final ProcessingActivitiesProvider activitiesProvider;
   private final PasswordEncoder passwordEncoder;
 
@@ -107,10 +106,7 @@ public class PrivacyService {
     if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
       throw new PrivacyException("INVALID_PASSWORD", "Senha incorreta.");
     }
-    user.anonymize();
-    userRepo.save(user);
-    refreshTokenRepo.revokeAllByUserId(userId, "self_anonymize");
-    log.info("privacy.anonymized userId={}", userId);
+    anonymizer.anonymize(user, "self_anonymize");
   }
 
   private static PrivacyException notFound(UUID userId) {

@@ -58,4 +58,11 @@ public class Unit {
     }
     this.masterUserId = userId;
   }
+
+  /** Libera a unidade do master informado (ex.: conta anonimizada). Outro master não é tocado. */
+  public void releaseMaster(UUID userId) {
+    if (userId != null && userId.equals(this.masterUserId)) {
+      this.masterUserId = null;
+    }
+  }
 }

@@ -3,6 +3,7 @@ package br.com.condominio.feature.user;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
@@ -78,6 +79,9 @@ public class User {
 
   @Column(name = "anonymized_at")
   private Instant anonymizedAt;
+
+  @Column(name = "last_login_at")
+  private Instant lastLoginAt;
 
   @Column(name = "consent_document_version", length = 20)
   private String consentDocumentVersion;
@@ -159,6 +163,16 @@ public class User {
     this.mustChangePassword = false;
   }
 
+  /**
+   * Registra uso da conta (login ou renovação de sessão). Grava no máximo uma vez por dia: a
+   * renovação acontece a cada poucos minutos e não precisa reescrever a linha toda vez.
+   */
+  public void recordLogin(Instant now) {
+    if (this.lastLoginAt == null || this.lastLoginAt.isBefore(now.minus(1, ChronoUnit.DAYS))) {
+      this.lastLoginAt = now;
+    }
+  }
+
   /** Disable (soft) preserva tudo. */
   public void disable() {
     this.status = UserStatus.DISABLED;
@@ -237,6 +251,7 @@ public class User {
     this.mustChangePassword = false;
     this.consentAcceptedIp = null;
     this.whatsappOptIn = false;
+    this.isUnitMaster = false;
     this.status = UserStatus.ANONYMIZED;
     this.anonymizedAt = Instant.now();
   }

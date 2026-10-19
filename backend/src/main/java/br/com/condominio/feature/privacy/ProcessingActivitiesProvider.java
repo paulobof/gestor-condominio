@@ -21,13 +21,6 @@ public class ProcessingActivitiesProvider {
               List.of("Dokploy (hosting)", "PostgreSQL (banco)"),
               false),
           new ProcessingActivityView(
-              "Validação de residência (comprovante)",
-              "Execução de contrato + obrigação legal (Lei 4.591/64)",
-              List.of("comprovante de residência (PDF/imagem)", "data de upload", "IP"),
-              "180 dias após aprovação do master, então purga automática",
-              List.of("MinIO (storage)", "PostgreSQL (metadados)"),
-              false),
-          new ProcessingActivityView(
               "Reset de senha via WhatsApp",
               "Execução de contrato (LGPD Art. 7, V)",
               List.of("telefone", "token (hash)"),

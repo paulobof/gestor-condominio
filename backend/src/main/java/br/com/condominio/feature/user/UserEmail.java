@@ -61,4 +61,10 @@ public class UserEmail {
   public void changeEmail(String email) {
     this.email = email;
   }
+
+  /** Troca o endereço por um marcador sem dado pessoal, único por e-mail (LGPD, anonimização). */
+  public void anonymize() {
+    this.email = "anonimizado-" + this.id + "@anonimizado.invalid";
+    this.verifiedAt = null;
+  }
 }

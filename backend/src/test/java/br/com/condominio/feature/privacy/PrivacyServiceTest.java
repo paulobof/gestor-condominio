@@ -2,10 +2,8 @@ package br.com.condominio.feature.privacy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-import br.com.condominio.feature.auth.RefreshTokenRepository;
 import br.com.condominio.feature.role.RoleRepository;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.UnitRepository;
@@ -29,7 +27,7 @@ class PrivacyServiceTest {
   private UserRoleRepository userRoleRepo;
   private RoleRepository roleRepo;
   private UnitRepository unitRepo;
-  private RefreshTokenRepository refreshTokenRepo;
+  private AccountAnonymizer anonymizer;
   private ProcessingActivitiesProvider activitiesProvider;
   private PasswordEncoder encoder;
   private PrivacyService service;
@@ -41,7 +39,7 @@ class PrivacyServiceTest {
     userRoleRepo = mock(UserRoleRepository.class);
     roleRepo = mock(RoleRepository.class);
     unitRepo = mock(UnitRepository.class);
-    refreshTokenRepo = mock(RefreshTokenRepository.class);
+    anonymizer = mock(AccountAnonymizer.class);
     activitiesProvider = mock(ProcessingActivitiesProvider.class);
     encoder = mock(PasswordEncoder.class);
     service =
@@ -51,7 +49,7 @@ class PrivacyServiceTest {
             userRoleRepo,
             roleRepo,
             unitRepo,
-            refreshTokenRepo,
+            anonymizer,
             activitiesProvider,
             encoder);
   }
@@ -106,11 +104,11 @@ class PrivacyServiceTest {
         .isInstanceOf(PrivacyException.class)
         .extracting("code")
         .isEqualTo("INVALID_PASSWORD");
-    verifyNoInteractions(refreshTokenRepo);
+    verifyNoInteractions(anonymizer);
   }
 
   @Test
-  void anonymizeSelfSucessoMudaStatusERevogaRefresh() {
+  void anonymizeSelfSucessoDelegaAoAnonimizador() {
     UUID id = UUID.randomUUID();
     User u = makeUser(id);
     when(userRepo.findById(id)).thenReturn(Optional.of(u));
@@ -118,9 +116,7 @@ class PrivacyServiceTest {
 
     service.anonymizeSelf(id, "Senha@1234");
 
-    assertThat(u.getStatus()).isEqualTo(UserStatus.ANONYMIZED);
-    assertThat(u.getFullName()).isEqualTo("Usuário Removido");
-    verify(refreshTokenRepo).revokeAllByUserId(eq(id), eq("self_anonymize"));
+    verify(anonymizer).anonymize(u, "self_anonymize");
   }
 
   // ============ helpers ============

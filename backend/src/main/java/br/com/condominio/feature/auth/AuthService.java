@@ -10,6 +10,7 @@ import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
 import br.com.condominio.shared.security.JwtService;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,7 @@ public class AuthService {
       throw new BadCredentialsException("Invalid credentials");
     }
     attemptTracker.recordSuccess(user.getId());
+    user.recordLogin(Instant.now());
     RefreshTokenService.IssuedToken issued = refreshTokenService.issueNew(user.getId());
     return buildLoginResult(user, userEmail, issued);
   }
@@ -64,6 +66,7 @@ public class AuthService {
   public LoginResult refresh(String rawRefreshToken) {
     RefreshTokenService.IssuedToken rotated = refreshTokenService.rotate(rawRefreshToken);
     User user = userRepo.findById(rotated.userId()).orElseThrow();
+    user.recordLogin(Instant.now());
     UserEmail primary = primaryEmail(user.getId());
     return buildLoginResult(user, primary, rotated);
   }

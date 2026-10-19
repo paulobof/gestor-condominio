@@ -82,6 +82,19 @@ class ClassifiedControllerWebTest {
   }
 
   @Test
+  void list_semSessao_soVeAtivos_mesmoPedindoOutroStatus() throws Exception {
+    mvc.perform(get("/api/classifieds").param("status", "SOLD")).andExpect(status().isOk());
+    verify(service).list(eq(ClassifiedStatus.ACTIVE), any());
+  }
+
+  @Test
+  void list_logado_respeitaOStatusPedido() throws Exception {
+    mvc.perform(get("/api/classifieds").param("status", "SOLD").with(MockAuth.user(UID)))
+        .andExpect(status().isOk());
+    verify(service).list(eq(ClassifiedStatus.SOLD), any());
+  }
+
+  @Test
   void get_returns200() throws Exception {
     when(service.getById(CID)).thenReturn(view());
     mvc.perform(get("/api/classifieds/{id}", CID).with(MockAuth.user(UID)))

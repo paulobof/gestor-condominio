@@ -4,10 +4,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/classifiedsApi', () => ({ listClassifieds: vi.fn() }));
+vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { ClassifiedsListPage } from './ClassifiedsListPage';
 import { listClassifieds } from '../api/classifiedsApi';
+import { useAuth } from '@/features/auth/useAuth';
 
 const listMock = vi.mocked(listClassifieds);
 
@@ -25,6 +27,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1', authorities: [] } } as never);
 });
 
 describe('ClassifiedsListPage', () => {
@@ -50,5 +53,16 @@ describe('ClassifiedsListPage', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Vendidos' }));
 
     await waitFor(() => expect(listMock).toHaveBeenLastCalledWith('SOLD'));
+  });
+
+  it('visitante vê só os ativos, sem as abas de status', async () => {
+    vi.mocked(useAuth).mockReturnValue({ user: null } as never);
+    listMock.mockResolvedValue(page([{ id: 'c1', title: 'Sofá 3 lugares', price: 500 }]));
+    renderPage();
+
+    expect(await screen.findByText('Sofá 3 lugares')).toBeInTheDocument();
+    expect(listMock).toHaveBeenCalledWith('ACTIVE');
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Ativos' })).not.toBeInTheDocument();
   });
 });

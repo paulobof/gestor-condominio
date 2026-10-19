@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/features/auth/useAuth';
 import { listClassifieds, type Classified, type ClassifiedStatus } from '../api/classifiedsApi';
 
 const STATUS_LABEL: Record<ClassifiedStatus, string> = {
@@ -12,6 +13,7 @@ const STATUS_LABEL: Record<ClassifiedStatus, string> = {
 };
 
 export function ClassifiedsListPage() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<ClassifiedStatus>('ACTIVE');
   const [items, setItems] = useState<Classified[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,21 +51,24 @@ export function ClassifiedsListPage() {
           <Link to="/classificados/novo">Novo anúncio</Link>
         </Button>
       </div>
-      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
-        {(Object.keys(STATUS_LABEL) as ClassifiedStatus[]).map((s) => (
-          <Button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={s === status}
-            variant={s === status ? 'default' : 'secondary'}
-            className="min-h-[44px]"
-            onClick={() => setStatus(s)}
-          >
-            {STATUS_LABEL[s]}
-          </Button>
-        ))}
-      </div>
+      {/* Visitante só vê anúncios ativos (o backend também força isso), então o filtro some. */}
+      {user && (
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
+          {(Object.keys(STATUS_LABEL) as ClassifiedStatus[]).map((s) => (
+            <Button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={s === status}
+              variant={s === status ? 'default' : 'secondary'}
+              className="min-h-[44px]"
+              onClick={() => setStatus(s)}
+            >
+              {STATUS_LABEL[s]}
+            </Button>
+          ))}
+        </div>
+      )}
       {loading ? (
         <p className="text-muted-foreground">Carregando…</p>
       ) : items.length === 0 ? (

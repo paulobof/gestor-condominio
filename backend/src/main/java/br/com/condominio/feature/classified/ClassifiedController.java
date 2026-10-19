@@ -31,11 +31,14 @@ public class ClassifiedController {
     return me.authorities().contains("CLASSIFIED_MODERATE");
   }
 
+  /** Visitante (sem sessão) só vê anúncios ativos; vendidos/arquivados são para quem tem conta. */
   @GetMapping
   public Page<ClassifiedView> list(
       @RequestParam(required = false) ClassifiedStatus status,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "20") int size,
+      @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    if (me == null) status = ClassifiedStatus.ACTIVE;
     int safePage = Math.max(page, 0);
     int safeSize = Math.min(Math.max(size, 1), 100);
     return service.list(status, PageRequest.of(safePage, safeSize));

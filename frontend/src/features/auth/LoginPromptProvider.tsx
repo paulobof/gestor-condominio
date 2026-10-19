@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoginForm } from './LoginForm';
@@ -22,6 +22,7 @@ export const LoginPromptContext = createContext<LoginPromptState | null>(null);
  */
 export function LoginPromptProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const destinationRef = useRef<string | null>(null);
@@ -38,6 +39,15 @@ export function LoginPromptProvider({ children }: { children: ReactNode }) {
     setReason(null);
     destinationRef.current = null;
   }, []);
+
+  // Mudou de rota (ex.: "Primeiro acesso", "Esqueci minha senha"): o popup não pode ficar por cima
+  // da nova página.
+  const previousPathRef = useRef(pathname);
+  useEffect(() => {
+    if (previousPathRef.current === pathname) return;
+    previousPathRef.current = pathname;
+    close();
+  }, [pathname, close]);
 
   // Ao abrir, o foco entra no diálogo (primeiro campo) — é o que leitor de tela e teclado esperam
   // de um modal, e evita o autoFocus declarativo, que a regra de acessibilidade proíbe.

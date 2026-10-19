@@ -81,4 +81,16 @@ describe('LoginPromptProvider', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/avisos'));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
+
+  it.each([/primeiro acesso/i, /esqueci minha senha/i, /o que é este aplicativo/i])(
+    'link dentro do popup (%s) fecha o popup ao navegar',
+    async (name) => {
+      const user = userEvent.setup();
+      renderWithProvider();
+      await user.click(screen.getByRole('button', { name: /abrir área com cadeado/i }));
+      await user.click(screen.getByRole('link', { name }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    }
+  );
 });

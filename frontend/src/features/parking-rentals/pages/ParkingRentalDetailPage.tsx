@@ -58,6 +58,7 @@ export function ParkingRentalDetailPage() {
         floor: r.floor,
         spotNumber: r.spotNumber,
         monthlyPrice: r.monthlyPrice,
+        contactPhone: r.contactPhone,
         status,
       });
       setR(updated);
@@ -114,16 +115,16 @@ export function ParkingRentalDetailPage() {
         <p className="text-xl font-semibold">{brl(r.monthlyPrice)}/mês</p>
       </div>
 
-      {(r.authorName || r.authorWhatsapp) && (
+      {(r.authorName || r.contactWhatsapp) && (
         <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Anunciante
           </p>
           {r.authorName && <p className="text-sm font-medium">{r.authorName}</p>}
-          {r.authorWhatsapp && (
+          {r.contactWhatsapp && (
             <Button asChild className="min-h-[44px]">
               <a
-                href={`https://wa.me/${r.authorWhatsapp}`}
+                href={`https://wa.me/${r.contactWhatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -42,6 +42,7 @@ export async function createClassified(body: {
   title: string;
   description?: string;
   price?: number | null;
+  contactPhone?: string | null;
 }) {
   const r = await api.post('/classifieds', body);
   return r.data as Classified;
@@ -49,7 +50,13 @@ export async function createClassified(body: {
 
 export async function updateClassified(
   id: string,
-  body: { title: string; description?: string; price?: number | null; status?: ClassifiedStatus }
+  body: {
+    title: string;
+    description?: string;
+    price?: number | null;
+    contactPhone?: string | null;
+    status?: ClassifiedStatus;
+  }
 ) {
   const r = await api.put(`/classifieds/${id}`, body);
   return r.data as Classified;

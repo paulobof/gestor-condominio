@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
 class ClassifiedTest {
 
   private Classified active() {
-    return Classified.create(UUID.randomUUID(), "Bicicleta", "Aro 29", new BigDecimal("500.00"));
+    return Classified.create(
+        UUID.randomUUID(), "Bicicleta", "Aro 29", new BigDecimal("500.00"), null);
   }
 
   @Test
@@ -72,7 +73,7 @@ class ClassifiedTest {
   @Test
   void edit_updatesFields() {
     Classified c = active();
-    c.edit("Bike", "Nova descrição", new BigDecimal("600.00"));
+    c.edit("Bike", "Nova descrição", new BigDecimal("600.00"), "11988887777");
     assertThat(c.getTitle()).isEqualTo("Bike");
     assertThat(c.getPrice()).isEqualByComparingTo("600.00");
   }

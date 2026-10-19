@@ -8,4 +8,5 @@ import java.math.BigDecimal;
 public record CreateClassifiedRequest(
     @NotBlank @Size(max = 120) String title,
     @Size(max = 5000) String description,
-    @PositiveOrZero BigDecimal price) {}
+    @PositiveOrZero BigDecimal price,
+    @Size(max = 20) String contactPhone) {}

@@ -22,8 +22,8 @@ function rental(over: Record<string, unknown> = {}) {
     authorUserId: 'u1',
     createdAt: '2026-06-14T00:00:00Z',
     authorName: null,
-    authorPhone: null,
-    authorWhatsapp: null,
+    contactPhone: null,
+    contactWhatsapp: null,
     ...over,
   };
 }

@@ -40,6 +40,7 @@ export function ClassifiedFormPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [status, setStatus] = useState<ClassifiedStatus>('ACTIVE');
   const [photos, setPhotos] = useState<ClassifiedPhoto[]>([]);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
@@ -54,6 +55,7 @@ export function ClassifiedFormPage() {
     setTitle(c.title);
     setDescription(c.description ?? '');
     setPrice(c.price != null ? String(c.price) : '');
+    setContactPhone(c.contactPhone ?? '');
     setStatus(c.status);
     setPhotos(c.photos);
   };
@@ -109,6 +111,7 @@ export function ClassifiedFormPage() {
         title: title.trim(),
         description: description.trim() || undefined,
         price: parsedPrice(),
+        contactPhone: contactPhone.trim() || null,
       };
       if (isEdit && id) {
         await updateClassified(id, { ...body, status });
@@ -266,6 +269,23 @@ export function ClassifiedFormPage() {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contactPhone">Telefone para contato (opcional)</Label>
+              <Input
+                id="contactPhone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="Ex.: (11) 98888-7777"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                maxLength={20}
+                aria-describedby="contactPhone-hint"
+              />
+              <p id="contactPhone-hint" className="text-xs text-muted-foreground">
+                Aparece no anúncio. O telefone da sua conta nunca é mostrado.
+              </p>
             </div>
             {isEdit && (
               <div className="space-y-2">

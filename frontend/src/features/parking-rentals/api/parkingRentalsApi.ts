@@ -12,8 +12,8 @@ export interface ParkingRental {
   authorUserId: string;
   createdAt: string;
   authorName: string | null;
-  authorPhone: string | null;
-  authorWhatsapp: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
 }
 
 export interface ParkingRentalPage {
@@ -28,6 +28,7 @@ export interface ParkingRentalBody {
   floor: string;
   spotNumber: string;
   monthlyPrice: number;
+  contactPhone?: string | null;
 }
 
 export async function listParkingRentals(status?: ParkingRentalStatus, page = 0, size = 20) {

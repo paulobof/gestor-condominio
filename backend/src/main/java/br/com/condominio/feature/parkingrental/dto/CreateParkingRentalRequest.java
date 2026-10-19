@@ -10,4 +10,5 @@ public record CreateParkingRentalRequest(
     @NotBlank @Size(max = 40) String tower,
     @NotBlank @Size(max = 20) String floor,
     @NotBlank @Size(max = 40) String spotNumber,
-    @NotNull @Positive BigDecimal monthlyPrice) {}
+    @NotNull @Positive BigDecimal monthlyPrice,
+    @Size(max = 20) String contactPhone) {}

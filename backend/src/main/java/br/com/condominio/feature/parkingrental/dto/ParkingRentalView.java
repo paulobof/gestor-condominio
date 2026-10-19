@@ -16,11 +16,10 @@ public record ParkingRentalView(
     UUID authorUserId,
     Instant createdAt,
     String authorName,
-    String authorPhone,
-    String authorWhatsapp) {
+    String contactPhone,
+    String contactWhatsapp) {
 
-  public static ParkingRentalView of(
-      ParkingRental r, String authorName, String authorPhone, String authorWhatsapp) {
+  public static ParkingRentalView of(ParkingRental r, String authorName, String contactWhatsapp) {
     return new ParkingRentalView(
         r.getId(),
         r.getTower(),
@@ -31,7 +30,7 @@ public record ParkingRentalView(
         r.getAuthorUserId(),
         r.getCreatedAt(),
         authorName,
-        authorPhone,
-        authorWhatsapp);
+        r.getContactPhone(),
+        contactWhatsapp);
   }
 }

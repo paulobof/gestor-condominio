@@ -20,7 +20,7 @@ public record ClassifiedView(
     String contactPhone) {
 
   public static ClassifiedView of(
-      Classified c, List<ClassifiedPhotoView> photos, String contactName, String contactPhone) {
+      Classified c, List<ClassifiedPhotoView> photos, String contactName) {
     return new ClassifiedView(
         c.getId(),
         c.getTitle(),
@@ -31,6 +31,6 @@ public record ClassifiedView(
         c.getCreatedAt(),
         photos,
         contactName,
-        contactPhone);
+        c.getContactPhone());
   }
 }

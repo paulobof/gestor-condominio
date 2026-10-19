@@ -43,7 +43,9 @@ public class ClassifiedService {
 
   @Transactional
   public ClassifiedView create(UUID authorId, CreateClassifiedRequest req) {
-    Classified c = Classified.create(authorId, req.title(), req.description(), req.price());
+    Classified c =
+        Classified.create(
+            authorId, req.title(), req.description(), req.price(), blankToNull(req.contactPhone()));
     repo.save(c);
     activityNotifier.notify(ActivityAction.CREATED, "Classificado", c.getTitle(), authorId);
     return view(c);
@@ -70,8 +72,7 @@ public class ClassifiedService {
         c -> {
           User u = userIndex.get(c.getAuthorUserId());
           List<ClassifiedPhotoView> photos = photosOf(c.getId());
-          return ClassifiedView.of(
-              c, photos, u != null ? u.getFullName() : null, u != null ? u.getPhone() : null);
+          return ClassifiedView.of(c, photos, u != null ? u.getFullName() : null);
         });
   }
 
@@ -79,7 +80,7 @@ public class ClassifiedService {
   public ClassifiedView update(
       UUID id, UUID actorId, boolean canModerate, UpdateClassifiedRequest req) {
     Classified c = loadOwned(id, actorId, canModerate);
-    c.edit(req.title(), req.description(), req.price());
+    c.edit(req.title(), req.description(), req.price(), blankToNull(req.contactPhone()));
     if (req.status() != null && req.status() != c.getStatus()) {
       applyStatus(c, req.status());
     }
@@ -180,11 +181,11 @@ public class ClassifiedService {
     List<ClassifiedPhotoView> photos = photosOf(c.getId());
     User author =
         userRepo.findAllById(List.of(c.getAuthorUserId())).stream().findFirst().orElse(null);
-    return ClassifiedView.of(
-        c,
-        photos,
-        author != null ? author.getFullName() : null,
-        author != null ? author.getPhone() : null);
+    return ClassifiedView.of(c, photos, author != null ? author.getFullName() : null);
+  }
+
+  private static String blankToNull(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
   }
 
   private List<ClassifiedPhotoView> photosOf(UUID classifiedId) {

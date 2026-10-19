@@ -37,6 +37,10 @@ public class Classified {
   @Column(nullable = false, length = 20)
   private ClassifiedStatus status;
 
+  /** Telefone de contato do anúncio, informado pelo autor. Nunca é o telefone da conta. */
+  @Column(name = "contact_phone", length = 20)
+  private String contactPhone;
+
   @Column(name = "author_user_id", nullable = false, updatable = false)
   private UUID authorUserId;
 
@@ -55,17 +59,19 @@ public class Classified {
   }
 
   public static Classified create(
-      UUID authorUserId, String title, String description, BigDecimal price) {
+      UUID authorUserId, String title, String description, BigDecimal price, String contactPhone) {
     Classified c = new Classified();
     c.authorUserId = authorUserId;
     c.title = title;
     c.description = description;
     c.price = price;
+    c.contactPhone = contactPhone;
     c.status = ClassifiedStatus.ACTIVE;
     return c;
   }
 
-  public void edit(String title, String description, BigDecimal price) {
+  public void edit(String title, String description, BigDecimal price, String contactPhone) {
+    this.contactPhone = contactPhone;
     this.title = title;
     this.description = description;
     this.price = price;

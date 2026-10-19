@@ -12,4 +12,5 @@ public record UpdateParkingRentalRequest(
     @NotBlank @Size(max = 20) String floor,
     @NotBlank @Size(max = 40) String spotNumber,
     @NotNull @Positive BigDecimal monthlyPrice,
-    ParkingRentalStatus status) {}
+    ParkingRentalStatus status,
+    @Size(max = 20) String contactPhone) {}

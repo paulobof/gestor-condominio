@@ -25,6 +25,7 @@ export function ParkingRentalFormPage() {
   const [floor, setFloor] = useState('');
   const [spotNumber, setSpotNumber] = useState('');
   const [price, setPrice] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -40,6 +41,7 @@ export function ParkingRentalFormPage() {
         setFloor(r.floor);
         setSpotNumber(r.spotNumber);
         setPrice(String(r.monthlyPrice));
+        setContactPhone(r.contactPhone ?? '');
       })
       .catch(() => {
         if (active) toast.error('Erro ao carregar o anúncio.');
@@ -80,6 +82,7 @@ export function ParkingRentalFormPage() {
         floor: floor.trim(),
         spotNumber: spotNumber.trim(),
         monthlyPrice,
+        contactPhone: contactPhone.trim() || null,
       };
       if (isEdit && id) {
         await updateParkingRental(id, body);
@@ -155,6 +158,23 @@ export function ParkingRentalFormPage() {
                 onChange={(e) => setPrice(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contactPhone">Telefone para contato (opcional)</Label>
+              <Input
+                id="contactPhone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="Ex.: (11) 98888-7777"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                maxLength={20}
+                aria-describedby="contactPhone-hint"
+              />
+              <p id="contactPhone-hint" className="text-xs text-muted-foreground">
+                Aparece no anúncio. O telefone da sua conta nunca é mostrado.
+              </p>
             </div>
             <Button type="submit" disabled={saving} className="min-h-[44px] w-full">
               {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Anunciar vaga'}

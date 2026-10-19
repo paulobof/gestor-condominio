@@ -40,6 +40,10 @@ public class ParkingRental {
   @Column(nullable = false, length = 20)
   private ParkingRentalStatus status;
 
+  /** Telefone de contato do anúncio, informado pelo autor. Nunca é o telefone da conta. */
+  @Column(name = "contact_phone", length = 20)
+  private String contactPhone;
+
   @Column(name = "author_user_id", nullable = false, updatable = false)
   private UUID authorUserId;
 
@@ -58,18 +62,26 @@ public class ParkingRental {
   }
 
   public static ParkingRental create(
-      UUID authorUserId, String tower, String floor, String spotNumber, BigDecimal monthlyPrice) {
+      UUID authorUserId,
+      String tower,
+      String floor,
+      String spotNumber,
+      BigDecimal monthlyPrice,
+      String contactPhone) {
     ParkingRental r = new ParkingRental();
     r.authorUserId = authorUserId;
     r.tower = tower;
     r.floor = floor;
     r.spotNumber = spotNumber;
     r.monthlyPrice = monthlyPrice;
+    r.contactPhone = contactPhone;
     r.status = ParkingRentalStatus.ACTIVE;
     return r;
   }
 
-  public void edit(String tower, String floor, String spotNumber, BigDecimal monthlyPrice) {
+  public void edit(
+      String tower, String floor, String spotNumber, BigDecimal monthlyPrice, String contactPhone) {
+    this.contactPhone = contactPhone;
     this.tower = tower;
     this.floor = floor;
     this.spotNumber = spotNumber;

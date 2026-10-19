@@ -35,7 +35,12 @@ public class ParkingRentalService {
   public ParkingRentalView create(UUID authorId, CreateParkingRentalRequest req) {
     ParkingRental r =
         ParkingRental.create(
-            authorId, req.tower(), req.floor(), req.spotNumber(), req.monthlyPrice());
+            authorId,
+            req.tower(),
+            req.floor(),
+            req.spotNumber(),
+            req.monthlyPrice(),
+            blankToNull(req.contactPhone()));
     repo.save(r);
     activityNotifier.notify(ActivityAction.CREATED, "Vaga", spotLabel(r), authorId);
     return view(r);
@@ -61,8 +66,7 @@ public class ParkingRentalService {
         r -> {
           User u = userIndex.get(r.getAuthorUserId());
           String name = u != null ? u.getFullName() : null;
-          String phone = u != null ? u.getPhone() : null;
-          return ParkingRentalView.of(r, name, phone, whatsapp(phone));
+          return ParkingRentalView.of(r, name, whatsapp(r.getContactPhone()));
         });
   }
 
@@ -70,7 +74,12 @@ public class ParkingRentalService {
   public ParkingRentalView update(
       UUID id, UUID actorId, boolean canModerate, UpdateParkingRentalRequest req) {
     ParkingRental r = loadOwned(id, actorId, canModerate);
-    r.edit(req.tower(), req.floor(), req.spotNumber(), req.monthlyPrice());
+    r.edit(
+        req.tower(),
+        req.floor(),
+        req.spotNumber(),
+        req.monthlyPrice(),
+        blankToNull(req.contactPhone()));
     if (req.status() != null && req.status() != r.getStatus()) {
       applyStatus(r, req.status());
     }
@@ -116,8 +125,11 @@ public class ParkingRentalService {
     User author =
         userRepo.findAllById(List.of(r.getAuthorUserId())).stream().findFirst().orElse(null);
     String name = author != null ? author.getFullName() : null;
-    String phone = author != null ? author.getPhone() : null;
-    return ParkingRentalView.of(r, name, phone, whatsapp(phone));
+    return ParkingRentalView.of(r, name, whatsapp(r.getContactPhone()));
+  }
+
+  private static String blankToNull(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
   }
 
   /** Número pronto para wa.me (DDI), ou null se ausente/inválido. Nunca propaga PII em log. */

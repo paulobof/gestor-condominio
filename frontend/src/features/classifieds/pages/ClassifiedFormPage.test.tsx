@@ -70,6 +70,19 @@ describe('ClassifiedFormPage (criação)', () => {
     );
   });
 
+  it('envia o telefone de contato digitado no anúncio', async () => {
+    renderPage();
+    await userEvent.type(screen.getByLabelText('Título'), 'Sofá');
+    await userEvent.type(screen.getByLabelText(/telefone para contato/i), '11988887777');
+    await userEvent.click(screen.getByRole('button', { name: /criar anúncio/i }));
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({ contactPhone: '11988887777' })
+      )
+    );
+  });
+
   it('permite anexar foto na criação e a envia após criar o anúncio', async () => {
     uploadMock.mockResolvedValue({ id: 'p1', ordering: 0, contentType: 'image/png' } as never);
     renderPage();

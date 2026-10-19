@@ -58,6 +58,7 @@ describe('ParkingRentalFormPage (novo)', () => {
         floor: '-1',
         spotNumber: '045',
         monthlyPrice: 350,
+        contactPhone: null,
       })
     );
     await waitFor(() =>
@@ -81,6 +82,7 @@ describe('ParkingRentalFormPage (novo)', () => {
         floor: '-1',
         spotNumber: '045',
         monthlyPrice: 1350,
+        contactPhone: null,
       })
     );
   });
@@ -93,5 +95,23 @@ describe('ParkingRentalFormPage (novo)', () => {
     await userEvent.type(screen.getByLabelText('Valor mensal em R$'), '0');
     await userEvent.click(screen.getByRole('button', { name: /anunciar vaga/i }));
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('envia o telefone de contato digitado no anúncio', async () => {
+    createMock.mockResolvedValue({ id: 'r9' } as never);
+    renderNew();
+
+    await userEvent.type(screen.getByLabelText('Torre'), 'A');
+    await userEvent.type(screen.getByLabelText('Andar'), '-1');
+    await userEvent.type(screen.getByLabelText('Numeração da vaga'), '045');
+    await userEvent.type(screen.getByLabelText('Valor mensal em R$'), '350');
+    await userEvent.type(screen.getByLabelText(/telefone para contato/i), '11988887777');
+    await userEvent.click(screen.getByRole('button', { name: /anunciar vaga/i }));
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({ contactPhone: '11988887777' })
+      )
+    );
   });
 });

@@ -38,7 +38,7 @@ class ParkingRentalServiceTest {
   private final UUID rentalId = UUID.randomUUID();
 
   private ParkingRental sample() {
-    return ParkingRental.create(author, "A", "-1", "045", new BigDecimal("350.00"));
+    return ParkingRental.create(author, "A", "-1", "045", new BigDecimal("350.00"), "11999990000");
   }
 
   @BeforeEach
@@ -56,11 +56,13 @@ class ParkingRentalServiceTest {
     when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
     ParkingRentalView v =
         service.create(
-            author, new CreateParkingRentalRequest("A", "-1", "045", new BigDecimal("350.00")));
+            author,
+            new CreateParkingRentalRequest(
+                "A", "-1", "045", new BigDecimal("350.00"), "11999990000"));
     assertThat(v.status()).isEqualTo(ParkingRentalStatus.ACTIVE);
     assertThat(v.authorName()).isEqualTo("Ana Costa");
-    assertThat(v.authorPhone()).isEqualTo("11999990000");
-    assertThat(v.authorWhatsapp()).isEqualTo("5511999990000");
+    assertThat(v.contactPhone()).isEqualTo("11999990000");
+    assertThat(v.contactWhatsapp()).isEqualTo("5511999990000");
     verify(repo).save(any(ParkingRental.class));
   }
 
@@ -74,7 +76,8 @@ class ParkingRentalServiceTest {
             rentalId,
             author,
             false,
-            new UpdateParkingRentalRequest("B", "2", "B-200", new BigDecimal("500.00"), null));
+            new UpdateParkingRentalRequest(
+                "B", "2", "B-200", new BigDecimal("500.00"), null, null));
     assertThat(v.tower()).isEqualTo("B");
     assertThat(v.spotNumber()).isEqualTo("B-200");
   }
@@ -91,7 +94,7 @@ class ParkingRentalServiceTest {
                     stranger,
                     false,
                     new UpdateParkingRentalRequest(
-                        "B", "2", "B-200", new BigDecimal("500.00"), null)))
+                        "B", "2", "B-200", new BigDecimal("500.00"), null, null)))
         .isInstanceOf(ParkingRentalException.class)
         .extracting("code")
         .isEqualTo("FORBIDDEN");
@@ -108,7 +111,7 @@ class ParkingRentalServiceTest {
             rentalId,
             moderator,
             true,
-            new UpdateParkingRentalRequest("A", "-1", "045", new BigDecimal("350.00"), null));
+            new UpdateParkingRentalRequest("A", "-1", "045", new BigDecimal("350.00"), null, null));
     assertThat(v).isNotNull();
   }
 
@@ -123,7 +126,7 @@ class ParkingRentalServiceTest {
             author,
             false,
             new UpdateParkingRentalRequest(
-                "A", "-1", "045", new BigDecimal("350.00"), ParkingRentalStatus.RENTED));
+                "A", "-1", "045", new BigDecimal("350.00"), ParkingRentalStatus.RENTED, null));
     assertThat(v.status()).isEqualTo(ParkingRentalStatus.RENTED);
   }
 
@@ -137,12 +140,24 @@ class ParkingRentalServiceTest {
   }
 
   @Test
-  void view_whenPhoneInvalid_authorWhatsappIsNull() {
+  void view_whenPhoneInvalid_contactWhatsappIsNull() {
     when(repo.findById(rentalId)).thenReturn(Optional.of(sample()));
     when(normalizer.toEvolutionNumber(any()))
         .thenThrow(new br.com.condominio.feature.whatsapp.WhatsAppSendException("inválido"));
     ParkingRentalView v = service.getById(rentalId);
-    assertThat(v.authorWhatsapp()).isNull();
-    assertThat(v.authorPhone()).isEqualTo("11999990000");
+    assertThat(v.contactWhatsapp()).isNull();
+    assertThat(v.contactPhone()).isEqualTo("11999990000");
+  }
+
+  @Test
+  void view_semTelefoneNoAnuncio_naoUsaOTelefoneDaConta() {
+    ParkingRental semTelefone =
+        ParkingRental.create(author, "A", "-1", "045", new BigDecimal("350.00"), null);
+    when(repo.findById(rentalId)).thenReturn(Optional.of(semTelefone));
+
+    ParkingRentalView v = service.getById(rentalId);
+
+    assertThat(v.contactPhone()).isNull();
+    assertThat(v.contactWhatsapp()).isNull();
   }
 }

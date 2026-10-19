@@ -58,7 +58,8 @@ class ClassifiedServiceTest {
   }
 
   private Classified persisted(UUID id, UUID authorId, ClassifiedStatus status) {
-    Classified c = Classified.create(authorId, "Bicicleta", "Aro 29", new BigDecimal("500.00"));
+    Classified c =
+        Classified.create(authorId, "Bicicleta", "Aro 29", new BigDecimal("500.00"), null);
     ReflectionTestUtils.setField(c, "id", id);
     ReflectionTestUtils.setField(c, "status", status);
     return c;
@@ -86,7 +87,7 @@ class ClassifiedServiceTest {
   void create_savesActiveClassified() {
     ClassifiedView v =
         service.create(
-            author, new CreateClassifiedRequest("Bike", "desc", new BigDecimal("100.00")));
+            author, new CreateClassifiedRequest("Bike", "desc", new BigDecimal("100.00"), null));
     assertThat(v.status()).isEqualTo(ClassifiedStatus.ACTIVE);
     assertThat(v.authorUserId()).isEqualTo(author);
     verify(repo).save(any(Classified.class));
@@ -101,10 +102,10 @@ class ClassifiedServiceTest {
         .hasMessageContaining("não encontrado");
   }
 
-  // --- contato do autor ---
+  // --- contato: telefone do anúncio, NUNCA o da conta ---
 
   @Test
-  void getById_exposesContactFromAuthorProfile() {
+  void getById_nuncaExpoeOTelefoneDaConta() {
     UUID id = UUID.randomUUID();
     when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
     when(userRepo.findAllById(List.of(author)))
@@ -113,42 +114,31 @@ class ClassifiedServiceTest {
     ClassifiedView v = service.getById(id);
 
     assertThat(v.contactName()).isEqualTo("Ana Costa");
-    assertThat(v.contactPhone()).isEqualTo("+5511999990000");
-  }
-
-  @Test
-  void getById_authorWithoutPhone_contactPhoneIsNull() {
-    UUID id = UUID.randomUUID();
-    when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
-    when(userRepo.findAllById(List.of(author)))
-        .thenReturn(List.of(userWith(author, "Sem Telefone", null)));
-
-    ClassifiedView v = service.getById(id);
-
-    assertThat(v.contactName()).isEqualTo("Sem Telefone");
     assertThat(v.contactPhone()).isNull();
   }
 
   @Test
-  void list_exposesContactForEachClassified_noPlusOneQuery() {
-    UUID id1 = UUID.randomUUID();
-    UUID id2 = UUID.randomUUID();
-    UUID author2 = UUID.randomUUID();
+  void create_usaOTelefoneInformadoNoAnuncio() {
+    when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(userRepo.findAllById(any()))
+        .thenReturn(List.of(userWith(author, "Ana Costa", "+5511999990000")));
 
-    Classified c1 = persisted(id1, author, ClassifiedStatus.ACTIVE);
-    Classified c2 = persisted(id2, author2, ClassifiedStatus.ACTIVE);
-    User u1 = userWith(author, "Pedro Lima", "+5511111110000");
-    User u2 = userWith(author2, "Carla Ramos", "+5511222220000");
+    ClassifiedView v =
+        service.create(author, new CreateClassifiedRequest("Bike", null, null, " 11988887777 "));
 
-    // findAllById chamado UMA vez com ambos os IDs (sem N+1)
-    when(userRepo.findAllById(any())).thenReturn(List.of(u1, u2));
+    assertThat(v.contactPhone()).isEqualTo("11988887777");
+  }
 
-    ClassifiedView v1 = ClassifiedView.of(c1, List.of(), "Pedro Lima", "+5511111110000");
-    ClassifiedView v2 = ClassifiedView.of(c2, List.of(), "Carla Ramos", "+5511222220000");
+  @Test
+  void create_telefoneEmBrancoFicaSemTelefone() {
+    when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(userRepo.findAllById(any()))
+        .thenReturn(List.of(userWith(author, "Ana Costa", "+5511999990000")));
 
-    // Verifica apenas que o método de fábrica propaga os campos
-    assertThat(v1.contactName()).isEqualTo("Pedro Lima");
-    assertThat(v2.contactPhone()).isEqualTo("+5511222220000");
+    ClassifiedView v =
+        service.create(author, new CreateClassifiedRequest("Bike", null, null, "  "));
+
+    assertThat(v.contactPhone()).isNull();
   }
 
   // --- outros testes existentes ---
@@ -162,7 +152,7 @@ class ClassifiedServiceTest {
             id,
             author,
             false,
-            new UpdateClassifiedRequest("Novo", "nova", new BigDecimal("9.00"), null));
+            new UpdateClassifiedRequest("Novo", "nova", new BigDecimal("9.00"), null, null));
     assertThat(v.title()).isEqualTo("Novo");
   }
 
@@ -173,7 +163,7 @@ class ClassifiedServiceTest {
     assertThatThrownBy(
             () ->
                 service.update(
-                    id, stranger, false, new UpdateClassifiedRequest("x", "y", null, null)))
+                    id, stranger, false, new UpdateClassifiedRequest("x", "y", null, null, null)))
         .isInstanceOf(ClassifiedException.class)
         .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
   }
@@ -183,7 +173,8 @@ class ClassifiedServiceTest {
     UUID id = UUID.randomUUID();
     when(repo.findById(id)).thenReturn(Optional.of(persisted(id, author, ClassifiedStatus.ACTIVE)));
     ClassifiedView v =
-        service.update(id, stranger, true, new UpdateClassifiedRequest("Mod", "z", null, null));
+        service.update(
+            id, stranger, true, new UpdateClassifiedRequest("Mod", "z", null, null, null));
     assertThat(v.title()).isEqualTo("Mod");
   }
 
@@ -196,7 +187,7 @@ class ClassifiedServiceTest {
             id,
             author,
             false,
-            new UpdateClassifiedRequest("Bike", "desc", null, ClassifiedStatus.SOLD));
+            new UpdateClassifiedRequest("Bike", "desc", null, ClassifiedStatus.SOLD, null));
     assertThat(v.status()).isEqualTo(ClassifiedStatus.SOLD);
   }
 

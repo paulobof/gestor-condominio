@@ -41,8 +41,8 @@ function rental(over: Record<string, unknown> = {}) {
     authorUserId: 'u1',
     createdAt: '2026-06-14T00:00:00Z',
     authorName: 'Ana Costa',
-    authorPhone: '11999990000',
-    authorWhatsapp: '5511999990000',
+    contactPhone: '11999990000',
+    contactWhatsapp: '5511999990000',
     ...over,
   } as never;
 }
@@ -74,7 +74,7 @@ describe('ParkingRentalDetailPage', () => {
     expect(screen.getByText('Ana Costa')).toBeInTheDocument();
   });
 
-  it('mostra botão WhatsApp quando há authorWhatsapp', async () => {
+  it('mostra botão WhatsApp quando há contactWhatsapp', async () => {
     setUser('u9');
     getMock.mockResolvedValue(rental());
     renderPage();
@@ -82,9 +82,9 @@ describe('ParkingRentalDetailPage', () => {
     expect(link).toHaveAttribute('href', 'https://wa.me/5511999990000');
   });
 
-  it('não mostra botão WhatsApp quando authorWhatsapp é null', async () => {
+  it('não mostra botão WhatsApp quando contactWhatsapp é null', async () => {
     setUser('u9');
-    getMock.mockResolvedValue(rental({ authorWhatsapp: null }));
+    getMock.mockResolvedValue(rental({ contactWhatsapp: null }));
     renderPage();
     await screen.findByText('Ana Costa');
     expect(screen.queryByRole('link', { name: /falar no whatsapp/i })).not.toBeInTheDocument();
@@ -112,6 +112,7 @@ describe('ParkingRentalDetailPage', () => {
         floor: '-1',
         spotNumber: '045',
         monthlyPrice: 350,
+        contactPhone: '11999990000',
         status: 'RENTED',
       })
     );
@@ -134,6 +135,7 @@ describe('ParkingRentalDetailPage', () => {
         floor: '-1',
         spotNumber: '045',
         monthlyPrice: 350,
+        contactPhone: '11999990000',
         status: 'ACTIVE',
       })
     );

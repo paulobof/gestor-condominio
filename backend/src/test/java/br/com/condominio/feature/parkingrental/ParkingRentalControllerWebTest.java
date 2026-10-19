@@ -81,7 +81,7 @@ class ParkingRentalControllerWebTest {
     mvc.perform(get("/api/parking-rentals/{id}", RID).with(MockAuth.user(UID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(RID.toString()))
-        .andExpect(jsonPath("$.authorWhatsapp").value("5511999990000"));
+        .andExpect(jsonPath("$.contactWhatsapp").value("5511999990000"));
   }
 
   @Test

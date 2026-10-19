@@ -139,6 +139,29 @@ public class User {
   }
 
   /**
+   * Edição dos próprios dados ("Meu cadastro"): só nome, saudação e telefone da conta. Unidade,
+   * gênero e nascimento ficam fora (são geridos pelo admin/master). Valores são aparados; saudação
+   * e telefone em branco viram {@code null}.
+   */
+  public void updateOwnProfile(String fullName, String greetingName, String phone) {
+    String name = trimToNull(fullName);
+    if (name == null) {
+      throw new IllegalArgumentException("fullName is required");
+    }
+    this.fullName = name;
+    this.greetingName = trimToNull(greetingName);
+    this.phone = trimToNull(phone);
+  }
+
+  private static String trimToNull(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.strip();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  /**
    * Cria usuário ACTIVE pelo admin (qualquer unidade), com troca de senha obrigatória no 1º login.
    */
   public static User newActiveByAdmin(

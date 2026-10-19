@@ -12,6 +12,7 @@ import br.com.condominio.feature.password.PasswordResetException;
 import br.com.condominio.feature.privacy.PrivacyException;
 import br.com.condominio.feature.recommendation.RecommendationException;
 import br.com.condominio.feature.registration.RegistrationException;
+import br.com.condominio.feature.user.SelfProfileException;
 import br.com.condominio.feature.user.UnitMemberException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -224,6 +225,20 @@ public class GlobalExceptionHandler {
           case "MASTER_HAS_NO_UNIT" -> HttpStatus.UNPROCESSABLE_ENTITY;
           default -> HttpStatus.BAD_REQUEST;
         };
+    return ResponseEntity.status(status)
+        .body(
+            ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getCode(),
+                ex.getMessage(),
+                requestId()));
+  }
+
+  @ExceptionHandler(SelfProfileException.class)
+  public ResponseEntity<ApiError> handleSelfProfile(SelfProfileException ex) {
+    HttpStatus status =
+        "USER_NOT_FOUND".equals(ex.getCode()) ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
     return ResponseEntity.status(status)
         .body(
             ApiError.of(

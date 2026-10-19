@@ -52,4 +52,39 @@ class UserTest {
     assertThat(u.isUnitMaster()).isFalse();
     assertThat(u.getStatus()).isEqualTo(UserStatus.ANONYMIZED);
   }
+
+  @Test
+  void updateOwnProfile_alteraSoNomeSaudacaoETelefone_comTrim() {
+    UUID unit = UUID.randomUUID();
+    User u = User.newActiveByAdmin(unit, "Antigo", "+5511000000000", "HASH", (short) 1);
+    u.updateProfile("Antigo", null, "+5511000000000", unit, Gender.MALE, LocalDate.of(1980, 5, 6));
+
+    u.updateOwnProfile("  Novo Nome  ", "  Novo ", " +5511999999999 ");
+
+    assertThat(u.getFullName()).isEqualTo("Novo Nome");
+    assertThat(u.getGreetingName()).isEqualTo("Novo");
+    assertThat(u.getPhone()).isEqualTo("+5511999999999");
+    assertThat(u.getUnitId()).isEqualTo(unit);
+    assertThat(u.getGender()).isEqualTo(Gender.MALE);
+    assertThat(u.getBirthDate()).isEqualTo(LocalDate.of(1980, 5, 6));
+  }
+
+  @Test
+  void updateOwnProfile_saudacaoETelefoneEmBrancoViramNull() {
+    User u = User.newActiveByAdmin(null, "Ana", "+5511000000000", "HASH", (short) 1);
+
+    u.updateOwnProfile("Ana", "   ", "");
+
+    assertThat(u.getGreetingName()).isNull();
+    assertThat(u.getPhone()).isNull();
+  }
+
+  @Test
+  void updateOwnProfile_nomeEmBrancoEhRejeitado() {
+    User u = User.newActiveByAdmin(null, "Ana", null, "HASH", (short) 1);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> u.updateOwnProfile("  ", null, null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(u.getFullName()).isEqualTo("Ana");
+  }
 }

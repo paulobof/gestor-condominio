@@ -10,6 +10,11 @@ interface AuthState {
   user: AuthenticatedUserView | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Recarrega o usuário logado (/auth/me) — ex.: após editar "Meu cadastro", para a saudação
+   * refletir o novo nome. Opcional no tipo só para não quebrar contextos montados à mão em testes.
+   */
+  refreshUser?: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthState | null>(null);
@@ -68,9 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const me = await authApi.me();
+    setUser(me);
+  }, []);
+
   const value = useMemo<AuthState>(
-    () => ({ status, user, login, logout }),
-    [status, user, login, logout]
+    () => ({ status, user, login, logout, refreshUser }),
+    [status, user, login, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

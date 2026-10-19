@@ -38,6 +38,7 @@ import { ComplaintCatalogPage } from '@/features/complaints/pages/ComplaintCatal
 import { ParkingRentalDetailPage } from '@/features/parking-rentals/pages/ParkingRentalDetailPage';
 import { ParkingRentalFormPage } from '@/features/parking-rentals/pages/ParkingRentalFormPage';
 import { DocumentsPage } from '@/features/documents/pages/DocumentsPage';
+import { MyProfilePage } from '@/features/profile/pages/MyProfilePage';
 import App from './App';
 
 /**
@@ -106,6 +107,7 @@ const router = createBrowserRouter([
           { path: '/informacoes/gerenciar', element: <InfoAdminPage /> },
           { path: '/faq/gerenciar', element: <FaqAdminPage /> },
           { path: '/minha-unidade/moradores', element: <MyUnitMembersPage /> },
+          { path: '/meu-cadastro', element: <MyProfilePage /> },
           { path: '/vagas/aluguel', element: <ParkingRentalsListPage /> },
           { path: '/vagas/aluguel/novo', element: <ParkingRentalFormPage /> },
           { path: '/vagas/aluguel/:id', element: <ParkingRentalDetailPage /> },

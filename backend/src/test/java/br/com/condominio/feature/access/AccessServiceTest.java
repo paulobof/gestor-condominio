@@ -20,6 +20,7 @@ import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
+import br.com.condominio.feature.password.PasswordResetService;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -66,6 +67,7 @@ class AccessServiceTest {
   @Mock private ProvisionalPasswordGenerator passwordGenerator;
   @Mock private UnitRepository unitRepo;
   @Mock private UserProvisioning provisioning;
+  @Mock private PasswordResetService passwordResetService;
 
   @InjectMocks private AccessService service;
 
@@ -258,7 +260,7 @@ class AccessServiceTest {
   }
 
   @Test
-  void createUser_happyPath_savesRolesAndReturnsPassword() {
+  void createUser_happyPath_savesRolesAndSendsInviteInsteadOfPassword() {
     Role resident = role((short) 4, "Morador", null, false);
     doReturn(br.com.condominio.feature.role.RoleName.RESIDENT).when(resident).getName();
     when(roleRepo.findByAssignableTrue()).thenReturn(List.of());
@@ -268,15 +270,17 @@ class AccessServiceTest {
     User saved = mock(User.class);
     when(saved.getId()).thenReturn(TARGET);
     when(saved.getFullName()).thenReturn("Ana Lima");
+    when(saved.getPhone()).thenReturn("+5511999997777");
     when(provisioning.createActiveUser(null, "Ana Lima", "+5511999999999", "ana@x.com"))
-        .thenReturn(new UserProvisioning.Provisioned(saved, "Abc123!xYZ09__a"));
+        .thenReturn(saved);
 
     CreateUserRequest req =
         new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
     CreatedUserResponse out = service.createUser(ACTOR, req);
 
-    assertThat(out.password()).isEqualTo("Abc123!xYZ09__a");
+    assertThat(out.inviteSentTo()).isEqualTo("•••• 7777");
     assertThat(out.id()).isEqualTo(TARGET);
+    verify(passwordResetService).issueInvite(saved);
     verify(userRoleRepo).save(any(UserRole.class));
     verify(logRepo).save(any(RoleAssignmentLog.class));
   }
@@ -293,6 +297,7 @@ class AccessServiceTest {
         .extracting("code")
         .isEqualTo("EMAIL_TAKEN");
     verify(userRepo, never()).save(any());
+    verify(passwordResetService, never()).issueInvite(any());
   }
 
   @Test

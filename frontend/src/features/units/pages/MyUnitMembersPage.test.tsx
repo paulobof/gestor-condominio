@@ -61,7 +61,11 @@ beforeEach(() => {
     gender: 'FEMALE',
     birthDate: '1990-01-02',
   });
-  createMock.mockResolvedValue({ id: 'm9', fullName: 'Novo Morador', password: 'X1y!aaaa' });
+  createMock.mockResolvedValue({
+    id: 'm9',
+    fullName: 'Novo Morador',
+    inviteSentTo: '•••• 6666',
+  });
   updateMock.mockResolvedValue(undefined);
   deleteMock.mockResolvedValue(undefined);
 });
@@ -91,7 +95,7 @@ describe('MyUnitMembersPage — lista', () => {
 });
 
 describe('MyUnitMembersPage — adicionar', () => {
-  it('cadastra e mostra a senha provisória uma única vez', async () => {
+  it('cadastra e avisa que o link para criar a senha foi pelo WhatsApp (sem senha)', async () => {
     const user = userEvent.setup();
     render(<MyUnitMembersPage />);
     await screen.findByText('Bia Souza');
@@ -110,8 +114,13 @@ describe('MyUnitMembersPage — adicionar', () => {
     expect(payload.email).toBe('novo@x.com');
     expect(payload.whatsappOptIn).toBe(true);
 
-    expect(await screen.findByText('X1y!aaaa')).toBeInTheDocument();
-    expect(screen.getByText(/não será mostrada de novo/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Morador cadastrado. Enviamos por WhatsApp o link para criar a senha para o número terminado em 6666.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/senha provisória/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/não será mostrada de novo/i)).not.toBeInTheDocument();
   });
 
   it('"Concluir" volta para a lista e recarrega', async () => {
@@ -125,7 +134,7 @@ describe('MyUnitMembersPage — adicionar', () => {
     await user.type(screen.getByLabelText('Telefone'), '11977776666');
     await user.click(screen.getByRole('button', { name: /^cadastrar$/i }));
 
-    await screen.findByText('X1y!aaaa');
+    await screen.findByText(/terminado em 6666/);
     await user.click(screen.getByRole('button', { name: /concluir/i }));
 
     await screen.findByRole('button', { name: /adicionar morador/i });

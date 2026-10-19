@@ -65,8 +65,10 @@ describe('unitMembersApi — contrato com o backend', () => {
     expect(out.birthDate).toBe('1990-01-02');
   });
 
-  it('createMember faz POST em /units/me/members com o payload e devolve a senha 1x', async () => {
-    post.mockResolvedValue({ data: { id: 'm9', fullName: 'Bia Souza', password: 'X1y!aaaa' } });
+  it('createMember faz POST em /units/me/members e devolve para onde foi o convite', async () => {
+    post.mockResolvedValue({
+      data: { id: 'm9', fullName: 'Bia Souza', inviteSentTo: '•••• 7777' },
+    });
     const payload: CreateMemberPayload = {
       fullName: 'Bia Souza',
       greetingName: 'Bia',
@@ -78,7 +80,7 @@ describe('unitMembersApi — contrato com o backend', () => {
     };
     const out = await createMember(payload);
     expect(post).toHaveBeenCalledWith('/units/me/members', payload);
-    expect(out.password).toBe('X1y!aaaa');
+    expect(out.inviteSentTo).toBe('•••• 7777');
   });
 
   it('updateMember faz PUT em /units/me/members/:id com o payload', async () => {

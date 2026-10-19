@@ -178,9 +178,10 @@ class AccessControllerWebTest {
   }
 
   @Test
-  void createUser_withUserManage_returns201_withPassword() throws Exception {
+  void createUser_withUserManage_returns201_withMaskedInviteTarget_andNoPassword()
+      throws Exception {
     when(service.createUser(eq(UID), any(CreateUserRequest.class)))
-        .thenReturn(new CreatedUserResponse(TARGET, "Ana Lima", "Abc123!xYZ09__a"));
+        .thenReturn(new CreatedUserResponse(TARGET, "Ana Lima", "•••• 9999"));
     var body =
         new CreateUserRequest("Ana Lima", "ana@x.com", "+5511999999999", null, List.of((short) 4));
 
@@ -190,7 +191,8 @@ class AccessControllerWebTest {
                 .contentType("application/json")
                 .content(om.writeValueAsString(body)))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.password").value("Abc123!xYZ09__a"));
+        .andExpect(jsonPath("$.inviteSentTo").value("•••• 9999"))
+        .andExpect(jsonPath("$.password").doesNotExist());
   }
 
   @Test
@@ -221,6 +223,19 @@ class AccessControllerWebTest {
                 .content(om.writeValueAsString(body)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+  }
+
+  @Test
+  void createUser_withoutPhone_returns400_inviteNeedsPhone() throws Exception {
+    var body = new CreateUserRequest("Ana", "ana@x.com", "", null, List.of((short) 4));
+
+    mvc.perform(
+            post("/api/access/users")
+                .with(MockAuth.user(UID, MANAGE))
+                .contentType("application/json")
+                .content(om.writeValueAsString(body)))
+        .andExpect(status().isBadRequest());
+    verify(service, never()).createUser(any(), any());
   }
 
   @Test

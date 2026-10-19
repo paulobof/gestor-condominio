@@ -115,10 +115,9 @@ class UnitMemberControllerWebTest {
   }
 
   @Test
-  void create_withPermission_returns201_andShowsProvisionalPassword() throws Exception {
+  void create_withPermission_returns201_withMaskedInviteTarget_andNoPassword() throws Exception {
     when(service.createMember(eq(UID), any()))
-        .thenReturn(
-            new CreatedUnitMemberResponse(UUID.randomUUID(), "Maria Silva", "Prov!1234abcd"));
+        .thenReturn(new CreatedUnitMemberResponse(UUID.randomUUID(), "Maria Silva", "•••• 8888"));
 
     mvc.perform(
             post("/api/units/me/members")
@@ -126,7 +125,8 @@ class UnitMemberControllerWebTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_BODY))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.password").value("Prov!1234abcd"));
+        .andExpect(jsonPath("$.inviteSentTo").value("•••• 8888"))
+        .andExpect(jsonPath("$.password").doesNotExist());
   }
 
   @Test

@@ -118,6 +118,7 @@ app:
     retry-interval-ms: ${APP_WHATSAPP_RETRY_INTERVAL_MS:60000}
   password-reset:
     ttl: ${APP_PASSWORD_RESET_TTL:PT30M}
+    invite-ttl: ${APP_PASSWORD_RESET_INVITE_TTL:PT72H}
     base-url: ${APP_PASSWORD_RESET_BASE_URL:http://localhost:5173/reset}
   inactive-account-anonymize-months: ${APP_INACTIVE_ACCOUNT_MONTHS:12}
   alerts:

@@ -4,6 +4,7 @@ import br.com.condominio.feature.password.PasswordResetProperties;
 import br.com.condominio.feature.password.PasswordResetTokenRepository;
 import br.com.condominio.feature.password.event.PasswordResetCompletedEvent;
 import br.com.condominio.feature.password.event.PasswordResetRequestedEvent;
+import br.com.condominio.feature.password.event.UserInvitedEvent;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -57,6 +58,28 @@ public class PasswordResetEventListener {
     Map<String, Object> data =
         Map.of("greetingName", e.greetingName() == null ? "" : e.greetingName());
     sendAndRecord(e.phone(), WhatsAppTemplate.PASSWORD_CHANGED, data, null);
+  }
+
+  /**
+   * Convite de primeiro acesso. Mensagem transacional: envia independentemente do opt-in de
+   * WhatsApp (sem ela a pessoa não consegue entrar).
+   */
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onUserInvited(UserInvitedEvent e) {
+    if (e.phone() == null || e.phone().isBlank()) {
+      log.warn("UserInvited ignorado userId={} sem phone (não deveria acontecer)", e.userId());
+      return;
+    }
+    Map<String, Object> data =
+        Map.of(
+            "greetingName",
+            e.greetingName() == null ? "" : e.greetingName(),
+            "link",
+            resetProps.buildInviteLink(e.rawToken()),
+            "ttlHours",
+            e.ttlHours());
+    sendAndRecord(e.phone(), WhatsAppTemplate.ACCOUNT_INVITE, data, e.tokenId());
   }
 
   /**

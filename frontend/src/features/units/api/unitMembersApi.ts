@@ -41,11 +41,14 @@ export interface CreateMemberPayload {
   unitId?: string | null;
 }
 
-/** Espelha CreatedUnitMemberResponse: senha provisória mostrada uma única vez. */
+/**
+ * Espelha CreatedUnitMemberResponse. Sem senha: o morador recebe pelo WhatsApp o link para criar
+ * a sua. {@code inviteSentTo} é o telefone mascarado (ex.: "•••• 7777").
+ */
 export interface CreatedMember {
   id: string;
   fullName: string;
-  password: string;
+  inviteSentTo: string;
 }
 
 /** Espelha UpdateUnitMemberRequest (sem password, sem unitId; greetingName opcional). */

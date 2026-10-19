@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { useAuth } from '@/features/auth/useAuth';
+import { inviteSentMessage } from '@/lib/invite';
 import {
   listMembers,
   listMyUnits,
@@ -306,7 +307,7 @@ function AddMemberForm({
   const [unitId, setUnitId] = useState('');
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -322,7 +323,7 @@ function AddMemberForm({
         whatsappOptIn,
         unitId: multiUnit ? unitId || null : null,
       });
-      setCreatedPassword(out.password);
+      setInviteMessage(inviteSentMessage('Morador', out.inviteSentTo));
       toast.success('Morador cadastrado.');
     } catch (err) {
       toast.error(errorMessage(err, 'Falha ao cadastrar morador.'));
@@ -331,17 +332,14 @@ function AddMemberForm({
     }
   };
 
-  if (createdPassword) {
+  if (inviteMessage) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Morador cadastrado</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p>Copie a senha provisória e repasse ao morador. Ela não será mostrada de novo:</p>
-          <code className="block rounded-md bg-accent px-3 py-2 font-mono text-base">
-            {createdPassword}
-          </code>
+          <p role="status">{inviteMessage}</p>
           <Button type="button" className="min-h-[44px]" onClick={onDone}>
             Concluir
           </Button>

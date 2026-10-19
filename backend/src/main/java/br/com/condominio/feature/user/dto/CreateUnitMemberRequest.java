@@ -7,10 +7,10 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Cadastro de morador pelo master. Senha é provisória (gerada pelo backend, mostrada 1x); não vem
- * no body. {@code gender} desserializado direto para o enum (valor inválido → 400). {@code unitId}
- * é opcional: quando o master tem mais de uma unidade (posse), indica em qual cadastrar; ausente
- * mantém o comportamento single-unit.
+ * Cadastro de morador pelo master. A senha não vem no body: a pessoa cria a sua pelo convite
+ * enviado no WhatsApp. {@code gender} desserializado direto para o enum (valor inválido → 400).
+ * {@code unitId} é opcional: quando o master tem mais de uma unidade (posse), indica em qual
+ * cadastrar; ausente mantém o comportamento single-unit.
  */
 public record CreateUnitMemberRequest(
     @NotBlank @Size(max = 180) String fullName,

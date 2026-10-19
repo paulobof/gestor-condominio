@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,7 +36,7 @@ class UserProvisioningTest {
   @InjectMocks private UserProvisioning provisioning;
 
   @Test
-  void createActiveUser_savesUserAndPrimaryEmail_returnsProvisionalPassword() {
+  void createActiveUser_savesUserAndPrimaryEmail_withRandomHashedPassword() {
     when(emailRepo.findActiveByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.empty());
     when(passwordGenerator.generate()).thenReturn("Abc123!xYZ09__a");
     when(encoder.encode("Abc123!xYZ09__a")).thenReturn("HASH");
@@ -43,11 +44,14 @@ class UserProvisioningTest {
     when(saved.getId()).thenReturn(TARGET);
     when(userRepo.save(any(User.class))).thenReturn(saved);
 
-    UserProvisioning.Provisioned out =
+    User out =
         provisioning.createActiveUser(UUID.randomUUID(), "Ana Lima", "+5511999999999", "ana@x.com");
 
-    assertThat(out.user()).isSameAs(saved);
-    assertThat(out.provisionalPassword()).isEqualTo("Abc123!xYZ09__a");
+    assertThat(out).isSameAs(saved);
+    ArgumentCaptor<User> created = ArgumentCaptor.forClass(User.class);
+    verify(userRepo).save(created.capture());
+    assertThat(created.getValue().getPasswordHash()).isEqualTo("HASH");
+    assertThat(created.getValue().isMustChangePassword()).isTrue();
     verify(emailRepo).save(any(UserEmail.class));
   }
 

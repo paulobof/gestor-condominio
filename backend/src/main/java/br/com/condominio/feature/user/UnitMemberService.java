@@ -3,6 +3,7 @@ package br.com.condominio.feature.user;
 import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.activity.ActivityAction;
 import br.com.condominio.feature.activity.ActivityNotifier;
+import br.com.condominio.feature.password.PasswordResetService;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -48,6 +49,7 @@ public class UnitMemberService {
   private final ApplicationEventPublisher eventPublisher;
   private final UnitRepository unitRepo;
   private final ActivityNotifier activityNotifier;
+  private final PasswordResetService passwordResetService;
 
   @Transactional(readOnly = true)
   public List<UnitMemberResponse> listMyUnitMembers(UUID masterUserId) {
@@ -103,9 +105,7 @@ public class UnitMemberService {
     UUID unitId = resolveTargetUnit(req.unitId(), myUnitIds(master), master);
     Role residentRole = roleRepo.findByName(RoleName.RESIDENT).orElseThrow();
 
-    UserProvisioning.Provisioned provisioned =
-        provisioning.createActiveUser(unitId, req.fullName(), req.phone(), req.email());
-    User member = provisioned.user();
+    User member = provisioning.createActiveUser(unitId, req.fullName(), req.phone(), req.email());
     member.updateProfile(
         req.fullName().trim(),
         trimToNull(req.greetingName()),
@@ -119,10 +119,13 @@ public class UnitMemberService {
         new UserRole(
             new UserRoleId(member.getId(), residentRole.getId()), Instant.now(), masterUserId));
 
+    // Depois do perfil aplicado: o convite usa o nome de tratamento informado pelo master.
+    passwordResetService.issueInvite(member);
+
     activityNotifier.notify(ActivityAction.CREATED, "Morador", unitCode(unitId), masterUserId);
     log.info("Master {} criou morador {}", masterUserId, member.getId());
     return new CreatedUnitMemberResponse(
-        member.getId(), member.getFullName(), provisioned.provisionalPassword());
+        member.getId(), member.getFullName(), PhoneMask.lastFour(member.getPhone()));
   }
 
   @Transactional

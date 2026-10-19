@@ -57,10 +57,14 @@ export interface CreateUserPayload {
   roleIds: number[];
 }
 
+/**
+ * Espelha CreatedUserResponse. Sem senha: o usuário recebe pelo WhatsApp o link para criar a sua.
+ * {@code inviteSentTo} é o telefone mascarado (ex.: "•••• 7777").
+ */
 export interface CreatedUser {
   id: string;
   fullName: string;
-  password: string;
+  inviteSentTo: string;
 }
 
 export async function getCreatableRoles() {

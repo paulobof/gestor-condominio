@@ -8,6 +8,7 @@ import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.access.dto.UserSearchResult;
+import br.com.condominio.feature.password.PasswordResetService;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -16,6 +17,7 @@ import br.com.condominio.feature.role.UserRoleId;
 import br.com.condominio.feature.role.UserRoleRepository;
 import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitRepository;
+import br.com.condominio.feature.user.PhoneMask;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmail;
 import br.com.condominio.feature.user.UserEmailRepository;
@@ -61,6 +63,7 @@ public class AccessService {
   private final ProvisionalPasswordGenerator passwordGenerator;
   private final UnitRepository unitRepo;
   private final UserProvisioning provisioning;
+  private final PasswordResetService passwordResetService;
 
   @Transactional(readOnly = true)
   public List<AssignableRoleView> assignableRoles() {
@@ -176,17 +179,17 @@ public class AccessService {
             "ROLE_NOT_CREATABLE", "Perfil não pode ser atribuído no cadastro.");
       }
     }
-    UserProvisioning.Provisioned provisioned =
+    User user =
         provisioning.createActiveUser(req.unitId(), req.fullName(), req.phone(), req.email());
-    User user = provisioned.user();
     Instant now = Instant.now();
     for (Short rid : req.roleIds()) {
       userRoleRepo.save(new UserRole(new UserRoleId(user.getId(), rid), now, actorId));
       logRepo.save(RoleAssignmentLog.assign(user.getId(), rid, actorId));
     }
+    passwordResetService.issueInvite(user);
     log.info("Admin {} criou usuário {}", actorId, user.getId());
     return new CreatedUserResponse(
-        user.getId(), user.getFullName(), provisioned.provisionalPassword());
+        user.getId(), user.getFullName(), PhoneMask.lastFour(user.getPhone()));
   }
 
   @Transactional

@@ -106,4 +106,40 @@ class WhatsAppMessageRendererTest {
     String msg = renderer.render(WhatsAppTemplate.MEMBER_EMAIL_CHANGED, Map.of("greetingName", ""));
     assertThat(msg).contains("e-mail de acesso").contains("HELBOR TRILOGY HOME");
   }
+
+  @Test
+  void renderizaConviteDeAcesso() {
+    String msg =
+        renderer.render(
+            WhatsAppTemplate.ACCOUNT_INVITE,
+            Map.of(
+                "greetingName", "Ana",
+                "link", "https://app/reset?token=abc&primeiro=1",
+                "ttlHours", 72));
+    assertThat(msg)
+        .startsWith("Olá, Ana!")
+        .contains("app de moradores do HELBOR TRILOGY HOME")
+        .contains("https://app/reset?token=abc&primeiro=1")
+        .contains("72 horas")
+        .contains("Esqueci minha senha");
+  }
+
+  @Test
+  void conviteSemNomeCumprimentaSemNome() {
+    String msg =
+        renderer.render(
+            WhatsAppTemplate.ACCOUNT_INVITE,
+            Map.of("greetingName", "", "link", "https://x", "ttlHours", 72));
+    assertThat(msg).startsWith("Olá!").doesNotContain("Olá, !").contains("https://x");
+  }
+
+  @Test
+  void conviteSemLinkFalha() {
+    assertThatThrownBy(
+            () ->
+                renderer.render(
+                    WhatsAppTemplate.ACCOUNT_INVITE, Map.of("greetingName", "Ana", "ttlHours", 72)))
+        .isInstanceOf(WhatsAppSendException.class)
+        .hasMessageContaining("link");
+  }
 }

@@ -26,6 +26,8 @@ import {
   assignRole,
   removeRole,
   getCreatableRoles,
+  createUser,
+  lookupUnit,
   getUser,
   updateUser,
   type UserAccessRow,
@@ -39,6 +41,8 @@ const userRolesMock = vi.mocked(getUserRoleIds);
 const assignMock = vi.mocked(assignRole);
 const removeMock = vi.mocked(removeRole);
 const creatableMock = vi.mocked(getCreatableRoles);
+const createMock = vi.mocked(createUser);
+const lookupMock = vi.mocked(lookupUnit);
 const getUserMock = vi.mocked(getUser);
 const updateMock = vi.mocked(updateUser);
 const authMock = vi.mocked(useAuth);
@@ -72,6 +76,7 @@ beforeEach(() => {
   assignMock.mockResolvedValue(undefined);
   removeMock.mockResolvedValue(undefined);
   updateMock.mockResolvedValue(undefined);
+  createMock.mockResolvedValue({ id: 'u9', fullName: 'Caio Reis', inviteSentTo: '•••• 4321' });
   getUserMock.mockResolvedValue({
     id: 'u1',
     fullName: 'Ana Lima',
@@ -152,6 +157,27 @@ describe('AccessManagementPage', () => {
     await screen.findByText('Ana Lima');
     await user.type(screen.getByLabelText(/buscar/i), '101');
     await waitFor(() => expect(listMock).toHaveBeenCalledWith('101', 0, expect.anything()));
+  });
+
+  it('criar usuário avisa que o link para criar a senha foi pelo WhatsApp (sem senha)', async () => {
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.click(screen.getByRole('button', { name: /adicionar usuário/i }));
+    await user.type(screen.getByLabelText('Nome'), 'Caio Reis');
+    await user.type(screen.getByLabelText('E-mail'), 'caio@x.com');
+    await user.type(screen.getByLabelText('Telefone'), '+5511999994321');
+    await user.click(screen.getByRole('button', { name: /^criar$/i }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalled());
+    expect(createMock.mock.calls[0][0].phone).toBe('+5511999994321');
+    expect(lookupMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(
+        'Usuário cadastrado. Enviamos por WhatsApp o link para criar a senha para o número terminado em 4321.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/senha provisória/i)).not.toBeInTheDocument();
   });
 
   it('sem USER_MANAGE esconde Dados/Excluir mas mostra Acessos', async () => {

@@ -66,7 +66,7 @@ describe('accessApi — contrato com o backend', () => {
   });
 
   it('createUser faz POST em /access/users com o payload', async () => {
-    post.mockResolvedValue({ data: { id: 'u9', fullName: 'Ana', password: 'X1y!aaaa' } });
+    post.mockResolvedValue({ data: { id: 'u9', fullName: 'Ana', inviteSentTo: '•••• 9999' } });
     const out = await createUser({
       fullName: 'Ana',
       email: 'ana@x.com',
@@ -81,7 +81,7 @@ describe('accessApi — contrato com o backend', () => {
       unitId: null,
       roleIds: [4],
     });
-    expect(out.password).toBe('X1y!aaaa');
+    expect(out.inviteSentTo).toBe('•••• 9999');
   });
 
   it('deleteUser faz DELETE no path do usuário', async () => {

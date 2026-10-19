@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.condominio.feature.access.AccessException;
 import br.com.condominio.feature.activity.ActivityNotifier;
+import br.com.condominio.feature.password.PasswordResetService;
 import br.com.condominio.feature.role.Role;
 import br.com.condominio.feature.role.RoleName;
 import br.com.condominio.feature.role.RoleRepository;
@@ -52,6 +53,7 @@ class UnitMemberServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private br.com.condominio.feature.unit.UnitRepository unitRepo;
   @Mock private ActivityNotifier activityNotifier;
+  @Mock private PasswordResetService passwordResetService;
 
   @InjectMocks private UnitMemberService service;
 
@@ -183,7 +185,7 @@ class UnitMemberServiceTest {
   }
 
   @Test
-  void createMember_happyPath_createsResidentAndReturnsProvisionalPassword() {
+  void createMember_happyPath_createsResidentAndSendsInviteInsteadOfPassword() {
     User master = masterInUnit();
     when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
     Role resident = mock(Role.class);
@@ -192,17 +194,23 @@ class UnitMemberServiceTest {
     User saved = mock(User.class);
     when(saved.getId()).thenReturn(MEMBER);
     when(saved.getFullName()).thenReturn("Maria Silva");
+    when(saved.getPhone()).thenReturn("11999998888");
     when(provisioning.createActiveUser(UNIT, "Maria Silva", "11999998888", "maria@x.com"))
-        .thenReturn(new UserProvisioning.Provisioned(saved, "Abc123!xYZ09__a"));
+        .thenReturn(saved);
 
     CreateUnitMemberRequest req =
         new CreateUnitMemberRequest(
             "Maria Silva", "Maria", "maria@x.com", "11999998888", null, null, false, null);
     CreatedUnitMemberResponse out = service.createMember(MASTER, req);
 
-    assertThat(out.password()).isEqualTo("Abc123!xYZ09__a");
+    assertThat(out.inviteSentTo()).isEqualTo("•••• 8888");
     assertThat(out.id()).isEqualTo(MEMBER);
+    assertThat(out.toString()).doesNotContain("11999998888");
     verify(userRoleRepo).save(any(UserRole.class));
+    // convite emitido depois de aplicar o perfil (greetingName já preenchido)
+    var order = org.mockito.Mockito.inOrder(saved, passwordResetService);
+    order.verify(saved).updateProfile(any(), eq("Maria"), any(), any(), any(), any());
+    order.verify(passwordResetService).issueInvite(saved);
   }
 
   @Test
@@ -221,6 +229,7 @@ class UnitMemberServiceTest {
         .extracting("code")
         .isEqualTo("MASTER_HAS_NO_UNIT");
     verify(provisioning, never()).createActiveUser(any(), any(), any(), any());
+    verify(passwordResetService, never()).issueInvite(any());
   }
 
   @Test

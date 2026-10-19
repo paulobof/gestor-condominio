@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
+import { inviteSentMessage } from '@/lib/invite';
 import {
   listUsers,
   listAssignableRoles,
@@ -354,7 +355,7 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
   const [unitCode, setUnitCode] = useState('');
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getCreatableRoles()
@@ -397,8 +398,8 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
         unitId,
         roleIds: [...picked],
       });
-      setCreatedPassword(out.password);
-      toast.success('Usuário criado.');
+      setInviteMessage(inviteSentMessage('Usuário', out.inviteSentTo));
+      toast.success('Usuário cadastrado.');
     } catch (err) {
       toast.error(errorMessage(err, 'Falha ao criar usuário.'));
     } finally {
@@ -406,17 +407,14 @@ function AddUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
     }
   };
 
-  if (createdPassword) {
+  if (inviteMessage) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Usuário criado</CardTitle>
+          <CardTitle className="text-base">Usuário cadastrado</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p>Copie a senha provisória e repasse ao usuário. Ela não será mostrada de novo:</p>
-          <code className="block rounded-md bg-accent px-3 py-2 font-mono text-base">
-            {createdPassword}
-          </code>
+          <p role="status">{inviteMessage}</p>
           <Button type="button" className="min-h-[44px]" onClick={onDone}>
             Concluir
           </Button>

@@ -71,7 +71,26 @@ public class WhatsAppMessageRenderer {
               + "recusar.\n\n"
               + "Não conhece essa pessoa? Recuse — nada acontece sem você.";
       case ACTIVITY_ALERT -> req(d, "text", template);
+      case ACCOUNT_INVITE ->
+          greeting(d)
+              + " 👋\n\n"
+              + "Seu acesso ao app de moradores do "
+              + CONDO
+              + " foi criado.\n\n"
+              + "Crie a sua senha pelo link (válido por "
+              + req(d, "ttlHours", template)
+              + " horas):\n"
+              + req(d, "link", template)
+              + "\n\n"
+              + "Se o link expirar, use \"Esqueci minha senha\" na tela de login.";
     };
+  }
+
+  /** "Olá, Nome!" ou só "Olá!" quando não há nome de tratamento. */
+  private static String greeting(Map<String, Object> data) {
+    Object name = data.get("greetingName");
+    String n = name == null ? "" : String.valueOf(name).trim();
+    return n.isEmpty() ? "Olá!" : "Olá, " + n + "!";
   }
 
   private static String req(Map<String, Object> data, String key, WhatsAppTemplate template) {

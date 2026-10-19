@@ -12,9 +12,10 @@ import org.springframework.stereotype.Component;
 /**
  * Mecânica de provisionamento de usuário compartilhada por {@code AccessService} (admin) e {@code
  * UnitMemberService} (master): criar {@link User} ACTIVE + {@link UserEmail} primário único (senha
- * provisória), trocar o e-mail primário com unicidade (flush → EMAIL_TAKEN) e soft delete que
- * libera o e-mail. Sem {@code @Transactional}: roda dentro da transação do service chamador. Erros
- * usam {@link AccessException} ({@code EMAIL_TAKEN}), já mapeada para 409 no handler global.
+ * aleatória que ninguém conhece — a pessoa cria a sua pelo convite no WhatsApp), trocar o e-mail
+ * primário com unicidade (flush → EMAIL_TAKEN) e soft delete que libera o e-mail. Sem
+ * {@code @Transactional}: roda dentro da transação do service chamador. Erros usam {@link
+ * AccessException} ({@code EMAIL_TAKEN}), já mapeada para 409 no handler global.
  */
 @Component
 @RequiredArgsConstructor
@@ -25,32 +26,27 @@ public class UserProvisioning {
   private final PasswordEncoder encoder;
   private final ProvisionalPasswordGenerator passwordGenerator;
 
-  /** Resultado de {@link #createActiveUser}: o usuário salvo e a senha provisória (mostrar 1x). */
-  public record Provisioned(User user, String provisionalPassword) {
-
-    /** Não vaza a senha em log/exceção. */
-    @Override
-    public String toString() {
-      return "Provisioned[userId=" + (user == null ? null : user.getId()) + ", password=***]";
-    }
-  }
-
   /**
-   * Cria um usuário ACTIVE (não-master) na unidade informada, com e-mail primário único e senha
-   * provisória gerada (must_change_password=true). Lança {@code EMAIL_TAKEN} se o e-mail já existe.
+   * Cria um usuário ACTIVE (não-master) na unidade informada, com e-mail primário único e uma senha
+   * forte aleatória (só o hash é guardado; nunca é devolvida nem exibida) e
+   * must_change_password=true. A pessoa define a própria senha pelo convite ({@code
+   * PasswordResetService.issueInvite}). Lança {@code EMAIL_TAKEN} se o e-mail já existe.
    */
-  public Provisioned createActiveUser(UUID unitId, String fullName, String phone, String email) {
+  public User createActiveUser(UUID unitId, String fullName, String phone, String email) {
     String trimmedEmail = email.trim();
     if (emailRepo.findActiveByEmailIgnoreCase(trimmedEmail).isPresent()) {
       throw new AccessException("EMAIL_TAKEN", "E-mail já cadastrado.");
     }
-    String plain = passwordGenerator.generate();
     User user =
         User.newActiveByAdmin(
-            unitId, fullName.trim(), phone.trim(), encoder.encode(plain), (short) 1);
+            unitId,
+            fullName.trim(),
+            phone.trim(),
+            encoder.encode(passwordGenerator.generate()),
+            (short) 1);
     user = userRepo.save(user);
     emailRepo.save(UserEmail.primary(user.getId(), trimmedEmail));
-    return new Provisioned(user, plain);
+    return user;
   }
 
   /**

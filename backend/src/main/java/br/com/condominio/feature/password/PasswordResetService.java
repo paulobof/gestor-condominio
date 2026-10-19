@@ -3,6 +3,7 @@ package br.com.condominio.feature.password;
 import br.com.condominio.feature.auth.RefreshTokenRepository;
 import br.com.condominio.feature.password.event.PasswordResetCompletedEvent;
 import br.com.condominio.feature.password.event.PasswordResetRequestedEvent;
+import br.com.condominio.feature.password.event.UserInvitedEvent;
 import br.com.condominio.feature.user.User;
 import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserRepository;
@@ -30,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>requestReset:</b> sempre silencioso (não vaza existência). Se aplicável, gera token, salva
  * hash, publica {@link PasswordResetRequestedEvent}.
+ *
+ * <p><b>issueInvite:</b> no cadastro por terceiros (master/admin), gera token com validade de
+ * convite e publica {@link UserInvitedEvent} — a pessoa cria a própria senha pelo link.
  *
  * <p><b>consumeReset:</b> valida hash + expiração + não-usado, troca a senha do usuário, registra
  * em {@link PasswordHistory} (anti-reuso das últimas 5), revoga refresh tokens, publica {@link
@@ -88,6 +92,34 @@ public class PasswordResetService {
             user.getGreetingName(),
             props.getTtl().toMinutes()));
     log.info("password.reset.requested userId={}", user.getId());
+  }
+
+  /**
+   * Emite o convite de primeiro acesso para um usuário recém-cadastrado por terceiros. Roda dentro
+   * da transação do cadastro: o evento só é entregue (AFTER_COMMIT) se o cadastro for confirmado.
+   * Transacional como o reset: independe do opt-in de WhatsApp e da verificação do telefone (o
+   * número foi informado por quem cadastrou). Consumido pelo mesmo {@link #consumeReset}.
+   */
+  @Transactional
+  public void issueInvite(User user) {
+    Instant now = Instant.now();
+    tokenRepo.invalidateAllUserTokens(user.getId(), now);
+
+    String rawToken = generateRawToken();
+    PasswordResetToken token =
+        PasswordResetToken.create(
+            user.getId(), sha256Hex(rawToken), now.plus(props.getInviteTtl()), null);
+    token = tokenRepo.save(token);
+
+    events.publishEvent(
+        new UserInvitedEvent(
+            user.getId(),
+            token.getId(),
+            rawToken,
+            user.getPhone(),
+            user.getGreetingName(),
+            props.getInviteTtl().toHours()));
+    log.info("password.invite.issued userId={}", user.getId());
   }
 
   @Transactional

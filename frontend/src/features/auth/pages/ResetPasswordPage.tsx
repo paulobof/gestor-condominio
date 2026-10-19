@@ -26,9 +26,30 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+/** Textos da tela: redefinição (esqueci a senha) ou primeiro acesso (convite pelo WhatsApp). */
+const COPY = {
+  reset: {
+    title: 'Nova senha',
+    description: 'Defina sua nova senha. O link expira 30 minutos após o envio.',
+    submit: 'Alterar senha',
+    submitting: 'Alterando...',
+    success: 'Senha alterada com sucesso. Faça login com a nova senha.',
+    expired: 'Link inválido ou expirado. Solicite um novo.',
+  },
+  invite: {
+    title: 'Crie sua senha',
+    description: 'Defina a senha que você vai usar para entrar no app de moradores.',
+    submit: 'Criar senha',
+    submitting: 'Criando...',
+    success: 'Senha criada. Faça login com a sua senha.',
+    expired: 'Link inválido ou expirado. Use "Esqueci minha senha" na tela de login.',
+  },
+} as const;
+
 export function ResetPasswordPage() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
+  const copy = params.get('primeiro') === '1' ? COPY.invite : COPY.reset;
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,13 +69,13 @@ export function ResetPasswordPage() {
     setSubmitting(true);
     try {
       await consumePasswordReset(token, data.newPassword);
-      toast.success('Senha alterada com sucesso. Faça login com a nova senha.');
+      toast.success(copy.success);
       navigate('/login', { replace: true });
     } catch (e) {
       const code =
         axios.isAxiosError(e) && (e.response?.data as { code?: string } | undefined)?.code;
       if (code === 'INVALID_OR_EXPIRED_TOKEN') {
-        toast.error('Link inválido ou expirado. Solicite um novo.');
+        toast.error(copy.expired);
       } else if (code === 'PASSWORD_REUSED') {
         setError('newPassword', {
           message: 'Você já usou esta senha recentemente. Escolha outra.',
@@ -75,10 +96,8 @@ export function ResetPasswordPage() {
             <Home className="text-primary" aria-hidden="true" />
             <span className="font-heading font-semibold text-lg">HELBOR TRILOGY HOME</span>
           </div>
-          <CardTitle>Nova senha</CardTitle>
-          <CardDescription>
-            Defina sua nova senha. O link expira 30 minutos após o envio.
-          </CardDescription>
+          <CardTitle>{copy.title}</CardTitle>
+          <CardDescription>{copy.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -112,7 +131,7 @@ export function ResetPasswordPage() {
               )}
             </div>
             <Button type="submit" disabled={submitting || !token} className="w-full">
-              {submitting ? 'Alterando...' : 'Alterar senha'}
+              {submitting ? copy.submitting : copy.submit}
             </Button>
             <div className="text-center text-sm">
               <Link to="/login" className="text-muted-foreground hover:text-foreground underline">

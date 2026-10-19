@@ -22,5 +22,10 @@ public enum WhatsAppTemplate {
    */
   UNIT_JOIN_REQUEST,
   /** Aviso de atividade pro grupo de admins. Espera data: {@code {text}} (texto já pronto). */
-  ACTIVITY_ALERT
+  ACTIVITY_ALERT,
+  /**
+   * Convite de primeiro acesso (cadastro feito pelo master/admin): link para a pessoa criar a
+   * própria senha. Espera data: {@code {greetingName (pode ser vazio), link, ttlHours}}.
+   */
+  ACCOUNT_INVITE
 }

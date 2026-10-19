@@ -5,7 +5,7 @@ import java.util.UUID;
 
 /**
  * Dados completos do usuário para preencher o formulário de edição. Campos opcionais podem ser
- * nulos.
+ * nulos. {@code pendingPassword}: ainda não criou a senha pelo convite (permite reenviar o link).
  */
 public record UserDetail(
     UUID id,
@@ -15,4 +15,5 @@ public record UserDetail(
     String unitCode,
     String email,
     String gender,
-    LocalDate birthDate) {}
+    LocalDate birthDate,
+    boolean pendingPassword) {}

@@ -121,7 +121,8 @@ class WhatsAppMessageRendererTest {
         .contains("app de moradores do HELBOR TRILOGY HOME")
         .contains("https://app/reset?token=abc&primeiro=1")
         .contains("72 horas")
-        .contains("Esqueci minha senha");
+        .endsWith("Se o link expirar, peça um novo a quem fez o seu cadastro.")
+        .doesNotContain("Esqueci minha senha");
   }
 
   @Test

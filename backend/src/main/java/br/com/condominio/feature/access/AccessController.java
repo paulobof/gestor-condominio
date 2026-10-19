@@ -6,6 +6,7 @@ import br.com.condominio.feature.access.dto.CreatedUserResponse;
 import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.shared.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -86,6 +87,14 @@ public class AccessController {
       @Valid @RequestBody CreateUserRequest req,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.createUser(me.userId(), req));
+  }
+
+  /** Reenvia pelo WhatsApp o link para o usuário criar a senha (só se ainda não criou). */
+  @PostMapping("/users/{id}/invite")
+  @PreAuthorize("hasAuthority('USER_MANAGE')")
+  public InviteSentResponse resendInvite(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.resendInvite(me.userId(), id);
   }
 
   @PutMapping("/users/{id}")

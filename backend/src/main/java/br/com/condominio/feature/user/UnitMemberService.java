@@ -14,6 +14,7 @@ import br.com.condominio.feature.unit.Unit;
 import br.com.condominio.feature.unit.UnitRepository;
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.feature.user.dto.MyUnitView;
 import br.com.condominio.feature.user.dto.UnitJoinRequestResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
@@ -126,6 +127,22 @@ public class UnitMemberService {
     log.info("Master {} criou morador {}", masterUserId, member.getId());
     return new CreatedUnitMemberResponse(
         member.getId(), member.getFullName(), PhoneMask.lastFour(member.getPhone()));
+  }
+
+  /**
+   * Reenvia o convite de primeiro acesso a um morador da minha unidade que ainda não criou a senha
+   * (link anterior expirou ou se perdeu). O token anterior é invalidado em {@code issueInvite}.
+   */
+  @Transactional
+  public InviteSentResponse resendInvite(UUID masterUserId, UUID memberId) {
+    User member = requireMemberInMyUnits(memberId, myUnitIds(requireMaster(masterUserId)));
+    if (!member.isMustChangePassword()) {
+      throw new UnitMemberException(
+          "INVITE_NOT_PENDING", "Este morador já criou a senha. Não há convite para reenviar.");
+    }
+    passwordResetService.issueInvite(member);
+    log.info("Master {} reenviou convite ao morador {}", masterUserId, memberId);
+    return new InviteSentResponse(PhoneMask.lastFour(member.getPhone()));
   }
 
   @Transactional
@@ -314,7 +331,8 @@ public class UnitMemberService {
         u.getPhone(),
         u.getStatus().name(),
         u.getUnitId(),
-        unitCode);
+        unitCode,
+        u.isMustChangePassword());
   }
 
   private static String trimToNull(String s) {

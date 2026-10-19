@@ -77,6 +77,12 @@ export async function createUser(payload: CreateUserPayload) {
   return r.data as CreatedUser;
 }
 
+/** Reenvia pelo WhatsApp o link para o usuário criar a senha. */
+export async function resendUserInvite(id: string) {
+  const r = await api.post(`/access/users/${id}/invite`);
+  return r.data as { inviteSentTo: string };
+}
+
 export async function deleteUser(id: string) {
   await api.delete(`/access/users/${id}`);
 }
@@ -95,6 +101,8 @@ export interface UserDetail {
   email: string | null;
   gender: string | null;
   birthDate: string | null;
+  /** Ainda não criou a senha pelo convite do WhatsApp. */
+  pendingPassword: boolean;
 }
 
 export interface UpdateUserPayload {

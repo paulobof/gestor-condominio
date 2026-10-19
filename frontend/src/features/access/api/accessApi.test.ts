@@ -17,6 +17,7 @@ import {
   lookupUnit,
   getUser,
   updateUser,
+  resendUserInvite,
 } from './accessApi';
 
 const get = vi.mocked(api.get);
@@ -81,6 +82,13 @@ describe('accessApi — contrato com o backend', () => {
       unitId: null,
       roleIds: [4],
     });
+    expect(out.inviteSentTo).toBe('•••• 9999');
+  });
+
+  it('resendUserInvite faz POST em /access/users/:id/invite', async () => {
+    post.mockResolvedValue({ data: { inviteSentTo: '•••• 9999' } });
+    const out = await resendUserInvite('u9');
+    expect(post).toHaveBeenCalledWith('/access/users/u9/invite');
     expect(out.inviteSentTo).toBe('•••• 9999');
   });
 

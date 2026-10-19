@@ -87,4 +87,58 @@ class UserTest {
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(u.getFullName()).isEqualTo("Ana");
   }
+
+  private static final Instant VERIFIED = Instant.parse("2026-10-01T12:00:00Z");
+
+  private static User verifiedUser(String phone) {
+    User u = User.newActiveByAdmin(null, "Ana", phone, "HASH", (short) 1);
+    u.markPhoneVerified(VERIFIED);
+    return u;
+  }
+
+  @Test
+  void markPhoneVerified_registraOMomento() {
+    User u = User.newActiveByAdmin(null, "Ana", "+5511999997777", "HASH", (short) 1);
+    assertThat(u.getPhoneVerifiedAt()).isNull();
+
+    u.markPhoneVerified(VERIFIED);
+
+    assertThat(u.getPhoneVerifiedAt()).isEqualTo(VERIFIED);
+  }
+
+  @Test
+  void updateOwnProfile_trocarTelefoneInvalidaVerificacao() {
+    User u = verifiedUser("+5511999997777");
+
+    u.updateOwnProfile("Ana", null, "+5511988886666");
+
+    assertThat(u.getPhoneVerifiedAt()).isNull();
+  }
+
+  @Test
+  void updateOwnProfile_mesmoTelefoneComOutraFormatacaoMantemVerificacao() {
+    User u = verifiedUser("+5511999997777");
+
+    u.updateOwnProfile("Ana", null, " +55 (11) 99999-7777 ");
+
+    assertThat(u.getPhoneVerifiedAt()).isEqualTo(VERIFIED);
+  }
+
+  @Test
+  void updateProfile_trocarTelefoneInvalidaVerificacao() {
+    User u = verifiedUser("+5511999997777");
+
+    u.updateProfile("Ana", null, "+5511988886666", null, null, null);
+
+    assertThat(u.getPhoneVerifiedAt()).isNull();
+  }
+
+  @Test
+  void updateProfile_mesmoTelefoneMantemVerificacao() {
+    User u = verifiedUser("+5511999997777");
+
+    u.updateProfile("Ana Lima", "Ana", "+5511999997777", null, null, null);
+
+    assertThat(u.getPhoneVerifiedAt()).isEqualTo(VERIFIED);
+  }
 }

@@ -14,6 +14,7 @@ import {
   listJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
+  resendMemberInvite,
   type CreateMemberPayload,
   type UpdateMemberPayload,
 } from './unitMembersApi';
@@ -80,6 +81,13 @@ describe('unitMembersApi — contrato com o backend', () => {
     };
     const out = await createMember(payload);
     expect(post).toHaveBeenCalledWith('/units/me/members', payload);
+    expect(out.inviteSentTo).toBe('•••• 7777');
+  });
+
+  it('resendMemberInvite faz POST em /units/me/members/:id/invite', async () => {
+    post.mockResolvedValue({ data: { inviteSentTo: '•••• 7777' } });
+    const out = await resendMemberInvite('m1');
+    expect(post).toHaveBeenCalledWith('/units/me/members/m1/invite');
     expect(out.inviteSentTo).toBe('•••• 7777');
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inviteSentMessage } from './invite';
+import { inviteResentMessage, inviteSentMessage } from './invite';
 
 describe('inviteSentMessage', () => {
   it('monta a mensagem com os últimos dígitos do telefone mascarado', () => {
@@ -18,5 +18,17 @@ describe('inviteSentMessage', () => {
     expect(inviteSentMessage('Morador', '••••')).toBe(
       'Morador cadastrado. Enviamos por WhatsApp o link para criar a senha.'
     );
+  });
+});
+
+describe('inviteResentMessage', () => {
+  it('confirma o reenvio com os últimos dígitos', () => {
+    expect(inviteResentMessage('•••• 7777')).toBe(
+      'Link reenviado por WhatsApp para o número terminado em 7777.'
+    );
+  });
+
+  it('sem dígitos visíveis não cita o número', () => {
+    expect(inviteResentMessage('••••')).toBe('Link reenviado por WhatsApp.');
   });
 });

@@ -1,6 +1,9 @@
 import { api } from '@/lib/api';
 
-/** Espelha UnitMemberResponse (inclui unitId/unitCode para multi-unidade). */
+/**
+ * Espelha UnitMemberResponse (inclui unitId/unitCode para multi-unidade). {@code pendingPassword}:
+ * ainda não criou a senha pelo convite do WhatsApp.
+ */
 export interface UnitMember {
   id: string;
   fullName: string;
@@ -10,6 +13,7 @@ export interface UnitMember {
   status: string;
   unitId?: string | null;
   unitCode?: string | null;
+  pendingPassword: boolean;
 }
 
 /** Espelha MyUnitView: unidade sob gestão do usuário (seletor de unidade). */
@@ -96,6 +100,17 @@ export async function createMember(payload: CreateMemberPayload) {
 
 export async function updateMember(id: string, payload: UpdateMemberPayload) {
   await api.put(`/units/me/members/${id}`, payload);
+}
+
+/** Espelha InviteSentResponse: telefone mascarado para onde o link foi enviado. */
+export interface InviteSent {
+  inviteSentTo: string;
+}
+
+/** Reenvia pelo WhatsApp o link para o morador criar a senha. */
+export async function resendMemberInvite(id: string) {
+  const r = await api.post(`/units/me/members/${id}/invite`);
+  return r.data as InviteSent;
 }
 
 export async function deleteMember(id: string) {

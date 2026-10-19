@@ -132,7 +132,7 @@ public class User {
       java.time.LocalDate birthDate) {
     this.fullName = fullName;
     this.greetingName = greetingName;
-    this.phone = phone;
+    changePhone(phone);
     this.unitId = unitId;
     this.gender = gender;
     this.birthDate = birthDate;
@@ -150,7 +150,30 @@ public class User {
     }
     this.fullName = name;
     this.greetingName = trimToNull(greetingName);
-    this.phone = trimToNull(phone);
+    changePhone(trimToNull(phone));
+  }
+
+  /**
+   * Registra que o telefone foi comprovado: a pessoa usou um link que só chegou pelo WhatsApp desse
+   * número (convite ou reset de senha).
+   */
+  public void markPhoneVerified(Instant now) {
+    this.phoneVerifiedAt = now;
+  }
+
+  /**
+   * Troca o telefone. Se o número mudou (comparando só os dígitos), a verificação anterior deixa de
+   * valer — o novo número ainda não foi comprovado.
+   */
+  private void changePhone(String newPhone) {
+    if (!digitsOf(newPhone).equals(digitsOf(this.phone))) {
+      this.phoneVerifiedAt = null;
+    }
+    this.phone = newPhone;
+  }
+
+  private static String digitsOf(String phone) {
+    return phone == null ? "" : phone.replaceAll("\\D", "");
   }
 
   private static String trimToNull(String value) {

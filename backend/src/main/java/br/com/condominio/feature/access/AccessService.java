@@ -24,6 +24,7 @@ import br.com.condominio.feature.user.UserEmailRepository;
 import br.com.condominio.feature.user.UserProvisioning;
 import br.com.condominio.feature.user.UserRepository;
 import br.com.condominio.feature.user.UserStatus;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.shared.security.ProvisionalPasswordGenerator;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -221,7 +222,24 @@ public class AccessService {
         unitCode,
         email,
         u.getGender() == null ? null : u.getGender().name(),
-        u.getBirthDate());
+        u.getBirthDate(),
+        u.isMustChangePassword());
+  }
+
+  /**
+   * Reenvia o convite de primeiro acesso a um usuário ativo que ainda não criou a senha. O token
+   * anterior é invalidado em {@code issueInvite}.
+   */
+  @Transactional
+  public InviteSentResponse resendInvite(UUID actorId, UUID targetUserId) {
+    User user = requireActiveUser(targetUserId);
+    if (!user.isMustChangePassword()) {
+      throw new AccessException(
+          "INVITE_NOT_PENDING", "Este usuário já criou a senha. Não há convite para reenviar.");
+    }
+    passwordResetService.issueInvite(user);
+    log.info("Admin {} reenviou convite ao usuário {}", actorId, targetUserId);
+    return new InviteSentResponse(PhoneMask.lastFour(user.getPhone()));
   }
 
   @Transactional

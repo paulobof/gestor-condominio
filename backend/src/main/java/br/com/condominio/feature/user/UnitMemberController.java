@@ -2,6 +2,7 @@ package br.com.condominio.feature.user;
 
 import br.com.condominio.feature.user.dto.CreateUnitMemberRequest;
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.feature.user.dto.UnitJoinRequestResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.feature.user.dto.UnitMemberResponse;
@@ -76,6 +77,14 @@ public class UnitMemberController {
       @Valid @RequestBody CreateUnitMemberRequest req,
       @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.createMember(me.userId(), req));
+  }
+
+  /** Reenvia pelo WhatsApp o link para o morador criar a senha (só se ainda não criou). */
+  @PostMapping("/{id}/invite")
+  @PreAuthorize("hasAuthority('RESIDENT_MANAGE')")
+  public InviteSentResponse resendInvite(
+      @PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUserPrincipal me) {
+    return service.resendInvite(me.userId(), id);
   }
 
   @PutMapping("/{id}")

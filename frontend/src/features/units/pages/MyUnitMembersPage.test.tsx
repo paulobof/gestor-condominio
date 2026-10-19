@@ -9,6 +9,7 @@ vi.mock('../api/unitMembersApi', () => ({
   createMember: vi.fn(),
   updateMember: vi.fn(),
   deleteMember: vi.fn(),
+  resendMemberInvite: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
@@ -21,6 +22,7 @@ import {
   createMember,
   updateMember,
   deleteMember,
+  resendMemberInvite,
   type UnitMember,
 } from '../api/unitMembersApi';
 import { useAuth } from '@/features/auth/useAuth';
@@ -32,6 +34,7 @@ const detailMock = vi.mocked(getMemberDetail);
 const createMock = vi.mocked(createMember);
 const updateMock = vi.mocked(updateMember);
 const deleteMock = vi.mocked(deleteMember);
+const resendMock = vi.mocked(resendMemberInvite);
 const authMock = vi.mocked(useAuth);
 
 const MEMBER: UnitMember = {
@@ -41,6 +44,7 @@ const MEMBER: UnitMember = {
   email: 'bia@x.com',
   phone: '+5511988887777',
   status: 'ACTIVE',
+  pendingPassword: false,
 };
 
 function setAuth(authorities: string[]) {
@@ -91,6 +95,63 @@ describe('MyUnitMembersPage — lista', () => {
     listMock.mockRejectedValue(new Error('boom'));
     render(<MyUnitMembersPage />);
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
+  });
+});
+
+describe('MyUnitMembersPage — convite pendente', () => {
+  const PENDING: UnitMember = {
+    ...MEMBER,
+    id: 'm2',
+    fullName: 'Caio Reis',
+    phone: '+5511977776666',
+    pendingPassword: true,
+  };
+
+  it('mostra "Aguardando criar senha" e "Reenviar link" só para quem não criou a senha', async () => {
+    listMock.mockResolvedValue([MEMBER, PENDING]);
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Caio Reis');
+
+    expect(screen.getAllByText('Aguardando criar senha')).toHaveLength(1);
+    const buttons = screen.getAllByRole('button', { name: /reenviar link/i });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAccessibleName('Reenviar link para Caio Reis');
+    expect(buttons[0].className).toContain('min-h-[44px]');
+  });
+
+  it('"Reenviar link" chama a API e avisa o final do número', async () => {
+    listMock.mockResolvedValue([PENDING]);
+    resendMock.mockResolvedValue({ inviteSentTo: '•••• 6666' });
+    const user = userEvent.setup();
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Caio Reis');
+
+    await user.click(screen.getByRole('button', { name: /reenviar link para caio reis/i }));
+
+    await waitFor(() => expect(resendMock).toHaveBeenCalledWith('m2'));
+    expect(toast.success).toHaveBeenCalledWith(
+      'Link reenviado por WhatsApp para o número terminado em 6666.'
+    );
+  });
+
+  it('falha no reenvio mostra o erro', async () => {
+    listMock.mockResolvedValue([PENDING]);
+    resendMock.mockRejectedValue({ response: { data: { message: 'Já criou a senha.' } } });
+    const user = userEvent.setup();
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Caio Reis');
+
+    await user.click(screen.getByRole('button', { name: /reenviar link para caio reis/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Já criou a senha.'));
+  });
+
+  it('sem RESIDENT_MANAGE não mostra o botão de reenviar', async () => {
+    setAuth([]);
+    listMock.mockResolvedValue([PENDING]);
+    render(<MyUnitMembersPage />);
+    await screen.findByText('Caio Reis');
+    expect(screen.queryByRole('button', { name: /reenviar link/i })).not.toBeInTheDocument();
   });
 });
 

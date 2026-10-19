@@ -82,7 +82,7 @@ public class WhatsAppMessageRenderer {
               + " horas):\n"
               + req(d, "link", template)
               + "\n\n"
-              + "Se o link expirar, use \"Esqueci minha senha\" na tela de login.";
+              + "Se o link expirar, peça um novo a quem fez o seu cadastro.";
     };
   }
 

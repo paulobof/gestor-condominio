@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { useAuth } from '@/features/auth/useAuth';
-import { inviteSentMessage } from '@/lib/invite';
+import { inviteResentMessage, inviteSentMessage } from '@/lib/invite';
+import { PendingPasswordBadge } from '@/components/PendingPasswordBadge';
 import {
   listMembers,
   listMyUnits,
@@ -13,6 +14,7 @@ import {
   createMember,
   updateMember,
   deleteMember,
+  resendMemberInvite,
   listJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
@@ -46,6 +48,7 @@ export function MyUnitMembersPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [requests, setRequests] = useState<UnitJoinRequest[]>([]);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const multiUnit = units.length > 1;
 
@@ -91,6 +94,18 @@ export function MyUnitMembersPage() {
       toast.error(errorMessage(err, 'Falha ao remover morador.'));
     } finally {
       setConfirmDelete(null);
+    }
+  };
+
+  const onResendInvite = async (m: UnitMember) => {
+    setResendingId(m.id);
+    try {
+      const out = await resendMemberInvite(m.id);
+      toast.success(inviteResentMessage(out.inviteSentTo));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao reenviar o link.'));
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -209,6 +224,7 @@ export function MyUnitMembersPage() {
                         {m.unitCode}
                       </span>
                     )}
+                    {m.pendingPassword && <PendingPasswordBadge />}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
                     <span>{m.email}</span>
@@ -217,6 +233,18 @@ export function MyUnitMembersPage() {
                 </span>
                 {canManage && (
                   <span className="flex shrink-0 flex-wrap gap-1">
+                    {m.pendingPassword && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        disabled={resendingId === m.id}
+                        aria-label={`Reenviar link para ${m.fullName}`}
+                        onClick={() => void onResendInvite(m)}
+                      >
+                        Reenviar link
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"

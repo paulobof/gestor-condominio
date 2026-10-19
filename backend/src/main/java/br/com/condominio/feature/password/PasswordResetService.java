@@ -37,7 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>consumeReset:</b> valida hash + expiração + não-usado, troca a senha do usuário, registra
  * em {@link PasswordHistory} (anti-reuso das últimas 5), revoga refresh tokens, publica {@link
- * PasswordResetCompletedEvent}.
+ * PasswordResetCompletedEvent}. Também marca o telefone como verificado (o link chegou por ele).
  */
 @Service
 @RequiredArgsConstructor
@@ -158,6 +158,8 @@ public class PasswordResetService {
 
     String newHash = passwordEncoder.encode(newPassword);
     user.changePassword(newHash, pepperVersion);
+    // O link só chegou pelo WhatsApp do número cadastrado: usá-lo comprova a posse do telefone.
+    user.markPhoneVerified(now);
     userRepo.save(user);
     historyRepo.save(PasswordHistory.create(user.getId(), newHash, pepperVersion));
 

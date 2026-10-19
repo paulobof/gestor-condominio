@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.condominio.feature.user.dto.CreatedUnitMemberResponse;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.feature.user.dto.UnitMemberDetail;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
@@ -214,5 +215,34 @@ class UnitMemberControllerWebTest {
     mvc.perform(get("/api/units/me/members/{id}", UUID.randomUUID()).with(MockAuth.user(UID)))
         .andExpect(status().isForbidden());
     verify(service, never()).getMemberDetail(any(), any());
+  }
+
+  @Test
+  void resendInvite_withPermission_returns200_withMaskedPhone() throws Exception {
+    UUID member = UUID.randomUUID();
+    when(service.resendInvite(UID, member)).thenReturn(new InviteSentResponse("•••• 7777"));
+
+    mvc.perform(post("/api/units/me/members/{id}/invite", member).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.inviteSentTo").value("•••• 7777"));
+  }
+
+  @Test
+  void resendInvite_withoutPermission_returns403() throws Exception {
+    mvc.perform(
+            post("/api/units/me/members/{id}/invite", UUID.randomUUID()).with(MockAuth.user(UID)))
+        .andExpect(status().isForbidden());
+    verify(service, never()).resendInvite(any(), any());
+  }
+
+  @Test
+  void resendInvite_notPending_returns409() throws Exception {
+    UUID member = UUID.randomUUID();
+    when(service.resendInvite(UID, member))
+        .thenThrow(new UnitMemberException("INVITE_NOT_PENDING", "Já criou a senha."));
+
+    mvc.perform(post("/api/units/me/members/{id}/invite", member).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVITE_NOT_PENDING"));
   }
 }

@@ -42,7 +42,7 @@ const COPY = {
     submit: 'Criar senha',
     submitting: 'Criando...',
     success: 'Senha criada. Faça login com a sua senha.',
-    expired: 'Link inválido ou expirado. Use "Esqueci minha senha" na tela de login.',
+    expired: 'Link inválido ou expirado. Peça um novo link a quem fez o seu cadastro.',
   },
 } as const;
 

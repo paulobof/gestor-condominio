@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
-import { inviteSentMessage } from '@/lib/invite';
+import { inviteResentMessage, inviteSentMessage } from '@/lib/invite';
+import { PendingPasswordBadge } from '@/components/PendingPasswordBadge';
 import {
   listUsers,
   listAssignableRoles,
@@ -17,6 +18,7 @@ import {
   lookupUnit,
   getUser,
   updateUser,
+  resendUserInvite,
   type AssignableRole,
   type UserAccessRow,
 } from '../api/accessApi';
@@ -500,6 +502,8 @@ function EditUserForm({
   const [birthDate, setBirthDate] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingPassword, setPendingPassword] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     getUser(userId)
@@ -511,6 +515,7 @@ function EditUserForm({
         setUnitCode(d.unitCode ?? '');
         setGender(d.gender ?? '');
         setBirthDate(d.birthDate ?? '');
+        setPendingPassword(d.pendingPassword);
         setLoaded(true);
       })
       .catch(() => {
@@ -550,6 +555,18 @@ function EditUserForm({
     }
   };
 
+  const resendInvite = async () => {
+    setResending(true);
+    try {
+      const out = await resendUserInvite(userId);
+      toast.success(inviteResentMessage(out.inviteSentTo));
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao reenviar o link.'));
+    } finally {
+      setResending(false);
+    }
+  };
+
   // Preserva um gênero vindo do backend que não esteja na lista, p/ não zerá-lo silenciosamente ao salvar.
   const genderOptions =
     gender && !GENDERS.some((g) => g.value === gender)
@@ -566,6 +583,20 @@ function EditUserForm({
           <p className="text-sm text-muted-foreground">Carregando…</p>
         ) : (
           <form className="space-y-3" onSubmit={(e) => void submit(e)}>
+            {pendingPassword && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                <PendingPasswordBadge />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px]"
+                  disabled={resending}
+                  onClick={() => void resendInvite()}
+                >
+                  Reenviar link
+                </Button>
+              </div>
+            )}
             <Field id="eu-name" label="Nome" value={fullName} onChange={setFullName} required />
             <Field
               id="eu-greeting"

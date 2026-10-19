@@ -168,6 +168,7 @@ class PasswordResetServiceTest {
         .isInstanceOf(PasswordResetException.class)
         .extracting("code")
         .isEqualTo("PASSWORD_REUSED");
+    verify(userRepo, never()).save(any());
   }
 
   @Test
@@ -182,10 +183,12 @@ class PasswordResetServiceTest {
     when(historyRepo.findTop5ByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
     when(encoder.encode("Senha@1234")).thenReturn("new-hash");
 
+    Instant before = Instant.now();
     service.consumeReset("raw", "Senha@1234", "ip");
 
     assertThat(u.getPasswordHash()).isEqualTo("new-hash");
     assertThat(token.getUsedAt()).isNotNull();
+    assertThat(u.getPhoneVerifiedAt()).isAfterOrEqualTo(before);
     verify(historyRepo).save(any(PasswordHistory.class));
     verify(refreshTokenRepo).revokeAllByUserId(eq(userId), eq("password_reset"));
     verify(events).publishEvent(any(PasswordResetCompletedEvent.class));
@@ -250,6 +253,8 @@ class PasswordResetServiceTest {
     assertThat(u.getPasswordHash()).isEqualTo("new-hash");
     assertThat(u.isMustChangePassword()).isFalse();
     assertThat(token.getUsedAt()).isNotNull();
+    // usou o link que só chegou pelo WhatsApp: telefone comprovado (habilita "Esqueci minha senha")
+    assertThat(u.getPhoneVerifiedAt()).isNotNull();
   }
 
   @Test

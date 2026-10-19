@@ -14,6 +14,7 @@ vi.mock('../api/accessApi', () => ({
   lookupUnit: vi.fn(),
   getUser: vi.fn(),
   updateUser: vi.fn(),
+  resendUserInvite: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock('@/features/auth/useAuth', () => ({ useAuth: vi.fn() }));
@@ -30,6 +31,7 @@ import {
   lookupUnit,
   getUser,
   updateUser,
+  resendUserInvite,
   type UserAccessRow,
 } from '../api/accessApi';
 import { useAuth } from '@/features/auth/useAuth';
@@ -45,6 +47,7 @@ const createMock = vi.mocked(createUser);
 const lookupMock = vi.mocked(lookupUnit);
 const getUserMock = vi.mocked(getUser);
 const updateMock = vi.mocked(updateUser);
+const resendMock = vi.mocked(resendUserInvite);
 const authMock = vi.mocked(useAuth);
 
 const ROLES = [{ id: 6, name: 'MURAL_EDITOR', label: 'Editor do Mural' }];
@@ -86,6 +89,7 @@ beforeEach(() => {
     email: 'ana@x.com',
     gender: 'FEMALE',
     birthDate: '1990-01-02',
+    pendingPassword: false,
   });
 });
 
@@ -127,6 +131,7 @@ describe('AccessManagementPage', () => {
       email: 'ana@x.com',
       gender: 'CUSTOM_X',
       birthDate: null,
+      pendingPassword: false,
     });
     const user = userEvent.setup();
     render(<AccessManagementPage />);
@@ -187,5 +192,41 @@ describe('AccessManagementPage', () => {
     expect(screen.getByRole('button', { name: /^acessos$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^dados$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /excluir ana lima/i })).not.toBeInTheDocument();
+  });
+  it('"Dados" de quem não criou a senha permite reenviar o link', async () => {
+    getUserMock.mockResolvedValue({
+      id: 'u1',
+      fullName: 'Ana Lima',
+      greetingName: 'Ana',
+      phone: '+5511988887777',
+      unitCode: null,
+      email: 'ana@x.com',
+      gender: 'FEMALE',
+      birthDate: null,
+      pendingPassword: true,
+    });
+    resendMock.mockResolvedValue({ inviteSentTo: '•••• 7777' });
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.click(screen.getByRole('button', { name: /^dados$/i }));
+
+    expect(await screen.findByText('Aguardando criar senha')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /reenviar link/i }));
+
+    await waitFor(() => expect(resendMock).toHaveBeenCalledWith('u1'));
+    expect(toast.success).toHaveBeenCalledWith(
+      'Link reenviado por WhatsApp para o número terminado em 7777.'
+    );
+  });
+
+  it('"Dados" de quem já criou a senha não mostra reenviar', async () => {
+    const user = userEvent.setup();
+    render(<AccessManagementPage />);
+    await screen.findByText('Ana Lima');
+    await user.click(screen.getByRole('button', { name: /^dados$/i }));
+    await screen.findByDisplayValue('ana@x.com');
+    expect(screen.queryByText('Aguardando criar senha')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reenviar link/i })).not.toBeInTheDocument();
   });
 });

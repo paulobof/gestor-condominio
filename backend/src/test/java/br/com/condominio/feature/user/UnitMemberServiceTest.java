@@ -479,4 +479,76 @@ class UnitMemberServiceTest {
         .extracting("code")
         .isEqualTo("MEMBER_NOT_IN_UNIT");
   }
+
+  // ===== reenviar convite =====
+
+  private User memberOfMyUnit(boolean pendingPassword) {
+    User member = mock(User.class);
+    when(member.getId()).thenReturn(MEMBER);
+    when(member.getUnitId()).thenReturn(UNIT);
+    when(member.isUnitMaster()).thenReturn(false);
+    when(member.getStatus()).thenReturn(UserStatus.ACTIVE);
+    when(member.isMustChangePassword()).thenReturn(pendingPassword);
+    when(member.getPhone()).thenReturn("+5511999997777");
+    return member;
+  }
+
+  @Test
+  void resendInvite_pendingMemberOfMyUnit_issuesInviteAndReturnsMaskedPhone() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = memberOfMyUnit(true);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    var out = service.resendInvite(MASTER, MEMBER);
+
+    assertThat(out.inviteSentTo()).isEqualTo("•••• 7777");
+    verify(passwordResetService).issueInvite(member);
+  }
+
+  @Test
+  void resendInvite_memberOfAnotherUnit_throwsForbidden() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = memberOfMyUnit(true);
+    when(member.getUnitId()).thenReturn(UUID.randomUUID());
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    assertThatThrownBy(() -> service.resendInvite(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("MEMBER_NOT_IN_UNIT");
+    verify(passwordResetService, never()).issueInvite(any());
+  }
+
+  @Test
+  void resendInvite_memberAlreadyCreatedPassword_throwsNotPending() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User member = memberOfMyUnit(false);
+    when(userRepo.findById(MEMBER)).thenReturn(Optional.of(member));
+
+    assertThatThrownBy(() -> service.resendInvite(MASTER, MEMBER))
+        .isInstanceOf(UnitMemberException.class)
+        .extracting("code")
+        .isEqualTo("INVITE_NOT_PENDING");
+    verify(passwordResetService, never()).issueInvite(any());
+  }
+
+  @Test
+  void listMyUnitMembers_exposesPendingPassword() {
+    User master = masterInUnit();
+    when(userRepo.findById(MASTER)).thenReturn(Optional.of(master));
+    User pending = memberOfMyUnit(true);
+    User done = memberOfMyUnit(false);
+    when(done.getId()).thenReturn(UUID.randomUUID());
+    when(userRepo.findByUnitIdInAndStatusNotAndIsUnitMasterFalse(
+            List.of(UNIT), UserStatus.ANONYMIZED))
+        .thenReturn(List.of(pending, done));
+    when(unitRepo.findAllById(List.of(UNIT))).thenReturn(List.of());
+
+    var out = service.listMyUnitMembers(MASTER);
+
+    assertThat(out).extracting(UnitMemberResponse::pendingPassword).containsExactly(true, false);
+  }
 }

@@ -68,7 +68,7 @@ describe('ResetPasswordPage — primeiro acesso (convite)', () => {
     expect(navigate).toHaveBeenCalledWith('/login', { replace: true });
   });
 
-  it('convite expirado orienta a usar "Esqueci minha senha"', async () => {
+  it('convite expirado orienta a pedir um novo link a quem fez o cadastro', async () => {
     consumeMock.mockRejectedValue(
       Object.assign(new Error('x'), {
         isAxiosError: true,
@@ -82,7 +82,7 @@ describe('ResetPasswordPage — primeiro acesso (convite)', () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        'Link inválido ou expirado. Use "Esqueci minha senha" na tela de login.'
+        'Link inválido ou expirado. Peça um novo link a quem fez o seu cadastro.'
       )
     );
     expect(navigate).not.toHaveBeenCalled();

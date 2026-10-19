@@ -21,6 +21,7 @@ import br.com.condominio.feature.access.dto.UpdateUserRequest;
 import br.com.condominio.feature.access.dto.UserAccessRow;
 import br.com.condominio.feature.access.dto.UserDetail;
 import br.com.condominio.feature.user.Gender;
+import br.com.condominio.feature.user.dto.InviteSentResponse;
 import br.com.condominio.shared.security.JwtAuthenticationConverter;
 import br.com.condominio.shared.security.JwtService;
 import br.com.condominio.shared.security.SecurityConfig;
@@ -267,10 +268,19 @@ class AccessControllerWebTest {
     when(service.getUserDetail(TARGET))
         .thenReturn(
             new UserDetail(
-                TARGET, "Ana Lima", "Ana", "+5511999999999", null, "ana@x.com", "FEMALE", null));
+                TARGET,
+                "Ana Lima",
+                "Ana",
+                "+5511999999999",
+                null,
+                "ana@x.com",
+                "FEMALE",
+                null,
+                true));
 
     mvc.perform(get("/api/access/users/{id}", TARGET).with(MockAuth.user(UID, MANAGE)))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.pendingPassword").value(true))
         .andExpect(jsonPath("$.email").value("ana@x.com"))
         .andExpect(jsonPath("$.fullName").value("Ana Lima"));
   }
@@ -321,5 +331,32 @@ class AccessControllerWebTest {
                 .content(om.writeValueAsString(body)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+  }
+
+  @Test
+  void resendInvite_withUserManage_returns200_withMaskedPhone() throws Exception {
+    when(service.resendInvite(UID, TARGET)).thenReturn(new InviteSentResponse("•••• 4321"));
+
+    mvc.perform(post("/api/access/users/{id}/invite", TARGET).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.inviteSentTo").value("•••• 4321"));
+  }
+
+  @Test
+  void resendInvite_withoutUserManage_returns403() throws Exception {
+    mvc.perform(
+            post("/api/access/users/{id}/invite", TARGET).with(MockAuth.user(UID, "ROLE_ASSIGN")))
+        .andExpect(status().isForbidden());
+    verify(service, never()).resendInvite(any(), any());
+  }
+
+  @Test
+  void resendInvite_notPending_returns409() throws Exception {
+    when(service.resendInvite(UID, TARGET))
+        .thenThrow(new AccessException("INVITE_NOT_PENDING", "Já criou a senha."));
+
+    mvc.perform(post("/api/access/users/{id}/invite", TARGET).with(MockAuth.user(UID, MANAGE)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVITE_NOT_PENDING"));
   }
 }

@@ -455,12 +455,53 @@ class AccessServiceTest {
     when(unit.getCode()).thenReturn("101A");
     when(unitRepo.findById(unitId)).thenReturn(Optional.of(unit));
 
+    when(u.isMustChangePassword()).thenReturn(true);
     UserDetail d = service.getUserDetail(TARGET);
 
+    assertThat(d.pendingPassword()).isTrue();
     assertThat(d.fullName()).isEqualTo("Ana Lima");
     assertThat(d.email()).isEqualTo("ana@x.com");
     assertThat(d.unitCode()).isEqualTo("101A");
     assertThat(d.gender()).isEqualTo("FEMALE");
     assertThat(d.birthDate()).isEqualTo(LocalDate.of(1990, 1, 2));
+  }
+
+  // ===== reenviar convite =====
+
+  @Test
+  void resendInvite_pendingUser_issuesInviteAndReturnsMaskedPhone() {
+    User u = activeUser();
+    when(u.isMustChangePassword()).thenReturn(true);
+    when(u.getPhone()).thenReturn("+5511999994321");
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+
+    var out = service.resendInvite(ACTOR, TARGET);
+
+    assertThat(out.inviteSentTo()).isEqualTo("•••• 4321");
+    verify(passwordResetService).issueInvite(u);
+  }
+
+  @Test
+  void resendInvite_userAlreadyCreatedPassword_throwsNotPending() {
+    User u = activeUser();
+    when(u.isMustChangePassword()).thenReturn(false);
+    when(userRepo.findById(TARGET)).thenReturn(Optional.of(u));
+
+    assertThatThrownBy(() -> service.resendInvite(ACTOR, TARGET))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("INVITE_NOT_PENDING");
+    verify(passwordResetService, never()).issueInvite(any());
+  }
+
+  @Test
+  void resendInvite_userNotFound_throws() {
+    when(userRepo.findById(TARGET)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.resendInvite(ACTOR, TARGET))
+        .isInstanceOf(AccessException.class)
+        .extracting("code")
+        .isEqualTo("USER_NOT_FOUND");
+    verify(passwordResetService, never()).issueInvite(any());
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Download, FileText, Trash2, Upload } from 'lucide-react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -99,17 +100,23 @@ export function DocumentsPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <FileText className="h-6 w-6" aria-hidden="true" />
-        Documentos
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Documentos do condomínio (regimento interno, assembleias e outros).
-      </p>
+    <Page variant="list">
+      <PageHeader
+        title={
+          <>
+            <FileText className="h-6 w-6" aria-hidden="true" />
+            Documentos
+          </>
+        }
+        description={
+          <span className="text-sm">
+            Documentos do condomínio (regimento interno, assembleias e outros).
+          </span>
+        }
+      />
 
       {canManage && (
-        <Card className="mt-4">
+        <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle className="text-base">Enviar documento</CardTitle>
           </CardHeader>
@@ -160,7 +167,7 @@ export function DocumentsPage() {
         </Card>
       )}
 
-      <div className="mt-4">
+      <div>
         {loading ? (
           <p className="text-muted-foreground">Carregando…</p>
         ) : items.length === 0 ? (
@@ -204,6 +211,6 @@ export function DocumentsPage() {
           </ul>
         )}
       </div>
-    </main>
+    </Page>
   );
 }

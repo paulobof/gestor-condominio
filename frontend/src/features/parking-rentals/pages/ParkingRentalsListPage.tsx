@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -41,21 +42,17 @@ export function ParkingRentalsListPage() {
   }, [status]);
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-          <span
-            aria-hidden="true"
-            className="inline-block h-6 w-1.5 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--brand-blue))' }}
-          />
-          Aluguel de Vagas
-        </h1>
-        <Button asChild className="min-h-[44px]">
-          <Link to="/vagas/aluguel/novo">Anunciar vaga</Link>
-        </Button>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
+    <Page variant="list">
+      <PageHeader
+        title="Aluguel de Vagas"
+        accent="blue"
+        actions={
+          <Button asChild className="min-h-[44px]">
+            <Link to="/vagas/aluguel/novo">Anunciar vaga</Link>
+          </Button>
+        }
+      />
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
         {(Object.keys(STATUS_LABEL) as ParkingRentalStatus[]).map((s) => (
           <Button
             key={s}
@@ -75,12 +72,12 @@ export function ParkingRentalsListPage() {
       ) : items.length === 0 ? (
         <p className="text-muted-foreground">Nenhuma vaga anunciada.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {items.map((r) => (
             <li key={r.id}>
               <Link
                 to={`/vagas/aluguel/${r.id}`}
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Card className="h-full transition-colors hover:bg-accent">
                   <CardHeader>
@@ -97,6 +94,6 @@ export function ParkingRentalsListPage() {
           ))}
         </ul>
       )}
-    </main>
+    </Page>
   );
 }

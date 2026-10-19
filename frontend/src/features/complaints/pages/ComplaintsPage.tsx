@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Page, PageHeader } from '@/components/layout/Page';
 import {
   getCatalog,
   listBoard,
@@ -91,15 +92,18 @@ export function ComplaintsPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Reclamações</h1>
-        <Button asChild className="min-h-[44px]">
-          <Link to="/reclamacoes/nova">
-            <Plus aria-hidden="true" /> Nova reclamação
-          </Link>
-        </Button>
-      </div>
+    <Page variant="list">
+      <PageHeader
+        title="Reclamações"
+        accent="orange"
+        actions={
+          <Button asChild className="min-h-[44px]">
+            <Link to="/reclamacoes/nova">
+              <Plus aria-hidden="true" /> Nova reclamação
+            </Link>
+          </Button>
+        }
+      />
 
       <div role="tablist" aria-label="Visualização" className="flex gap-2">
         {(
@@ -188,7 +192,7 @@ export function ComplaintsPage() {
             : 'Você ainda não registrou reclamações.'}
         </p>
       )}
-      <ul className="space-y-3">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {list.map((c) => (
           <ComplaintCard
             key={c.id}
@@ -208,6 +212,6 @@ export function ComplaintsPage() {
           Carregar mais
         </Button>
       )}
-    </main>
+    </Page>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,13 +60,13 @@ export function PendingRegistrationsPage() {
   };
 
   return (
-    <main className="container py-8 space-y-6">
-      <h1 className="text-2xl font-heading font-semibold">Cadastros pendentes</h1>
+    <Page variant="list">
+      <PageHeader title="Cadastros pendentes" />
       {loading && <p className="text-muted-foreground">Carregando...</p>}
       {!loading && items.length === 0 && (
         <p className="text-muted-foreground">Nenhum cadastro pendente.</p>
       )}
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {items.map((it) => (
           <Card key={it.userId}>
             <CardHeader>
@@ -125,6 +126,6 @@ export function PendingRegistrationsPage() {
           </Card>
         ))}
       </div>
-    </main>
+    </Page>
   );
 }

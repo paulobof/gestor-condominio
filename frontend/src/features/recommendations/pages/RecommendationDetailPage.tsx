@@ -12,6 +12,7 @@ import {
   ThumbsUp,
   Trash2,
 } from 'lucide-react';
+import { DetailLayout, Page } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { useLoginPrompt } from '@/features/auth/useLoginPrompt';
@@ -214,20 +215,20 @@ export function RecommendationDetailPage() {
     }
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
+  if (loading) return <Page variant="detail">Carregando…</Page>;
   if (!rec)
     return (
-      <main className="mx-auto max-w-3xl p-4">
+      <Page variant="detail">
         <p className="text-muted-foreground">Indicação não encontrada.</p>
         <Button asChild variant="link" className="mt-2 px-0">
           <Link to="/indicacoes">Voltar às indicações</Link>
         </Button>
-      </main>
+      </Page>
     );
 
   return (
-    <main className="mx-auto max-w-3xl p-4 space-y-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="detail">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/indicacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
@@ -250,280 +251,297 @@ export function RecommendationDetailPage() {
         {rec.professionalName && <p className="text-muted-foreground">{rec.professionalName}</p>}
       </div>
 
-      <dl className="grid grid-cols-1 gap-2 text-sm">
-        {rec.phone && (
-          <div className="flex gap-2">
-            <dt className="font-medium">Telefone:</dt>
-            <dd>{rec.phone}</dd>
-          </div>
-        )}
-        {rec.addressLine && (
-          <div className="flex gap-2">
-            <dt className="font-medium">Endereço:</dt>
-            <dd>{rec.addressLine}</dd>
-          </div>
-        )}
-        {rec.priceRange && (
-          <div className="flex gap-2">
-            <dt className="font-medium">Faixa de preço:</dt>
-            <dd>{rec.priceRange}</dd>
-          </div>
-        )}
-      </dl>
-
-      {/* Links sociais */}
-      {(rec.instagramUrl || rec.facebookUrl || rec.whatsappUrl || rec.catalogUrl) && (
-        <div className="flex flex-wrap gap-3">
-          {rec.instagramUrl && (
-            <a
-              href={rec.instagramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
-              aria-label="Instagram"
-            >
-              <Camera className="h-4 w-4" aria-hidden="true" />
-              Instagram
-            </a>
-          )}
-          {rec.facebookUrl && (
-            <a
-              href={rec.facebookUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
-              aria-label="Facebook"
-            >
-              <ThumbsUp className="h-4 w-4" aria-hidden="true" />
-              Facebook
-            </a>
-          )}
-          {rec.whatsappUrl && (
-            <a
-              href={rec.whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
-              aria-label="WhatsApp"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              WhatsApp
-            </a>
-          )}
-          {rec.catalogUrl && (
-            <a
-              href={rec.catalogUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
-              aria-label="Cardápio / Catálogo"
-            >
-              <BookOpen className="h-4 w-4" aria-hidden="true" />
-              Cardápio / Catálogo
-            </a>
-          )}
-        </div>
-      )}
-
-      {rec.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {rec.tags.map((t) => (
-            <span key={t.id} className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-              {t.label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {rec.openingHours.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-heading font-semibold">Horário de funcionamento</h2>
-          <ul className="space-y-1 text-sm">
-            {[...rec.openingHours]
-              .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-              .map((oh) => {
-                const opens = hhmm(oh.opensAt);
-                const closes = hhmm(oh.closesAt);
-                return (
-                  <li key={oh.dayOfWeek} className="flex flex-wrap gap-2">
-                    <span className="w-24 font-medium">{DAY_LABELS[oh.dayOfWeek]}</span>
-                    <span>
-                      {opens && closes ? `${opens}–${closes}` : 'Fechado'}
-                      {oh.notes && <span className="text-muted-foreground"> ({oh.notes})</span>}
-                    </span>
-                  </li>
-                );
-              })}
-          </ul>
-        </section>
-      )}
-
-      {rec.photos.length > 0 && (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {rec.photos.map((photo) => (
-            <li key={photo.id} className="overflow-hidden rounded-lg border bg-muted">
-              {photoUrls[photo.id] ? (
-                <img
-                  src={photoUrls[photo.id]}
-                  alt={`Foto da indicação ${rec.serviceName}`}
-                  className="aspect-square w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex aspect-square w-full items-center justify-center text-sm text-muted-foreground">
-                  Carregando…
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <section className="space-y-3 border-t pt-4">
-        <h2 className="text-lg font-heading font-semibold">
-          Avaliações
-          {reviews.length > 0 && <span className="text-muted-foreground"> ({reviews.length})</span>}
-        </h2>
-
-        {reviews.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>
-        ) : (
-          <ul className="space-y-3">
-            {reviews.map((rv) => (
-              <li key={rv.id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">
-                    {rv.authorName ?? 'Morador do condomínio'}
-                  </span>
-                  {canModerate && (
-                    <button
-                      type="button"
-                      onClick={() => handleHideReview(rv.id)}
-                      aria-label="Ocultar avaliação"
-                      className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive"
-                    >
-                      <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    </button>
+      <DetailLayout
+        main={
+          rec.photos.length > 0 && (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {rec.photos.map((photo) => (
+                <li key={photo.id} className="overflow-hidden rounded-lg border bg-muted">
+                  {photoUrls[photo.id] ? (
+                    <img
+                      src={photoUrls[photo.id]}
+                      alt={`Foto da indicação ${rec.serviceName}`}
+                      className="aspect-square w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex aspect-square w-full items-center justify-center text-sm text-muted-foreground">
+                      Carregando…
+                    </div>
                   )}
-                </div>
-                {/* role="img" + aria-label: sem o role, o aria-label num <p> é ignorado e o
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        after={
+          <>
+            <section className="space-y-3 border-t pt-4">
+              <h2 className="text-lg font-heading font-semibold">
+                Avaliações
+                {reviews.length > 0 && (
+                  <span className="text-muted-foreground"> ({reviews.length})</span>
+                )}
+              </h2>
+
+              {reviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {reviews.map((rv) => (
+                    <li key={rv.id} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {rv.authorName ?? 'Morador do condomínio'}
+                        </span>
+                        {canModerate && (
+                          <button
+                            type="button"
+                            onClick={() => handleHideReview(rv.id)}
+                            aria-label="Ocultar avaliação"
+                            className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive"
+                          >
+                            <EyeOff className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                      {/* role="img" + aria-label: sem o role, o aria-label num <p> é ignorado e o
                     leitor de tela recita as estrelas cruas ("estrela estrela estrela"). Com ele,
                     as estrelas viram uma imagem única com o texto alternativo da nota, e o
                     aria-hidden esconde os caracteres decorativos. */}
-                <p
-                  className="mt-1 flex items-center gap-1 text-sm"
-                  role="img"
-                  aria-label={`Nota ${rv.rating} de 5, ${
-                    rv.sentiment === 'LIKE' ? 'recomenda' : 'não recomenda'
-                  }`}
-                >
-                  <span aria-hidden="true">{'★'.repeat(rv.rating)}</span>
-                  <span className="text-muted-foreground" aria-hidden="true">
-                    {'★'.repeat(5 - rv.rating)}
-                  </span>
-                  {rv.sentiment === 'LIKE' ? (
-                    <ThumbsUp className="ml-1 h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                  ) : (
-                    <ThumbsDown
-                      className="ml-1 h-3.5 w-3.5 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  )}
-                </p>
-                <p className="mt-1 whitespace-pre-line text-sm">{rv.text}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+                      <p
+                        className="mt-1 flex items-center gap-1 text-sm"
+                        role="img"
+                        aria-label={`Nota ${rv.rating} de 5, ${
+                          rv.sentiment === 'LIKE' ? 'recomenda' : 'não recomenda'
+                        }`}
+                      >
+                        <span aria-hidden="true">{'★'.repeat(rv.rating)}</span>
+                        <span className="text-muted-foreground" aria-hidden="true">
+                          {'★'.repeat(5 - rv.rating)}
+                        </span>
+                        {rv.sentiment === 'LIKE' ? (
+                          <ThumbsUp className="ml-1 h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                        ) : (
+                          <ThumbsDown
+                            className="ml-1 h-3.5 w-3.5 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </p>
+                      <p className="mt-1 whitespace-pre-line text-sm">{rv.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-        {!user ? (
-          <Button
-            type="button"
-            className="min-h-[44px]"
-            onClick={() => promptLogin({ reason: 'Avaliar é para quem tem conta.' })}
-          >
-            Avaliar
-          </Button>
-        ) : editingReview && unitReview?.mine ? (
-          <ReviewForm
-            initialValues={{
-              sentiment: unitReview.sentiment,
-              rating: unitReview.rating,
-              text: unitReview.text,
-            }}
-            onSubmit={handleUpdateReview}
-            onCancel={() => setEditingReview(false)}
-            submitting={submittingReview}
-            submitLabel="Salvar avaliação"
-          />
-        ) : unitReview ? (
-          <div className="rounded-md border p-3 text-sm">
-            <p>Seu apartamento já avaliou, por {unitReview.authorName ?? 'você'}.</p>
-            {unitReview.mine && (
-              <div className="mt-2 flex gap-2">
+              {!user ? (
                 <Button
                   type="button"
-                  size="sm"
                   className="min-h-[44px]"
-                  aria-label="Editar avaliação"
-                  onClick={() => setEditingReview(true)}
+                  onClick={() => promptLogin({ reason: 'Avaliar é para quem tem conta.' })}
                 >
-                  <Pencil aria-hidden="true" /> Editar
+                  Avaliar
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  className="min-h-[44px]"
-                  onClick={handleDeleteReview}
-                  disabled={deletingReview}
-                >
-                  <Trash2 aria-hidden="true" /> {deletingReview ? 'Apagando…' : 'Apagar'}
-                </Button>
+              ) : editingReview && unitReview?.mine ? (
+                <ReviewForm
+                  initialValues={{
+                    sentiment: unitReview.sentiment,
+                    rating: unitReview.rating,
+                    text: unitReview.text,
+                  }}
+                  onSubmit={handleUpdateReview}
+                  onCancel={() => setEditingReview(false)}
+                  submitting={submittingReview}
+                  submitLabel="Salvar avaliação"
+                />
+              ) : unitReview ? (
+                <div className="rounded-md border p-3 text-sm">
+                  <p>Seu apartamento já avaliou, por {unitReview.authorName ?? 'você'}.</p>
+                  {unitReview.mine && (
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="min-h-[44px]"
+                        aria-label="Editar avaliação"
+                        onClick={() => setEditingReview(true)}
+                      >
+                        <Pencil aria-hidden="true" /> Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="min-h-[44px]"
+                        onClick={handleDeleteReview}
+                        disabled={deletingReview}
+                      >
+                        <Trash2 aria-hidden="true" /> {deletingReview ? 'Apagando…' : 'Apagar'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : !userHasUnit ? (
+                <p className="rounded-md border p-3 text-sm text-muted-foreground">
+                  Avaliar é para moradores. Sua conta não está vinculada a uma unidade, então você
+                  pode ler as avaliações, mas não publicar uma.
+                </p>
+              ) : (
+                <ReviewForm onSubmit={handleCreateReview} submitting={submittingReview} />
+              )}
+            </section>
+          </>
+        }
+        aside={
+          <>
+            <dl className="grid grid-cols-1 gap-2 text-sm">
+              {rec.phone && (
+                <div className="flex gap-2">
+                  <dt className="font-medium">Telefone:</dt>
+                  <dd>{rec.phone}</dd>
+                </div>
+              )}
+              {rec.addressLine && (
+                <div className="flex gap-2">
+                  <dt className="font-medium">Endereço:</dt>
+                  <dd>{rec.addressLine}</dd>
+                </div>
+              )}
+              {rec.priceRange && (
+                <div className="flex gap-2">
+                  <dt className="font-medium">Faixa de preço:</dt>
+                  <dd>{rec.priceRange}</dd>
+                </div>
+              )}
+            </dl>
+
+            {/* Links sociais */}
+            {(rec.instagramUrl || rec.facebookUrl || rec.whatsappUrl || rec.catalogUrl) && (
+              <div className="flex flex-wrap gap-3">
+                {rec.instagramUrl && (
+                  <a
+                    href={rec.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                    aria-label="Instagram"
+                  >
+                    <Camera className="h-4 w-4" aria-hidden="true" />
+                    Instagram
+                  </a>
+                )}
+                {rec.facebookUrl && (
+                  <a
+                    href={rec.facebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                    aria-label="Facebook"
+                  >
+                    <ThumbsUp className="h-4 w-4" aria-hidden="true" />
+                    Facebook
+                  </a>
+                )}
+                {rec.whatsappUrl && (
+                  <a
+                    href={rec.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                    aria-label="WhatsApp"
+                  >
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                    WhatsApp
+                  </a>
+                )}
+                {rec.catalogUrl && (
+                  <a
+                    href={rec.catalogUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+                    aria-label="Cardápio / Catálogo"
+                  >
+                    <BookOpen className="h-4 w-4" aria-hidden="true" />
+                    Cardápio / Catálogo
+                  </a>
+                )}
               </div>
             )}
-          </div>
-        ) : !userHasUnit ? (
-          <p className="rounded-md border p-3 text-sm text-muted-foreground">
-            Avaliar é para moradores. Sua conta não está vinculada a uma unidade, então você pode
-            ler as avaliações, mas não publicar uma.
-          </p>
-        ) : (
-          <ReviewForm onSubmit={handleCreateReview} submitting={submittingReview} />
-        )}
-      </section>
 
-      {(canManage || canModerate) && (
-        <div className="flex flex-wrap gap-2 pt-2">
-          {canManage && (
-            <Button asChild className="min-h-[44px]">
-              <Link to={`/indicacoes/${rec.id}/editar`} aria-label="Editar indicação">
-                <Pencil aria-hidden="true" /> Editar
-              </Link>
-            </Button>
-          )}
-          {canModerate && (
-            <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              onClick={handleHide}
-              disabled={hiding}
-            >
-              <EyeOff aria-hidden="true" /> {hiding ? 'Ocultando…' : 'Ocultar'}
-            </Button>
-          )}
-          {canManage && (
-            <Button
-              variant="destructive"
-              className="min-h-[44px]"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              <Trash2 aria-hidden="true" /> {deleting ? 'Excluindo…' : 'Excluir'}
-            </Button>
-          )}
-        </div>
-      )}
-    </main>
+            {rec.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {rec.tags.map((t) => (
+                  <span
+                    key={t.id}
+                    className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {rec.openingHours.length > 0 && (
+              <section className="space-y-2">
+                <h2 className="text-lg font-heading font-semibold">Horário de funcionamento</h2>
+                <ul className="space-y-1 text-sm">
+                  {[...rec.openingHours]
+                    .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+                    .map((oh) => {
+                      const opens = hhmm(oh.opensAt);
+                      const closes = hhmm(oh.closesAt);
+                      return (
+                        <li key={oh.dayOfWeek} className="flex flex-wrap gap-2">
+                          <span className="w-24 font-medium">{DAY_LABELS[oh.dayOfWeek]}</span>
+                          <span>
+                            {opens && closes ? `${opens}–${closes}` : 'Fechado'}
+                            {oh.notes && (
+                              <span className="text-muted-foreground"> ({oh.notes})</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </section>
+            )}
+
+            {(canManage || canModerate) && (
+              <div className="flex flex-wrap gap-2">
+                {canManage && (
+                  <Button asChild className="min-h-[44px]">
+                    <Link to={`/indicacoes/${rec.id}/editar`} aria-label="Editar indicação">
+                      <Pencil aria-hidden="true" /> Editar
+                    </Link>
+                  </Button>
+                )}
+                {canModerate && (
+                  <Button
+                    variant="secondary"
+                    className="min-h-[44px]"
+                    onClick={handleHide}
+                    disabled={hiding}
+                  >
+                    <EyeOff aria-hidden="true" /> {hiding ? 'Ocultando…' : 'Ocultar'}
+                  </Button>
+                )}
+                {canManage && (
+                  <Button
+                    variant="destructive"
+                    className="min-h-[44px]"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                  >
+                    <Trash2 aria-hidden="true" /> {deleting ? 'Excluindo…' : 'Excluir'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
+        }
+      />
+    </Page>
   );
 }

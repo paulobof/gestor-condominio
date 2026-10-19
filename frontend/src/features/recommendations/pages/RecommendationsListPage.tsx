@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/useAuth';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -88,25 +89,21 @@ export function RecommendationsListPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-          <span
-            aria-hidden="true"
-            className="inline-block h-6 w-1.5 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--brand-orange))' }}
-          />
-          Indicações
-        </h1>
-        {/* Indicar exige conta: visitante só navega. */}
-        {user && (
-          <Button asChild className="min-h-[44px]">
-            <Link to="/indicacoes/nova">Nova indicação</Link>
-          </Button>
-        )}
-      </div>
+    <Page variant="list">
+      <PageHeader
+        title="Indicações"
+        accent="orange"
+        actions={
+          /* Indicar exige conta: visitante só navega. */
+          user && (
+            <Button asChild className="min-h-[44px]">
+              <Link to="/indicacoes/nova">Nova indicação</Link>
+            </Button>
+          )
+        }
+      />
 
-      <div className="mb-6 space-y-4">
+      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
         <div className="space-y-2">
           <Label htmlFor="search">Buscar</Label>
           <Input
@@ -169,14 +166,14 @@ export function RecommendationsListPage() {
       ) : items.length === 0 ? (
         <p className="text-muted-foreground">Nenhuma indicação.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {items.map((r) => {
             const average = formatAverageRating(r);
             return (
               <li key={r.id}>
                 <Link
                   to={`/indicacoes/${r.id}`}
-                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Card className="h-full transition-colors hover:bg-accent">
                     <CardHeader>
@@ -228,6 +225,6 @@ export function RecommendationsListPage() {
           })}
         </ul>
       )}
-    </main>
+    </Page>
   );
 }

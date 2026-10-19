@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { useAuth } from '@/features/auth/useAuth';
 import { listClassifieds, type Classified, type ClassifiedStatus } from '../api/classifiedsApi';
 
@@ -37,26 +38,22 @@ export function ClassifiedsListPage() {
   }, [status]);
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-          <span
-            aria-hidden="true"
-            className="inline-block h-6 w-1.5 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--brand-green))' }}
-          />
-          Classificados
-        </h1>
-        {/* Anunciar exige conta: visitante só navega. */}
-        {user && (
-          <Button asChild className="min-h-[44px]">
-            <Link to="/classificados/novo">Novo anúncio</Link>
-          </Button>
-        )}
-      </div>
+    <Page variant="list">
+      <PageHeader
+        title="Classificados"
+        accent="green"
+        actions={
+          /* Anunciar exige conta: visitante só navega. */
+          user && (
+            <Button asChild className="min-h-[44px]">
+              <Link to="/classificados/novo">Novo anúncio</Link>
+            </Button>
+          )
+        }
+      />
       {/* Visitante só vê anúncios ativos (o backend também força isso), então o filtro some. */}
       {user && (
-        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por status">
           {(Object.keys(STATUS_LABEL) as ClassifiedStatus[]).map((s) => (
             <Button
               key={s}
@@ -77,12 +74,12 @@ export function ClassifiedsListPage() {
       ) : items.length === 0 ? (
         <p className="text-muted-foreground">Nenhum anúncio.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {items.map((c) => (
             <li key={c.id}>
               <Link
                 to={`/classificados/${c.id}`}
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Card className="h-full transition-colors hover:bg-accent">
                   <CardHeader>
@@ -101,6 +98,6 @@ export function ClassifiedsListPage() {
           ))}
         </ul>
       )}
-    </main>
+    </Page>
   );
 }

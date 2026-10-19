@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Page } from '@/components/layout/Page';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
@@ -88,8 +89,8 @@ export function InfoAdminPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center gap-2">
+    <Page variant="list">
+      <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
           <Link to="/informacoes" aria-label="Voltar">
             <ArrowLeft className="h-5 w-5" />
@@ -98,7 +99,7 @@ export function InfoAdminPage() {
         <h1 className="text-2xl font-heading font-semibold">Gerenciar informações</h1>
       </div>
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <CardTitle>{form.id ? 'Editar seção' : 'Nova seção'}</CardTitle>
         </CardHeader>
@@ -194,6 +195,6 @@ export function InfoAdminPage() {
           ))}
         </ul>
       )}
-    </main>
+    </Page>
   );
 }

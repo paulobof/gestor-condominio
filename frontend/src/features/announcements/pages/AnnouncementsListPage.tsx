@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowUp, ArrowDown } from 'lucide-react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
@@ -58,22 +59,18 @@ export function AnnouncementsListPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-          <span
-            aria-hidden="true"
-            className="inline-block h-6 w-1.5 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--brand-red))' }}
-          />
-          Mural de avisos
-        </h1>
-        {canManage && (
-          <Button asChild className="min-h-[44px]">
-            <Link to="/avisos/novo">Novo aviso</Link>
-          </Button>
-        )}
-      </div>
+    <Page variant="reading">
+      <PageHeader
+        title="Mural de avisos"
+        accent="red"
+        actions={
+          canManage && (
+            <Button asChild className="min-h-[44px]">
+              <Link to="/avisos/novo">Novo aviso</Link>
+            </Button>
+          )
+        }
+      />
 
       {loading ? (
         <p className="text-muted-foreground">Carregando…</p>
@@ -137,6 +134,6 @@ export function AnnouncementsListPage() {
           ))}
         </ul>
       )}
-    </main>
+    </Page>
   );
 }

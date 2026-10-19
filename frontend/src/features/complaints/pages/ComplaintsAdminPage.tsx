@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { adminQueue, type AdminComplaintRow, type ComplaintStatus } from '../api/complaintsApi';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -51,22 +52,24 @@ export function ComplaintsAdminPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Gestão de reclamações</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" className="min-h-[44px]">
-            <Link to="/admin/reclamacoes/catalogo">
-              <ListTree aria-hidden="true" /> Catálogo
-            </Link>
-          </Button>
-          <Button asChild className="min-h-[44px]">
-            <Link to="/admin/reclamacoes/encaminhar">
-              <Send aria-hidden="true" /> Encaminhar à síndica
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <Page variant="list">
+      <PageHeader
+        title="Gestão de reclamações"
+        actions={
+          <>
+            <Button asChild variant="outline" className="min-h-[44px]">
+              <Link to="/admin/reclamacoes/catalogo">
+                <ListTree aria-hidden="true" /> Catálogo
+              </Link>
+            </Button>
+            <Button asChild className="min-h-[44px]">
+              <Link to="/admin/reclamacoes/encaminhar">
+                <Send aria-hidden="true" /> Encaminhar à síndica
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div role="tablist" aria-label="Status" className="flex flex-wrap gap-2">
         {TABS.map((t) => (
@@ -88,7 +91,7 @@ export function ComplaintsAdminPage() {
       {!loading && rows.length === 0 && (
         <p className="text-muted-foreground">Nenhuma reclamação.</p>
       )}
-      <ul className="space-y-2">
+      <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
         {rows.map(({ complaint: c, authorName, unitCode }) => (
           <li key={c.id}>
             <Link
@@ -118,6 +121,6 @@ export function ComplaintsAdminPage() {
           Carregar mais
         </Button>
       )}
-    </main>
+    </Page>
   );
 }

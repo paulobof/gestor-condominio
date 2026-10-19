@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
 import { ArrowLeft, Trash2 } from 'lucide-react';
+import { Page } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -223,11 +224,11 @@ export function ClassifiedFormPage() {
     }
   };
 
-  if (loading) return <main className="mx-auto max-w-2xl p-4">Carregando…</main>;
+  if (loading) return <Page variant="form">Carregando…</Page>;
 
   return (
-    <main className="mx-auto max-w-2xl p-4 space-y-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="form">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to={isEdit && id ? `/classificados/${id}` : '/classificados'}>
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
@@ -400,6 +401,6 @@ export function ClassifiedFormPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </Page>
   );
 }

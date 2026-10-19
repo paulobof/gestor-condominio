@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowDown, ArrowLeft, ArrowUp, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -168,19 +169,19 @@ export function ComplaintCatalogPage() {
     void run(() => moveCatalogItem(kind, id, direction));
   };
 
-  if (!catalog) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
+  if (!catalog) return <Page variant="list">Carregando…</Page>;
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="list">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
-      <h1 className="text-2xl font-semibold">Catálogo de reclamações</h1>
-      <p className="text-sm text-muted-foreground">
-        Itens desativados somem do formulário, mas reclamações antigas continuam com eles.
-      </p>
+      <PageHeader
+        title="Catálogo de reclamações"
+        description="Itens desativados somem do formulário, mas reclamações antigas continuam com eles."
+      />
 
       <Card>
         <CardHeader>
@@ -259,6 +260,6 @@ export function ComplaintCatalogPage() {
           />
         </CardContent>
       </Card>
-    </main>
+    </Page>
   );
 }

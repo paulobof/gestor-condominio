@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
@@ -141,19 +142,19 @@ export function MyProfilePage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-[50dvh] items-center justify-center">
+      <Page variant="form" className="flex min-h-[50dvh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-label="Carregando" />
-      </main>
+      </Page>
     );
   }
 
   if (loadFailed) {
     return (
-      <main className="p-4 md:p-8">
+      <Page variant="form">
         <p role="alert" className="text-sm text-destructive">
           Não foi possível carregar seu cadastro.
         </p>
-      </main>
+      </Page>
     );
   }
 
@@ -161,157 +162,148 @@ export function MyProfilePage() {
   const pwErrors = passwordForm.formState.errors;
 
   return (
-    <main className="bg-background p-4 md:p-8">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Meu cadastro</h1>
-          <p className="text-sm text-muted-foreground">Seus dados de acesso ao aplicativo.</p>
-        </header>
+    <Page variant="form">
+      <PageHeader title="Meu cadastro" description="Seus dados de acesso ao aplicativo." />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Dados</CardTitle>
-            <CardDescription>Nome e contato da sua conta.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={profileForm.handleSubmit(onSaveProfile)}
-              className="space-y-4"
-              noValidate
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados</CardTitle>
+          <CardDescription>Nome e contato da sua conta.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4" noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Nome completo</Label>
+              <Input
+                id="fullName"
+                autoComplete="name"
+                maxLength={180}
+                className="min-h-11"
+                {...profileForm.register('fullName')}
+                aria-invalid={!!pErrors.fullName}
+              />
+              <FieldError message={pErrors.fullName?.message} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="greetingName">Como quer ser chamado</Label>
+              <Input
+                id="greetingName"
+                autoComplete="nickname"
+                maxLength={60}
+                className="min-h-11"
+                {...profileForm.register('greetingName')}
+                aria-invalid={!!pErrors.greetingName}
+                aria-describedby="greetingName-hint"
+              />
+              <p id="greetingName-hint" className="text-xs text-muted-foreground">
+                Opcional. Usado na saudação da tela inicial.
+              </p>
+              <FieldError message={pErrors.greetingName?.message} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Controller
+                control={profileForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="phone"
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={!!pErrors.phone}
+                  />
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                Opcional e privado: usado só para WhatsApp e recuperação de senha. Não aparece para
+                outros moradores.
+              </p>
+              <FieldError message={pErrors.phone?.message} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                readOnly
+                className="min-h-11 bg-muted"
+                aria-describedby="email-hint"
+              />
+              <p id="email-hint" className="text-xs text-muted-foreground">
+                Para trocar o e-mail, fale com o administrador.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              className="min-h-11 w-full sm:w-auto"
+              disabled={profileForm.formState.isSubmitting}
             >
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
-                <Input
-                  id="fullName"
-                  autoComplete="name"
-                  maxLength={180}
-                  className="min-h-11"
-                  {...profileForm.register('fullName')}
-                  aria-invalid={!!pErrors.fullName}
-                />
-                <FieldError message={pErrors.fullName?.message} />
-              </div>
+              {profileForm.formState.isSubmitting ? 'Salvando...' : 'Salvar dados'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="greetingName">Como quer ser chamado</Label>
-                <Input
-                  id="greetingName"
-                  autoComplete="nickname"
-                  maxLength={60}
-                  className="min-h-11"
-                  {...profileForm.register('greetingName')}
-                  aria-invalid={!!pErrors.greetingName}
-                  aria-describedby="greetingName-hint"
-                />
-                <p id="greetingName-hint" className="text-xs text-muted-foreground">
-                  Opcional. Usado na saudação da tela inicial.
-                </p>
-                <FieldError message={pErrors.greetingName?.message} />
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Trocar senha</CardTitle>
+          <CardDescription>Para sua segurança, confirme a senha atual.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={passwordForm.handleSubmit(onChangePassword)}
+            className="space-y-4"
+            noValidate
+          >
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Senha atual</Label>
+              <PasswordInput
+                id="currentPassword"
+                autoComplete="current-password"
+                {...passwordForm.register('currentPassword')}
+                aria-invalid={!!pwErrors.currentPassword}
+              />
+              <FieldError message={pwErrors.currentPassword?.message} />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Controller
-                  control={profileForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <PhoneInput
-                      id="phone"
-                      value={field.value}
-                      onChange={field.onChange}
-                      invalid={!!pErrors.phone}
-                    />
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Opcional e privado: usado só para WhatsApp e recuperação de senha. Não aparece
-                  para outros moradores.
-                </p>
-                <FieldError message={pErrors.phone?.message} />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">Nova senha</Label>
+              <PasswordInput
+                id="newPassword"
+                autoComplete="new-password"
+                {...passwordForm.register('newPassword')}
+                aria-invalid={!!pwErrors.newPassword}
+              />
+              <FieldError message={pwErrors.newPassword?.message} />
+              <PasswordChecklist value={passwordForm.watch('newPassword') ?? ''} />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  readOnly
-                  className="min-h-11 bg-muted"
-                  aria-describedby="email-hint"
-                />
-                <p id="email-hint" className="text-xs text-muted-foreground">
-                  Para trocar o e-mail, fale com o administrador.
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirme a nova senha</Label>
+              <PasswordInput
+                id="confirmPassword"
+                autoComplete="new-password"
+                {...passwordForm.register('confirmPassword')}
+                aria-invalid={!!pwErrors.confirmPassword}
+              />
+              <FieldError message={pwErrors.confirmPassword?.message} />
+            </div>
 
-              <Button
-                type="submit"
-                className="min-h-11 w-full sm:w-auto"
-                disabled={profileForm.formState.isSubmitting}
-              >
-                {profileForm.formState.isSubmitting ? 'Salvando...' : 'Salvar dados'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Trocar senha</CardTitle>
-            <CardDescription>Para sua segurança, confirme a senha atual.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={passwordForm.handleSubmit(onChangePassword)}
-              className="space-y-4"
-              noValidate
+            <Button
+              type="submit"
+              className="min-h-11 w-full sm:w-auto"
+              disabled={passwordForm.formState.isSubmitting}
             >
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Senha atual</Label>
-                <PasswordInput
-                  id="currentPassword"
-                  autoComplete="current-password"
-                  {...passwordForm.register('currentPassword')}
-                  aria-invalid={!!pwErrors.currentPassword}
-                />
-                <FieldError message={pwErrors.currentPassword?.message} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">Nova senha</Label>
-                <PasswordInput
-                  id="newPassword"
-                  autoComplete="new-password"
-                  {...passwordForm.register('newPassword')}
-                  aria-invalid={!!pwErrors.newPassword}
-                />
-                <FieldError message={pwErrors.newPassword?.message} />
-                <PasswordChecklist value={passwordForm.watch('newPassword') ?? ''} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirme a nova senha</Label>
-                <PasswordInput
-                  id="confirmPassword"
-                  autoComplete="new-password"
-                  {...passwordForm.register('confirmPassword')}
-                  aria-invalid={!!pwErrors.confirmPassword}
-                />
-                <FieldError message={pwErrors.confirmPassword?.message} />
-              </div>
-
-              <Button
-                type="submit"
-                className="min-h-11 w-full sm:w-auto"
-                disabled={passwordForm.formState.isSubmitting}
-              >
-                {passwordForm.formState.isSubmitting ? 'Trocando...' : 'Trocar senha'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+              {passwordForm.formState.isSubmitting ? 'Trocando...' : 'Trocar senha'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </Page>
   );
 }

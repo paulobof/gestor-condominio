@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
@@ -153,21 +154,14 @@ export function FaqAdminPage() {
   const groups = groupByCategory(items);
 
   return (
-    <main className="mx-auto max-w-3xl p-4 space-y-6">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="list">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/faq">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
 
-      <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-        <span
-          aria-hidden="true"
-          className="inline-block h-6 w-1.5 rounded-full"
-          style={{ backgroundColor: 'hsl(var(--brand-blue))' }}
-        />
-        Gerenciar FAQ
-      </h1>
+      <PageHeader title="Gerenciar FAQ" accent="blue" />
 
       {/* Create / Edit form */}
       <Card>
@@ -328,6 +322,6 @@ export function FaqAdminPage() {
           ))}
         </div>
       )}
-    </main>
+    </Page>
   );
 }

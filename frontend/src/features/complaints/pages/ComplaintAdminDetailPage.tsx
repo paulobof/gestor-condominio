@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DetailLayout, Page } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,7 +95,7 @@ export function ComplaintAdminDetailPage() {
     }
   };
 
-  if (!d || !id) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
+  if (!d || !id) return <Page variant="detail">Carregando…</Page>;
   const c = d.complaint;
   const canEdit = c.status === 'IN_REVIEW' || c.status === 'READY';
   const canReject = c.status === 'OPEN' || c.status === 'IN_REVIEW' || c.status === 'READY';
@@ -129,237 +130,253 @@ export function ComplaintAdminDetailPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="detail">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
 
-      <Card>
-        <CardHeader className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">#{c.code}</span>
-            <StatusBadge status={c.status} />
-          </div>
-          <CardTitle>
-            {c.typeName} › {c.subtypeName} — {c.locationName}
-            {c.locationDetail ? ` (${c.locationDetail})` : ''}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {d.authorName ?? '—'} · {d.unitCode ?? '—'}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!editing && <p className="whitespace-pre-wrap">{c.description}</p>}
-          {editing && catalog && (
-            <div className="space-y-3">
-              <CatalogSelects
-                catalog={catalog}
-                value={selection}
-                onChange={setSelection}
-                fallback={{
-                  typeId: c.typeId,
-                  typeName: c.typeName,
-                  subtypeId: c.subtypeId,
-                  subtypeName: c.subtypeName,
-                  locationId: c.locationId,
-                  locationName: c.locationName,
-                }}
-              />
-              <Label htmlFor="adm-detail">Complemento do local</Label>
-              <Input
-                id="adm-detail"
-                maxLength={200}
-                value={detailText}
-                onChange={(e) => setDetailText(e.target.value)}
-              />
-              <Label htmlFor="adm-desc">Descrição</Label>
-              <textarea
-                id="adm-desc"
-                rows={5}
-                maxLength={2000}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <div className="flex gap-2">
-                <Button className="min-h-[44px]" disabled={busy} onClick={saveEdit}>
-                  Salvar edição
-                </Button>
-                <Button
-                  variant="outline"
-                  className="min-h-[44px]"
-                  onClick={() => setEditing(false)}
-                >
-                  Descartar
-                </Button>
+      <DetailLayout
+        main={
+          <>
+            <Card>
+              <CardHeader className="space-y-2">
+                <span className="text-sm text-muted-foreground">#{c.code}</span>
+                <CardTitle>
+                  {c.typeName} › {c.subtypeName} — {c.locationName}
+                  {c.locationDetail ? ` (${c.locationDetail})` : ''}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {d.authorName ?? '—'} · {d.unitCode ?? '—'}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!editing && <p className="whitespace-pre-wrap">{c.description}</p>}
+                {editing && catalog && (
+                  <div className="space-y-3">
+                    <CatalogSelects
+                      catalog={catalog}
+                      value={selection}
+                      onChange={setSelection}
+                      fallback={{
+                        typeId: c.typeId,
+                        typeName: c.typeName,
+                        subtypeId: c.subtypeId,
+                        subtypeName: c.subtypeName,
+                        locationId: c.locationId,
+                        locationName: c.locationName,
+                      }}
+                    />
+                    <Label htmlFor="adm-detail">Complemento do local</Label>
+                    <Input
+                      id="adm-detail"
+                      maxLength={200}
+                      value={detailText}
+                      onChange={(e) => setDetailText(e.target.value)}
+                    />
+                    <Label htmlFor="adm-desc">Descrição</Label>
+                    <textarea
+                      id="adm-desc"
+                      rows={5}
+                      maxLength={2000}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button className="min-h-[44px]" disabled={busy} onClick={saveEdit}>
+                        Salvar edição
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="min-h-[44px]"
+                        onClick={() => setEditing(false)}
+                      >
+                        Descartar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <ComplaintPhotos complaintId={c.id} photos={c.photos} />
+                {c.dueDate && <p className="font-medium">Prazo atual: {formatDateBR(c.dueDate)}</p>}
+                {c.rejectionReason && <p className="text-red-800">Motivo: {c.rejectionReason}</p>}
+                {c.resolutionNote && <p>Resolução: {c.resolutionNote}</p>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Histórico</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-1 text-sm">
+                  {d.events.map((e, i) => (
+                    <li key={i}>
+                      <span className="text-muted-foreground">
+                        {formatInstantBR(e.createdAt)} —{' '}
+                      </span>
+                      {describeEvent(e)}
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
+          </>
+        }
+        aside={
+          <Card>
+            <CardHeader>
+              <StatusBadge status={c.status} />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {c.status === 'OPEN' && (
+                  <Button
+                    className="min-h-[44px]"
+                    disabled={busy}
+                    onClick={() => run(() => adminAction(id, 'start-review'), 'Análise iniciada.')}
+                  >
+                    Iniciar análise
+                  </Button>
+                )}
+                {c.status === 'IN_REVIEW' && (
+                  <Button
+                    className="min-h-[44px]"
+                    disabled={busy}
+                    onClick={() => run(() => adminAction(id, 'ready'), 'Pronta para encaminhar.')}
+                  >
+                    Marcar como pronta
+                  </Button>
+                )}
+                {c.status === 'READY' && (
+                  <Button
+                    variant="outline"
+                    className="min-h-[44px]"
+                    disabled={busy}
+                    onClick={() =>
+                      run(() => adminAction(id, 'reopen-review'), 'Voltou para análise.')
+                    }
+                  >
+                    Voltar para análise
+                  </Button>
+                )}
+                {canEdit && !editing && (
+                  <Button variant="outline" className="min-h-[44px]" onClick={startEdit}>
+                    Editar
+                  </Button>
+                )}
+                {canReject && !rejecting && (
+                  <Button
+                    variant="destructive"
+                    className="min-h-[44px]"
+                    onClick={() => setRejecting(true)}
+                  >
+                    Recusar
+                  </Button>
+                )}
               </div>
-            </div>
-          )}
 
-          <ComplaintPhotos complaintId={c.id} photos={c.photos} />
+              {rejecting && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label htmlFor="adm-reason">Motivo da recusa</Label>
+                  <Input
+                    id="adm-reason"
+                    maxLength={500}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      className="min-h-[44px]"
+                      disabled={busy}
+                      onClick={confirmReject}
+                    >
+                      Confirmar recusa
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="min-h-[44px]"
+                      onClick={() => setRejecting(false)}
+                    >
+                      Voltar
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          <div className="flex flex-wrap gap-2">
-            {c.status === 'OPEN' && (
-              <Button
-                className="min-h-[44px]"
-                disabled={busy}
-                onClick={() => run(() => adminAction(id, 'start-review'), 'Análise iniciada.')}
-              >
-                Iniciar análise
-              </Button>
-            )}
-            {c.status === 'IN_REVIEW' && (
-              <Button
-                className="min-h-[44px]"
-                disabled={busy}
-                onClick={() => run(() => adminAction(id, 'ready'), 'Pronta para encaminhar.')}
-              >
-                Marcar como pronta
-              </Button>
-            )}
-            {c.status === 'READY' && (
-              <Button
-                variant="outline"
-                className="min-h-[44px]"
-                disabled={busy}
-                onClick={() => run(() => adminAction(id, 'reopen-review'), 'Voltou para análise.')}
-              >
-                Voltar para análise
-              </Button>
-            )}
-            {canEdit && !editing && (
-              <Button variant="outline" className="min-h-[44px]" onClick={startEdit}>
-                Editar
-              </Button>
-            )}
-            {canReject && !rejecting && (
-              <Button
-                variant="destructive"
-                className="min-h-[44px]"
-                onClick={() => setRejecting(true)}
-              >
-                Recusar
-              </Button>
-            )}
-          </div>
+              {c.status === 'FORWARDED' && (
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adm-due">Prazo informado pela síndica</Label>
+                    <Input
+                      id="adm-due"
+                      type="date"
+                      value={dueDate || c.dueDate || ''}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                    <Button
+                      className="min-h-[44px]"
+                      disabled={busy || !dueDate}
+                      onClick={() => run(() => adminSetDueDate(id, dueDate), 'Prazo salvo.')}
+                    >
+                      Salvar prazo
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adm-note">Observação da resolução (opcional)</Label>
+                    <Input
+                      id="adm-note"
+                      maxLength={500}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                    />
+                    <Button
+                      variant="outline"
+                      className="min-h-[44px]"
+                      disabled={busy}
+                      onClick={() =>
+                        run(() => adminResolve(id, note.trim()), 'Reclamação resolvida.')
+                      }
+                    >
+                      Marcar como resolvida
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          {rejecting && (
-            <div className="space-y-2 rounded-md border p-3">
-              <Label htmlFor="adm-reason">Motivo da recusa</Label>
-              <Input
-                id="adm-reason"
-                maxLength={500}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button
-                  variant="destructive"
-                  className="min-h-[44px]"
-                  disabled={busy}
-                  onClick={confirmReject}
-                >
-                  Confirmar recusa
-                </Button>
-                <Button
-                  variant="outline"
-                  className="min-h-[44px]"
-                  onClick={() => setRejecting(false)}
-                >
-                  Voltar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {c.status === 'FORWARDED' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="adm-due">Prazo informado pela síndica</Label>
-                <Input
-                  id="adm-due"
-                  type="date"
-                  value={dueDate || c.dueDate || ''}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-                <Button
-                  className="min-h-[44px]"
-                  disabled={busy || !dueDate}
-                  onClick={() => run(() => adminSetDueDate(id, dueDate), 'Prazo salvo.')}
-                >
-                  Salvar prazo
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="adm-note">Observação da resolução (opcional)</Label>
-                <Input
-                  id="adm-note"
-                  maxLength={500}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-                <Button
-                  variant="outline"
-                  className="min-h-[44px]"
-                  disabled={busy}
-                  onClick={() => run(() => adminResolve(id, note.trim()), 'Reclamação resolvida.')}
-                >
-                  Marcar como resolvida
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {(c.status === 'FORWARDED' || c.status === 'RESOLVED') && (
-            <div className="space-y-2">
-              <Label htmlFor="adm-response">Resposta da síndica (visível aos moradores)</Label>
-              <textarea
-                id="adm-response"
-                rows={4}
-                maxLength={2000}
-                value={response ?? c.syndicResponse ?? ''}
-                onChange={(e) => setResponse(e.target.value)}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <Button
-                className="min-h-[44px]"
-                disabled={busy || response === null}
-                onClick={async () => {
-                  const ok = await run(
-                    () => adminSetSyndicResponse(id, (response ?? '').trim()),
-                    'Resposta salva.'
-                  );
-                  if (ok) setResponse(null);
-                }}
-              >
-                Salvar resposta
-              </Button>
-            </div>
-          )}
-
-          {c.dueDate && <p className="font-medium">Prazo atual: {formatDateBR(c.dueDate)}</p>}
-          {c.rejectionReason && <p className="text-red-800">Motivo: {c.rejectionReason}</p>}
-          {c.resolutionNote && <p>Resolução: {c.resolutionNote}</p>}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Histórico</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="space-y-1 text-sm">
-            {d.events.map((e, i) => (
-              <li key={i}>
-                <span className="text-muted-foreground">{formatInstantBR(e.createdAt)} — </span>
-                {describeEvent(e)}
-              </li>
-            ))}
-          </ol>
-        </CardContent>
-      </Card>
-    </main>
+              {(c.status === 'FORWARDED' || c.status === 'RESOLVED') && (
+                <div className="space-y-2">
+                  <Label htmlFor="adm-response">Resposta da síndica (visível aos moradores)</Label>
+                  <textarea
+                    id="adm-response"
+                    rows={4}
+                    maxLength={2000}
+                    value={response ?? c.syndicResponse ?? ''}
+                    onChange={(e) => setResponse(e.target.value)}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <Button
+                    className="min-h-[44px]"
+                    disabled={busy || response === null}
+                    onClick={async () => {
+                      const ok = await run(
+                        () => adminSetSyndicResponse(id, (response ?? '').trim()),
+                        'Resposta salva.'
+                      );
+                      if (ok) setResponse(null);
+                    }}
+                  >
+                    Salvar resposta
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        }
+      />
+    </Page>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -46,22 +47,18 @@ export function FaqPage() {
   const groups = groupByCategory(items);
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-heading font-semibold">
-          <span
-            aria-hidden="true"
-            className="inline-block h-6 w-1.5 rounded-full"
-            style={{ backgroundColor: 'hsl(var(--brand-blue))' }}
-          />
-          Perguntas Frequentes
-        </h1>
-        {canManage && (
-          <Button asChild className="min-h-[44px]">
-            <Link to="/faq/gerenciar">Gerenciar</Link>
-          </Button>
-        )}
-      </div>
+    <Page variant="reading">
+      <PageHeader
+        title="Perguntas Frequentes"
+        accent="blue"
+        actions={
+          canManage && (
+            <Button asChild className="min-h-[44px]">
+              <Link to="/faq/gerenciar">Gerenciar</Link>
+            </Button>
+          )
+        }
+      />
 
       {loading ? (
         <p className="text-muted-foreground">Carregando…</p>
@@ -98,6 +95,6 @@ export function FaqPage() {
           ))}
         </div>
       )}
-    </main>
+    </Page>
   );
 }

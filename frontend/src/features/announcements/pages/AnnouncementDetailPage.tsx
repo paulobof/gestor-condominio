@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { Page } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import {
@@ -63,20 +64,20 @@ export function AnnouncementDetailPage() {
     }
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
+  if (loading) return <Page variant="reading">Carregando…</Page>;
   if (!a)
     return (
-      <main className="mx-auto max-w-3xl p-4">
+      <Page variant="reading">
         <p className="text-muted-foreground">Aviso não encontrado.</p>
         <Button asChild variant="link" className="mt-2 px-0">
           <Link to="/avisos">Voltar ao mural</Link>
         </Button>
-      </main>
+      </Page>
     );
 
   return (
-    <main className="mx-auto max-w-3xl p-4 space-y-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="reading">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/avisos">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
@@ -113,6 +114,6 @@ export function AnnouncementDetailPage() {
           </Button>
         </div>
       )}
-    </main>
+    </Page>
   );
 }

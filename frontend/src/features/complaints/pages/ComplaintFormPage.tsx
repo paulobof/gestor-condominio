@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Page } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -187,8 +188,8 @@ export function ComplaintFormPage() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="form">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to={isEdit && id ? `/reclamacoes/${id}` : '/reclamacoes'}>
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
@@ -298,6 +299,6 @@ export function ComplaintFormPage() {
           </ul>
         </CardContent>
       </Card>
-    </main>
+    </Page>
   );
 }

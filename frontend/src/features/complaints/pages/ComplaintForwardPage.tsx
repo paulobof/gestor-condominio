@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Page, PageHeader } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatInstantBR } from '@/lib/date';
 import {
@@ -100,13 +101,13 @@ export function ComplaintForwardPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="list">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/admin/reclamacoes">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
-      <h1 className="text-2xl font-semibold">Encaminhar à síndica</h1>
+      <PageHeader title="Encaminhar à síndica" />
 
       <Card>
         <CardHeader>
@@ -211,6 +212,6 @@ export function ComplaintForwardPage() {
           </ul>
         </CardContent>
       </Card>
-    </main>
+    </Page>
   );
 }

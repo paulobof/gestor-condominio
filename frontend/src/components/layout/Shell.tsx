@@ -115,7 +115,8 @@ export function Shell() {
             <div className="flex-1">
               <Outlet />
             </div>
-            <footer className="border-t border-border px-4 py-4">
+            {/* No desktop o crédito já fica no rodapé do menu lateral. */}
+            <footer className="border-t border-border px-4 py-4 lg:hidden">
               <DeveloperCredit />
             </footer>
           </main>

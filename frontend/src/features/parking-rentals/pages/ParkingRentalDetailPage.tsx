@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Pencil, Trash2, MessageCircle } from 'lucide-react';
+import { DetailLayout, Page } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import {
@@ -84,113 +85,121 @@ export function ParkingRentalDetailPage() {
     }
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-4">Carregando…</main>;
+  if (loading) return <Page variant="detail">Carregando…</Page>;
   if (!r)
     return (
-      <main className="mx-auto max-w-3xl p-4">
+      <Page variant="detail">
         <p className="text-muted-foreground">Anúncio não encontrado.</p>
         <Button asChild variant="link" className="mt-2 px-0">
           <Link to="/vagas/aluguel">Voltar para Aluguel de Vagas</Link>
         </Button>
-      </main>
+      </Page>
     );
 
   return (
-    <main className="mx-auto max-w-3xl p-4 space-y-4">
-      <Button asChild variant="ghost" className="min-h-[44px] px-2">
+    <Page variant="detail">
+      <Button asChild variant="ghost" className="-ml-2 min-h-[44px] px-2">
         <Link to="/vagas/aluguel">
           <ArrowLeft aria-hidden="true" /> Voltar
         </Link>
       </Button>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-heading font-semibold">
-            Torre {r.tower} · Andar {r.floor} · Vaga {r.spotNumber}
-          </h1>
-          <span className="inline-block rounded-full bg-muted px-3 py-1 text-xs font-medium">
-            {STATUS_LABEL[r.status]}
-          </span>
-        </div>
-        <p className="text-xl font-semibold">{brl(r.monthlyPrice)}/mês</p>
-      </div>
+      {/* Pouco conteúdo: uma coluna só (sem lateral), com os dois blocos lado a lado a partir do
+          sm — evita a coluna principal vazia ao lado de uma lateral cheia. */}
+      <DetailLayout
+        main={
+          <>
+            <h1 className="text-2xl font-heading font-semibold">
+              Torre {r.tower} · Andar {r.floor} · Vaga {r.spotNumber}
+            </h1>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 rounded-lg border p-4">
+                <span className="inline-block rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                  {STATUS_LABEL[r.status]}
+                </span>
+                <p className="text-xl font-semibold">{brl(r.monthlyPrice)}/mês</p>
+              </div>
 
-      {(r.authorName || r.contactWhatsapp) && (
-        <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Anunciante
-          </p>
-          {r.authorName && <p className="text-sm font-medium">{r.authorName}</p>}
-          {r.contactWhatsapp && (
-            <Button asChild className="min-h-[44px]">
-              <a
-                href={`https://wa.me/${r.contactWhatsapp}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircle aria-hidden="true" /> Falar no WhatsApp
-              </a>
-            </Button>
-          )}
-        </div>
-      )}
+              {(r.authorName || r.contactWhatsapp) && (
+                <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Anunciante
+                  </p>
+                  {r.authorName && <p className="text-sm font-medium">{r.authorName}</p>}
+                  {r.contactWhatsapp && (
+                    <Button asChild className="min-h-[44px]">
+                      <a
+                        href={`https://wa.me/${r.contactWhatsapp}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle aria-hidden="true" /> Falar no WhatsApp
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
-      {isOwnerOrMod && (
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Button asChild className="min-h-[44px]">
-            <Link to={`/vagas/aluguel/${r.id}/editar`}>
-              <Pencil aria-hidden="true" /> Editar
-            </Link>
-          </Button>
-          {r.status === 'ACTIVE' && (
-            <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              onClick={() => changeStatus('RENTED')}
-              disabled={busy}
-            >
-              Marcar como alugada
-            </Button>
-          )}
-          {r.status === 'RENTED' && (
-            <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              onClick={() => changeStatus('ACTIVE')}
-              disabled={busy}
-            >
-              Disponibilizar novamente
-            </Button>
-          )}
-          {r.status !== 'ARCHIVED' ? (
-            <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              onClick={() => changeStatus('ARCHIVED')}
-              disabled={busy}
-            >
-              Arquivar
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              onClick={() => changeStatus('ACTIVE')}
-              disabled={busy}
-            >
-              Reativar
-            </Button>
-          )}
-          <Button
-            variant="destructive"
-            className="min-h-[44px]"
-            onClick={handleDelete}
-            disabled={busy}
-          >
-            <Trash2 aria-hidden="true" /> Excluir
-          </Button>
-        </div>
-      )}
-    </main>
+            {isOwnerOrMod && (
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="min-h-[44px]">
+                  <Link to={`/vagas/aluguel/${r.id}/editar`}>
+                    <Pencil aria-hidden="true" /> Editar
+                  </Link>
+                </Button>
+                {r.status === 'ACTIVE' && (
+                  <Button
+                    variant="secondary"
+                    className="min-h-[44px]"
+                    onClick={() => changeStatus('RENTED')}
+                    disabled={busy}
+                  >
+                    Marcar como alugada
+                  </Button>
+                )}
+                {r.status === 'RENTED' && (
+                  <Button
+                    variant="secondary"
+                    className="min-h-[44px]"
+                    onClick={() => changeStatus('ACTIVE')}
+                    disabled={busy}
+                  >
+                    Disponibilizar novamente
+                  </Button>
+                )}
+                {r.status !== 'ARCHIVED' ? (
+                  <Button
+                    variant="secondary"
+                    className="min-h-[44px]"
+                    onClick={() => changeStatus('ARCHIVED')}
+                    disabled={busy}
+                  >
+                    Arquivar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    className="min-h-[44px]"
+                    onClick={() => changeStatus('ACTIVE')}
+                    disabled={busy}
+                  >
+                    Reativar
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  className="min-h-[44px]"
+                  onClick={handleDelete}
+                  disabled={busy}
+                >
+                  <Trash2 aria-hidden="true" /> Excluir
+                </Button>
+              </div>
+            )}
+          </>
+        }
+      />
+    </Page>
   );
 }

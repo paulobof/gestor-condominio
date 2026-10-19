@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/useAuth';
 import { brandColor as hsl, visibleSections } from '@/components/layout/navigation';
+import { Page, PageHeader } from '@/components/layout/Page';
 
 export default function App() {
   const { user } = useAuth();
@@ -10,15 +11,13 @@ export default function App() {
   const sections = visibleSections(user, (item) => !item.sidebarOnly);
 
   return (
-    <section className="container space-y-6 py-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold">
-          {user ? `Olá, ${user.greetingName || user.fullName} 👋` : 'HELBOR TRILOGY HOME'}
-        </h1>
-        <p className="text-muted-foreground">
-          {user ? 'Escolha uma área do portal.' : 'Veja o que está acontecendo no condomínio.'}
-        </p>
-      </div>
+    <Page variant="list">
+      <PageHeader
+        title={user ? `Olá, ${user.greetingName || user.fullName} 👋` : 'HELBOR TRILOGY HOME'}
+        description={
+          user ? 'Escolha uma área do portal.' : 'Veja o que está acontecendo no condomínio.'
+        }
+      />
 
       {sections.map(({ section, title, items }) => (
         <nav key={section} aria-label={title ?? 'Áreas do portal'} className="space-y-3">
@@ -30,7 +29,7 @@ export default function App() {
                 <li key={item.to}>
                   <Link
                     to={item.to}
-                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <Card
                       className="h-full border-l-4 transition-colors hover:bg-[var(--card-hover)] active:bg-[var(--card-hover)]"
@@ -63,6 +62,6 @@ export default function App() {
           </ul>
         </nav>
       ))}
-    </section>
+    </Page>
   );
 }
